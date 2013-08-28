@@ -9,6 +9,7 @@ for file in $(find $JAR_PATH -name "*jar"); do
 	fi
 done
 
-echo $CLASSPATH
+java org.apache.axis.wsdl.WSDL2Java http://localhost:10000/rcms/services/ParameterController?wsdl -p testMe
 
-java org.apache.axis.wsdl.WSDL2Java http://localhost:10000/rcms/services/NotificationService?wsdl
+# how to generically map anything between http and port to sth?
+#--NStoPkg urn:AddressFetcher2=samples.addr
