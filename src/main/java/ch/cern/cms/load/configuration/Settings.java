@@ -22,13 +22,10 @@ public class Settings {
 	 */
 
 	private String[] IDS = { "http://pcbawejdesktop.cern.ch:10000/urn:rcms-fm:fullpath=/bawey/test/testLEVELZERO,group=levelZeroFM,owner=bawey" };
-	private String endpoint = "http://pcbawejdesktop.cern.ch:10000/rcms/services/ParameterController";
+	private String parameterEndpoint = "http://pcbawejdesktop.cern.ch:10000/rcms/services/ParameterController";
+	private String notificationEndpoint = "http://pcbawejdesktop.cern.ch:10000/rcms/services/NotificationService?wsdl";
 
-	/**
-	 * stuff for notification collection
-	 * http://pcbawejdesktop.cern.ch:10000/urn:
-	 * rcms-fm:fullpath=/bawey/test/testLEVELZERO,group=levelZeroFM,owner=bawey
-	 */
+	private String idForNotification = "http://pcbawejdesktop.cern.ch:10000/urn:rcms-fm:fullpath=/bawey/test/testLEVELZERO,group=levelZeroFM,owner=bawey";
 
 	public String[] getIDS() {
 		return IDS;
@@ -38,16 +35,23 @@ public class Settings {
 		IDS = iDS;
 	}
 
-	public String getEndpoint() {
-		return endpoint;
+	public String getParametersEndpoint() {
+		return parameterEndpoint;
 	}
 
-	public void setEndpoint(String endpoint) {
-		this.endpoint = endpoint;
+	public void setParametersEndpoint(String endpoint) {
+		this.parameterEndpoint = endpoint;
 	}
 
 	public String getIdForNotificationsRetrieval() {
-		return IDS[0];
+		return idForNotification;
 	}
 
+	public String getNotificationEndpoint() {
+		return notificationEndpoint;
+	}
+
+	public void setNotificationEndpoint(String notificationEndpoint) {
+		this.notificationEndpoint = notificationEndpoint;
+	}
 }

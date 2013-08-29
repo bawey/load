@@ -33,7 +33,7 @@ public class LevelZeroDataProvider {
 
 	private LevelZeroDataProvider() {
 		try {
-			stub = new ParameterControllerSoapBindingStub(new URL(settings.getEndpoint()), null);
+			stub = new ParameterControllerSoapBindingStub(new URL(settings.getParametersEndpoint()), null);
 		} catch (Throwable e) {
 			throw new RuntimeException("Well, that mechanism should be there for recovery but....", e);
 		}

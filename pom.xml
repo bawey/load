@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Would be nice to have the generated sources automatically added to build path and to have that damn m2e error disappear  -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>ch.cern.cms</groupId>
-	<artifactId>sentry</artifactId>
+	<artifactId>load</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
-	<name>sentry</name>
+	<name>load</name>
 	<url>http://maven.apache.org</url>
 
 	<properties>
@@ -26,28 +27,37 @@
 					<target>1.6</target>
 				</configuration>
 			</plugin>
-
 			<plugin>
-				<groupId>org.apache.cxf</groupId>
-				<artifactId>cxf-codegen-plugin</artifactId>
-				<version>${cxf.version}</version>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>axistools-maven-plugin</artifactId>
+				<version>1.4</version>
 				<executions>
+					<!-- gives off some stupid error due to m2e plugin. ignore it... -->
 					<execution>
-						<id>generate-sources</id>
+						<id>execution1</id>
 						<phase>generate-sources</phase>
 						<configuration>
-							<sourceRoot>${project.build.directory}/generated-sources/cxf</sourceRoot>
-							<wsdlOptions>
-								<wsdlOption>
-									<wsdl>${project.basedir}/src/main/resources/wsdl/objects.wsdl</wsdl>
-									<wsdlLocation>classpath:wsdl/objects.wsdl</wsdlLocation>
-								</wsdlOption>
-							</wsdlOptions>
-							<defaultOptions>
-								<markGenerated>true</markGenerated>
-								<asyncMethods />
-								<bareMethods />
-							</defaultOptions>
+							<urls>
+								<url>http://pcbawejdesktop.cern.ch:10000/rcms/services/ParameterController?wsdl</url>
+							</urls>
+							<packageSpace>parameterService</packageSpace>
+							<serverSide>false</serverSide>
+							<subPackageByFileName>false</subPackageByFileName>
+						</configuration>
+						<goals>
+							<goal>wsdl2java</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>execution2</id>
+						<phase>generate-sources</phase>
+						<configuration>
+							<urls>
+								<url>http://localhost:10000/rcms/services/NotificationService?wsdl</url>
+							</urls>
+							<packageSpace>notificationService</packageSpace>
+							<serverSide>false</serverSide>
+							<subPackageByFileName>false</subPackageByFileName>
 						</configuration>
 						<goals>
 							<goal>wsdl2java</goal>
@@ -92,6 +102,11 @@
 			<artifactId>axistools-maven-plugin</artifactId>
 			<version>1.4</version>
 			<type>maven-plugin</type>
+		</dependency>
+		<dependency>
+			<groupId>com.espertech</groupId>
+			<artifactId>esper</artifactId>
+			<version>4.9.0</version>
 		</dependency>
 	</dependencies>
 </project>

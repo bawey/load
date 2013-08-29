@@ -1,11 +1,11 @@
 package ch.cern.cms.load.dataProviders;
 
-import static org.junit.Assert.*;
-
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+
+import notificationService.NotificationEvent;
 
 import org.junit.After;
 import org.junit.AfterClass;
@@ -18,7 +18,7 @@ import ch.cern.cms.load.utils.Stats;
 public class LevelZeroNotificationReceiverTest {
 
 	private static LevelZeroNotificationReceiver lznr = LevelZeroNotificationReceiver.getInstance();
-	
+
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 	}
@@ -37,14 +37,18 @@ public class LevelZeroNotificationReceiverTest {
 
 	@Test
 	public void test() throws RemoteException {
-		int requests = 3;
+		int requests = 10000;
 		List<Double> rtds = new ArrayList<Double>(requests);
 		for (int i = 0; i < requests; ++i) {
 			long requestTime = new Date().getTime();
-			lznr.subscribeForNotification();
+			NotificationEvent ne = lznr.subscribeForNotification();
+			// System.out.println(ne.getContent());
 			long receptionTime = new Date().getTime();
 			rtds.add((receptionTime - requestTime) / 1000d);
-			System.out.println("ping... " + (receptionTime - requestTime));
+			if (i != 0 && i % 100 == 0) {
+				System.out.println("Average roundtrip time over " + i + " attempts is " + Stats.mean(rtds) + " seconds ("
+						+ Stats.min(rtds) + " - " + Stats.max(rtds) + ").");
+			}
 		}
 		System.out.println("Average roundtrip time over " + requests + " attempts is " + Stats.mean(rtds) + " seconds (" + Stats.min(rtds)
 				+ " - " + Stats.max(rtds) + ").");

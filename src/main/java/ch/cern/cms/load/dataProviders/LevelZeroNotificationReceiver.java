@@ -11,6 +11,11 @@ import ch.cern.cms.load.configuration.Settings;
 /**
  * @author Tomasz Bawej This class, as opposed to {@link LevelZeroDataProvider}
  *         is intended to receive notifications from lzFM
+ * 
+ *         LZFM needs to perform the first subscription passing a 0 timestamp.
+ *         In return a server-side timestamp is received. Each following
+ *         subscription should then be timestamped with InitialTimestamp + (now
+ *         - InitialTimestampReceptionTime)
  */
 public class LevelZeroNotificationReceiver {
 	private static LevelZeroNotificationReceiver instance = null;
@@ -28,7 +33,7 @@ public class LevelZeroNotificationReceiver {
 
 	private LevelZeroNotificationReceiver() {
 		try {
-			stub = new NotificationServiceSoapBindingStub(new URL(settings.getEndpoint()), null);
+			stub = new NotificationServiceSoapBindingStub(new URL(settings.getNotificationEndpoint()), null);
 		} catch (Throwable e) {
 			throw new RuntimeException("There should be a recovery mechanism for that in place, but well...", e);
 		}
@@ -38,8 +43,11 @@ public class LevelZeroNotificationReceiver {
 
 	Settings settings = Settings.getInstance();
 	NotificationServiceSoapBindingStub stub = null;
+	long previousReturnTimestamp = 0;
 
 	public NotificationEvent subscribeForNotification() throws RemoteException {
-		return stub.subscribe(new Date().getTime(), settings.getIdForNotificationsRetrieval());
+		NotificationEvent ne = stub.subscribe(previousReturnTimestamp, settings.getIdForNotificationsRetrieval());
+		previousReturnTimestamp = ne.getTimestamp();
+		return ne;
 	}
 }
