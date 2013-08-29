@@ -12,7 +12,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import ch.cern.cms.load.dataProviders.LevelZeroDataProvider;
+import ch.cern.cms.load.model.LevelZeroDataProvider;
 import ch.cern.cms.load.utils.Stats;
 
 public class LevelZeroDataProviderTest {

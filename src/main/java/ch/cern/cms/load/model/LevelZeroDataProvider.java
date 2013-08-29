@@ -1,4 +1,4 @@
-package ch.cern.cms.load.dataProviders;
+package ch.cern.cms.load.model;
 
 import java.net.MalformedURLException;
 import java.net.URL;
