@@ -38,7 +38,7 @@
 						<phase>generate-sources</phase>
 						<configuration>
 							<urls>
-								<url>http://pcbawejdesktop.cern.ch:10000/rcms/services/ParameterController?wsdl</url>
+								<url>http://localhost:10000/rcms/services/ParameterController?wsdl</url>
 							</urls>
 							<packageSpace>parameterService</packageSpace>
 							<serverSide>false</serverSide>
@@ -107,6 +107,11 @@
 			<groupId>com.espertech</groupId>
 			<artifactId>esper</artifactId>
 			<version>4.9.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.googlecode.json-simple</groupId>
+			<artifactId>json-simple</artifactId>
+			<version>1.1</version>
 		</dependency>
 	</dependencies>
 </project>
