@@ -64,7 +64,7 @@ public class LevelZeroNotificationForwarder {
 						if (previousTimestamp > 0) {
 							try {
 								long sleeptime = (long) ((sample.timestamp - previousTimestamp) / settings.getPlaybackRate());
-								System.out.println("Sent notification and falling asleep for " + sleeptime + " ms");
+								//System.out.println("Sent notification and falling asleep for " + sleeptime + " ms");
 								Thread.sleep(sleeptime);
 							} catch (InterruptedException e) {
 								e.printStackTrace();
@@ -138,7 +138,7 @@ public class LevelZeroNotificationForwarder {
 			}
 			if (subscribers.isEmpty()) {
 				try {
-					System.out.println("No subscribers, sleeping");
+					//System.out.println("No subscribers, sleeping");
 					subscribers.wait();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
