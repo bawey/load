@@ -1,13 +1,17 @@
 package ch.cern.cms.load.model;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import notificationService.NotificationEvent;
 
 import org.json.simple.JSONValue;
+
+import ch.cern.cms.load.model.ModelListener.EventType;
 
 /**
  * 
@@ -37,6 +41,7 @@ public class Model implements NotificationSubscriber {
 	}
 
 	private Map<String, Object> data = new HashMap<String, Object>();
+	private Set<ModelListener> modelListeners = new HashSet<ModelListener>();
 
 	private Model() {
 		LevelZeroNotificationForwarder.subscribe(this);
@@ -45,12 +50,17 @@ public class Model implements NotificationSubscriber {
 			public void run() {
 				try {
 					Map<String, Object> bigMap = LevelZeroDataProvider.getInstance().getAsMap();
+					boolean dataChanged = false;
 					synchronized (data) {
 						for (Map.Entry<String, Object> entry : bigMap.entrySet()) {
 							if (!data.containsKey(entry.getKey())) {
+								dataChanged = true;
 								data.put(entry.getKey(), entry.getValue());
 							}
 						}
+					}
+					if (dataChanged) {
+						sendNotificationType(EventType.DATA_SET_CHANGED);
 					}
 				} catch (Exception e) {
 					throw new RuntimeException("I'm defeated", e);
@@ -82,8 +92,30 @@ public class Model implements NotificationSubscriber {
 				map.put(key, val != null ? JSONValue.parse(val) : null);
 			}
 		}
+		int newEntries = 0;
 		synchronized (data) {
+			newEntries = -data.size();
 			data.putAll(map);
+			newEntries += data.size();
+		}
+		sendNotificationType(EventType.NOTIFICATION_RECEIVED);
+		if (map.size() > 0) {
+			sendNotificationType(EventType.DATA_SET_UPDATED);
+		}
+		if (newEntries != 0) {
+
+		}
+	}
+
+	public void registerListener(ModelListener listener) {
+		modelListeners.add(listener);
+	}
+
+	private void sendNotificationType(EventType change) {
+		if (!modelListeners.isEmpty()) {
+			for (ModelListener ml : modelListeners) {
+				ml.react(change);
+			}
 		}
 	}
 

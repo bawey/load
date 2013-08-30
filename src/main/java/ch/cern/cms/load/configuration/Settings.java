@@ -1,5 +1,7 @@
 package ch.cern.cms.load.configuration;
 
+import java.io.File;
+
 public class Settings {
 
 	public enum Runmode {
@@ -32,8 +34,12 @@ public class Settings {
 	private String[] IDS = { "http://pcbawejdesktop.cern.ch:10000/urn:rcms-fm:fullpath=/bawey/test/testLEVELZERO,group=levelZeroFM,owner=bawey" };
 	private String parameterEndpoint = "http://pcbawejdesktop.cern.ch:10000/rcms/services/ParameterController";
 	private String notificationEndpoint = "http://pcbawejdesktop.cern.ch:10000/rcms/services/NotificationService?wsdl";
-
 	private String idForNotification = "http://pcbawejdesktop.cern.ch:10000/urn:rcms-fm:fullpath=/bawey/test/testLEVELZERO,group=levelZeroFM,owner=bawey";
+
+	// negative value indicates no playback. positive one speeds up (>1) or
+	// slows down the rate of data delivery
+	private double playbackRate = -1d;
+	private File dataSource = null;
 
 	public String[] getIDS() {
 		return IDS;
@@ -69,6 +75,22 @@ public class Settings {
 
 	public void setRunmode(Runmode runmode) {
 		this.runmode = runmode;
+	}
+
+	public double getPlaybackRate() {
+		return playbackRate;
+	}
+
+	public void setPlaybackRate(double playbackRate) {
+		this.playbackRate = playbackRate;
+	}
+
+	public File getDataSource() {
+		return dataSource;
+	}
+
+	public void setDataSource(File dataSource) {
+		this.dataSource = dataSource;
 	}
 
 }

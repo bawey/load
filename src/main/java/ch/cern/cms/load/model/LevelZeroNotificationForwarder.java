@@ -1,13 +1,19 @@
 package ch.cern.cms.load.model;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.net.URL;
 import java.rmi.RemoteException;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import notificationService.NotificationEvent;
 import notificationService.NotificationServiceSoapBindingStub;
 import ch.cern.cms.load.configuration.Settings;
+import ch.cern.cms.load.model.Recorder.Sample;
 
 /**
  * @author Tomasz Bawej This class, as opposed to {@link LevelZeroDataProvider}
@@ -43,25 +49,48 @@ public class LevelZeroNotificationForwarder {
 	private Runnable jobDescription = new Runnable() {
 		@Override
 		public void run() {
-			while (!subscribers.isEmpty()) {
+			switch (settings.getRunmode()) {
+			case OFFLINE:
+				ObjectInputStream ois;
 				try {
-					NotificationEvent ne = pullNotification();
-					synchronized (subscribers) {
-						for (NotificationSubscriber subscriber : subscribers) {
-							subscriber.processNotification(ne);
+					ois = new ObjectInputStream(new FileInputStream(Settings.getInstance().getDataSource()));
+					@SuppressWarnings("unchecked")
+					List<Sample> samples = (List<Sample>) ois.readObject();
+					long previousTimestamp = 0;
+					for (Sample sample : samples) {
+						if (sample.ne == null) {
+							continue;
 						}
-						if (subscribers.isEmpty()) {
+						if (previousTimestamp > 0) {
 							try {
-								System.out.println("No subscribers, sleeping");
-								subscribers.wait();
+								long sleeptime = (long) ((sample.timestamp - previousTimestamp) / settings.getPlaybackRate());
+								System.out.println("Sent notification and falling asleep for " + sleeptime + " ms");
+								Thread.sleep(sleeptime);
 							} catch (InterruptedException e) {
 								e.printStackTrace();
 							}
 						}
+						previousTimestamp = sample.timestamp;
+						notifySubscribers(sample.ne);
 					}
-				} catch (RemoteException e) {
-					throw new RuntimeException("I panic", e);
+				} catch (Exception e) {
+					throw new RuntimeException("Doomed during playback", e);
 				}
+
+				break;
+			case ONLINE_RECORD:
+				break;
+
+			case ONLINE:
+			default:
+				while (!subscribers.isEmpty()) {
+					try {
+						notifySubscribers(pullNotification());
+					} catch (RemoteException e) {
+						throw new RuntimeException("I panic", e);
+					}
+				}
+				break;
 			}
 		}
 	};
@@ -102,4 +131,19 @@ public class LevelZeroNotificationForwarder {
 		return ne;
 	}
 
+	private void notifySubscribers(NotificationEvent ne) {
+		synchronized (subscribers) {
+			for (NotificationSubscriber subscriber : subscribers) {
+				subscriber.processNotification(ne);
+			}
+			if (subscribers.isEmpty()) {
+				try {
+					System.out.println("No subscribers, sleeping");
+					subscribers.wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
 }

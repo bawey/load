@@ -1,19 +1,23 @@
 package ch.cern.cms.load.model;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.rmi.RemoteException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Vector;
-
-import org.apache.axis.AxisFault;
-
-import ch.cern.cms.load.configuration.Settings;
 
 import parameterService.FunctionManagerParameterBean;
 import parameterService.ParameterBean;
 import parameterService.ParameterControllerSoapBindingStub;
+import ch.cern.cms.load.configuration.Settings;
+import ch.cern.cms.load.configuration.Settings.Runmode;
+import ch.cern.cms.load.model.Recorder.Sample;
 
 /**
  * @author Tomasz Bawej This class will contact the WS and return something.
@@ -48,15 +52,35 @@ public class LevelZeroDataProvider {
 	private Settings settings = Settings.getInstance();
 	private ParameterControllerSoapBindingStub stub = null;
 
-	public FunctionManagerParameterBean[] getRawData() throws MalformedURLException, RemoteException {
+	public ParameterBean[] getRawData() throws MalformedURLException, RemoteException {
+		if (Settings.getInstance().getRunmode() == Runmode.ONLINE) {
+			return stub.getParameter(settings.getIDS());
+		} else if (Settings.getInstance().getRunmode() == Runmode.OFFLINE) {
+			try {
+				ObjectInputStream ois = new ObjectInputStream(new FileInputStream(Settings.getInstance().getDataSource()));
+				@SuppressWarnings("unchecked")
+				List<Sample> samples = (List<Sample>) ois.readObject();
+				ois.close();
 
-		return stub.getParameter(settings.getIDS());
+				for (Sample s : samples) {
+					if (s.beans != null) {
+						long sleeptime = (long) ((s.timestamp - samples.get(0).timestamp) / Settings.getInstance().getPlaybackRate());
+						System.out.println("read data from file and will sleep for " + sleeptime + "ms");
+						Thread.sleep(sleeptime);
+						return s.beans;
+					}
+				}
+			} catch (Exception e) {
+				throw new RuntimeException("dead", e);
+			}
+		}
+		return null;
 	}
 
 	public Map<String, Object> getAsMap() throws MalformedURLException, RemoteException {
 		Map<String, Object> map = new HashMap<String, Object>();
-		FunctionManagerParameterBean[] beans = getRawData();
-		for (FunctionManagerParameterBean bean : beans) {
+		ParameterBean[] beans = getRawData();
+		for (ParameterBean bean : beans) {
 			if (!bean.getName().contains("_HTML")) {
 				map.put(bean.getName(), objectFromBean(bean));
 			}
@@ -114,7 +138,7 @@ public class LevelZeroDataProvider {
 		return bean.getType().contains("VectorT");
 	}
 
-	private Object objectFromBean(FunctionManagerParameterBean bean) {
+	private Object objectFromBean(ParameterBean bean) {
 		if (bean.getType().contains("BinaryStringT")) {
 			return bean.getValue();
 		} else if (bean.getType().contains("StringT")) {
