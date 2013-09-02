@@ -1,8 +1,6 @@
 package ch.cern.cms.load.model;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -10,9 +8,9 @@ import java.rmi.RemoteException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.Vector;
 
-import parameterService.FunctionManagerParameterBean;
 import parameterService.ParameterBean;
 import parameterService.ParameterControllerSoapBindingStub;
 import ch.cern.cms.load.configuration.Settings;
@@ -78,7 +76,7 @@ public class LevelZeroDataProvider {
 	}
 
 	public Map<String, Object> getAsMap() throws MalformedURLException, RemoteException {
-		Map<String, Object> map = new HashMap<String, Object>();
+		Map<String, Object> map = new TreeMap<String, Object>();
 		ParameterBean[] beans = getRawData();
 		for (ParameterBean bean : beans) {
 			if (!bean.getName().contains("_HTML")) {
@@ -111,7 +109,7 @@ public class LevelZeroDataProvider {
 		if (!bean.getType().equalsIgnoreCase("rcms.fm.fw.parameter.type.MapT")) {
 			return null;
 		}
-		Map<Object, Object> map = new HashMap<Object, Object>();
+		Map<Object, Object> map = new TreeMap<Object, Object>();
 		if (bean != null && bean.getParameters() != null) {
 			for (int i = 0; i < bean.getParameters()[0].getParameters().length; ++i) {
 				ParameterBean valBean = bean.getParameters()[1].getParameters()[i];

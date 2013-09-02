@@ -35,6 +35,7 @@ public class Settings {
 	private String parameterEndpoint = "http://pcbawejdesktop.cern.ch:10000/rcms/services/ParameterController";
 	private String notificationEndpoint = "http://pcbawejdesktop.cern.ch:10000/rcms/services/NotificationService?wsdl";
 	private String idForNotification = "http://pcbawejdesktop.cern.ch:10000/urn:rcms-fm:fullpath=/bawey/test/testLEVELZERO,group=levelZeroFM,owner=bawey";
+	private int maxValueLengthInTree = 20;
 
 	// negative value indicates no playback. positive one speeds up (>1) or
 	// slows down the rate of data delivery
@@ -93,4 +94,14 @@ public class Settings {
 		this.dataSource = dataSource;
 	}
 
+	public int getMaxValueLengthInTree() {
+		return maxValueLengthInTree;
+	}
+
+	public void setMaxValueLengthInTree(int maxValueLengthInTree) {
+		this.maxValueLengthInTree = maxValueLengthInTree;
+	}
+
+	
+	
 }

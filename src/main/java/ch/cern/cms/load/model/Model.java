@@ -1,9 +1,17 @@
 package ch.cern.cms.load.model;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,7 +48,7 @@ public class Model implements NotificationSubscriber {
 		return instance;
 	}
 
-	private Map<String, Object> data = new HashMap<String, Object>();
+	private Map<String, Object> data = new TreeMap<String, Object>();
 	private Set<ModelListener> modelListeners = new HashSet<ModelListener>();
 
 	private Model() {
@@ -80,16 +88,19 @@ public class Model implements NotificationSubscriber {
 		Map<String, Object> map = new HashMap<String, Object>();
 
 		Pattern p = Pattern.compile("<PARAMETER><NAME>(.*?)</NAME>|<VALUE>(.*?)</VALUE></PARAMETER>");
-		Matcher matcher = p.matcher(ne.getContent());
+		Matcher matcher = p.matcher(ne.getContent().replace("\n", "").replace("\r", ""));
 		int i = 0;
 		String key = null;
+
 		while (matcher.find()) {
+
 			int mod = i++ % 2;
 			String val = matcher.group(1 + mod);
 			if (mod == 0) {
 				key = val;
 			} else {
-				map.put(key, val != null ? JSONValue.parse(val) : null);
+				Object json = JSONValue.parse(val);
+				map.put(key, json != null ? json : val);
 			}
 		}
 		int newEntries = 0;
