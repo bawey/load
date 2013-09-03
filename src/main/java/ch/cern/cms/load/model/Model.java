@@ -19,6 +19,7 @@ import notificationService.NotificationEvent;
 
 import org.json.simple.JSONValue;
 
+import ch.cern.cms.load.eventProcessing.EventFactory;
 import ch.cern.cms.load.model.ModelListener.EventType;
 
 /**
@@ -109,6 +110,7 @@ public class Model implements NotificationSubscriber {
 			data.putAll(map);
 			newEntries += data.size();
 		}
+		EventFactory.getInstance().produceEvents(map);
 		sendNotificationType(EventType.NOTIFICATION_RECEIVED);
 		if (map.size() > 0) {
 			sendNotificationType(EventType.DATA_SET_UPDATED);

@@ -4,7 +4,9 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.GridLayout;
 import java.io.File;
+import java.util.Date;
 import java.util.Map;
 import java.util.Vector;
 
@@ -22,8 +24,13 @@ import javax.swing.tree.TreeSelectionModel;
 
 import ch.cern.cms.load.configuration.Settings;
 import ch.cern.cms.load.configuration.Settings.Runmode;
+import ch.cern.cms.load.eventProcessing.EventProcessor;
+import ch.cern.cms.load.eventProcessing.events.SubsystemCrossCheckerEvent;
 import ch.cern.cms.load.model.Model;
 import ch.cern.cms.load.model.ModelListener;
+
+import com.espertech.esper.client.EventBean;
+import com.espertech.esper.client.UpdateListener;
 
 public class WindowedMain implements ModelListener, TreeSelectionListener {
 
@@ -33,13 +40,15 @@ public class WindowedMain implements ModelListener, TreeSelectionListener {
 	private JScrollPane leftScrollPane = null;
 	private Settings settings = Settings.getInstance();
 
-	private JPanel rightPanel = new JPanel();
+	private JPanel rightPanel = new JPanel(new GridLayout(1, 1));
 	private JScrollPane rightScrollPane = new JScrollPane(rightPanel);
 
-	private JPanel rightTopPanel = new JPanel();
+	private JPanel rightTopPanel = new JPanel(new GridLayout(1, 1));
 	private JScrollPane rightTopScrollPane = new JScrollPane(rightTopPanel);
-	private JPanel rightBottomPanel = new JPanel();
+	private JPanel rightBottomPanel = new JPanel(new GridLayout(1, 1));
 	private JScrollPane rightBottomScrollPane = new JScrollPane(rightBottomPanel);
+	private Dimension frameSize = new Dimension(1280, 768);
+	private Dimension sideColumnSize = new Dimension(frameSize.width * 23 / 100, frameSize.height);
 
 	private WindowedMain(JFrame frame, Model model) {
 		super();
@@ -58,24 +67,43 @@ public class WindowedMain implements ModelListener, TreeSelectionListener {
 		Model model = Model.getInstance();
 		JFrame frame = new JFrame("Parameters overview");
 		instance = new WindowedMain(frame, model);
+		frame.setSize(instance.frameSize);
 		model.registerListener(instance);
 		instance.setRightPane();
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.setSize(1024, 768);
 		frame.setVisible(true);
+
+		// register a sample statement
+		EventProcessor.getInstance().registerStatement(
+				"select * from " + SubsystemCrossCheckerEvent.class.getSimpleName() + "(subsys='DAQ') having subsys='DAQ'", new UpdateListener() {
+
+					@Override
+					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+						System.out.println("ESP event picked up! " + newEvents[0].getUnderlying());
+					}
+
+				});
+
 	}
 
 	@Override
 	public void react(EventType changeType) {
-		if (changeType.equals(EventType.DATA_SET_CHANGED)) {
+		switch (changeType) {
+		case DATA_SET_CHANGED:
 			System.out.println("planting a tree");
 			setTree();
+		case DATA_SET_UPDATED:
+			this.rightTopPanel.removeAll();
+			JTextArea textArea = new JTextArea("Last update: \n " + new Date().toString());
+			this.rightTopPanel.add(textArea);
+			this.rightTopPanel.validate();
 		}
 
 	}
 
 	private void setRightPane() {
 		JPanel column = new JPanel();
+		column.setPreferredSize(this.sideColumnSize);
 		column.setLayout(new BoxLayout(column, BoxLayout.PAGE_AXIS));
 		rightTopPanel.setBackground(Color.BLACK);
 		rightTopPanel.add(new JLabel("Abrakadabra"));
@@ -97,15 +125,10 @@ public class WindowedMain implements ModelListener, TreeSelectionListener {
 		tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
 		tree.addTreeSelectionListener(this);
 
-		Dimension size = new Dimension(frame.getWidth() / 3, frame.getHeight());
-
-		tree.setMaximumSize(size);
-		tree.setPreferredSize(size);
-		tree.setSize(size);
-
 		leftScrollPane = new JScrollPane(tree);
-		leftScrollPane.setMaximumSize(size);
-		leftScrollPane.setSize(size);
+		leftScrollPane.setMaximumSize(sideColumnSize);
+		leftScrollPane.setSize(sideColumnSize);
+		leftScrollPane.setPreferredSize(sideColumnSize);
 		cnt.add(leftScrollPane, BorderLayout.LINE_START);
 		if (listNotYetThere) {
 			cnt.validate();
