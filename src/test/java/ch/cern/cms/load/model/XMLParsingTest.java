@@ -41,7 +41,7 @@ public class XMLParsingTest {
 	public void test() throws IOException, ClassNotFoundException {
 
 		//File input = new File("/home/bawey/Desktop/problems1378127309500.xml");
-		File input = new File("/home/bawey/Desktop/stringObject");
+		File input = new File("/stringObject");
 //		BufferedReader br = new BufferedReader(new FileReader(input));
 //
 //		StringBuilder sb = new StringBuilder();
