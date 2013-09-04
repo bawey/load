@@ -1,12 +1,5 @@
 package ch.cern.cms.load.model;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -69,7 +62,7 @@ public class Model implements NotificationSubscriber {
 						}
 					}
 					if (dataChanged) {
-						sendNotificationType(EventType.DATA_SET_CHANGED);
+						sendNotificationType(EventType.INSERTED_PARAMS);
 					}
 				} catch (Exception e) {
 					throw new RuntimeException("I'm defeated", e);
@@ -111,12 +104,12 @@ public class Model implements NotificationSubscriber {
 			newEntries += data.size();
 		}
 		EventFactory.getInstance().produceEvents(map);
-		sendNotificationType(EventType.NOTIFICATION_RECEIVED);
+		sendNotificationType(EventType.REMOVED_PARAMS);
 		if (map.size() > 0) {
-			sendNotificationType(EventType.DATA_SET_UPDATED);
+			sendNotificationType(EventType.CHANGED_PARAMS);
 		}
 		if (newEntries != 0) {
-
+			//sendNotificationType(EventType.INSERTED_PARAMS);
 		}
 	}
 

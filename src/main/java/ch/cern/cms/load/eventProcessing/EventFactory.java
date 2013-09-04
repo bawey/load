@@ -36,7 +36,6 @@ public class EventFactory {
 	private List<EventAdapter> adapters = new LinkedList<EventAdapter>();
 
 	public void registerAdapter(EventAdapter adapter) {
-		System.out.println("registering adapter " + adapter.getClass().getSimpleName());
 		this.adapters.add(adapter);
 	}
 

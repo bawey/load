@@ -32,7 +32,7 @@ import ch.cern.cms.load.model.ModelListener;
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.UpdateListener;
 
-public class WindowedMain implements ModelListener, TreeSelectionListener {
+public class WindowedMain implements ModelListener, TreeSelectionListener, UpdateListener {
 
 	private static WindowedMain instance = null;
 	private JFrame frame = null;
@@ -49,6 +49,9 @@ public class WindowedMain implements ModelListener, TreeSelectionListener {
 	private JScrollPane rightBottomScrollPane = new JScrollPane(rightBottomPanel);
 	private Dimension frameSize = new Dimension(1280, 768);
 	private Dimension sideColumnSize = new Dimension(frameSize.width * 23 / 100, frameSize.height);
+	private JPanel centralPanel = new JPanel(new GridLayout(2, 1));
+	private JTextArea commandLine = new JTextArea();
+	private JTextArea consoleOutput = new JTextArea();
 
 	private WindowedMain(JFrame frame, Model model) {
 		super();
@@ -69,30 +72,24 @@ public class WindowedMain implements ModelListener, TreeSelectionListener {
 		instance = new WindowedMain(frame, model);
 		frame.setSize(instance.frameSize);
 		model.registerListener(instance);
-		instance.setRightPane();
+		instance.setupRightPane();
+		instance.setupCentralPane();
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setVisible(true);
 
 		// register a sample statement
 		EventProcessor.getInstance().registerStatement(
-				"select * from " + SubsystemCrossCheckerEvent.class.getSimpleName() + "(subsys='DAQ') having subsys='DAQ'", new UpdateListener() {
-
-					@Override
-					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-						System.out.println("ESP event picked up! " + newEvents[0].getUnderlying());
-					}
-
-				});
+				"select * from " + SubsystemCrossCheckerEvent.class.getSimpleName() + "(subsys='DAQ') having subsys='DAQ'", instance);
 
 	}
 
 	@Override
 	public void react(EventType changeType) {
 		switch (changeType) {
-		case DATA_SET_CHANGED:
+		case INSERTED_PARAMS:
 			System.out.println("planting a tree");
 			setTree();
-		case DATA_SET_UPDATED:
+		case CHANGED_PARAMS:
 			this.rightTopPanel.removeAll();
 			JTextArea textArea = new JTextArea("Last update: \n " + new Date().toString());
 			this.rightTopPanel.add(textArea);
@@ -101,7 +98,17 @@ public class WindowedMain implements ModelListener, TreeSelectionListener {
 
 	}
 
-	private void setRightPane() {
+	private void setupCentralPane() {
+		JScrollPane commandLinePane = new JScrollPane(commandLine);
+		commandLine.setText("select * from SomeEvent(id='x')");
+		this.centralPanel.add(commandLinePane);
+		JScrollPane consoleOutputPane = new JScrollPane(consoleOutput);
+		this.centralPanel.add(consoleOutputPane);
+		// consoleOutput.setText("dummy output blah blah blah");
+		frame.getContentPane().add(this.centralPanel, BorderLayout.CENTER);
+	}
+
+	private void setupRightPane() {
 		JPanel column = new JPanel();
 		column.setPreferredSize(this.sideColumnSize);
 		column.setLayout(new BoxLayout(column, BoxLayout.PAGE_AXIS));
@@ -212,5 +219,12 @@ public class WindowedMain implements ModelListener, TreeSelectionListener {
 			this.rightBottomPanel.repaint();
 			this.rightBottomPanel.validate();
 		}
+	}
+
+	@Override
+	public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+		this.consoleOutput.append(new Date().toString());
+		this.consoleOutput.append(": ");
+		this.consoleOutput.append(newEvents[0].getUnderlying().toString() + "\n");
 	}
 }
