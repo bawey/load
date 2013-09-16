@@ -1,5 +1,6 @@
 package ch.cern.cms.load.eventProcessing;
 
+import ch.cern.cms.load.eventData.EventProcessorStatus;
 import ch.cern.cms.load.eventProcessing.events.SubsystemCrossCheckerEvent;
 
 import com.espertech.esper.client.Configuration;
@@ -35,6 +36,7 @@ public class EventProcessor {
 	private EventProcessor() {
 		epConfig = new Configuration();
 		addEventType(SubsystemCrossCheckerEvent.class);
+		addEventType(EventProcessorStatus.class);
 		epProvider = EPServiceProviderManager.getProvider("myCEPEngine", epConfig);
 		epRT = epProvider.getEPRuntime();
 		epAdmin = epProvider.getEPAdministrator();
