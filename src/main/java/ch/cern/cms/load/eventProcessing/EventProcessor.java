@@ -1,5 +1,7 @@
 package ch.cern.cms.load.eventProcessing;
 
+import java.util.Map;
+
 import ch.cern.cms.load.eventData.EventProcessorStatus;
 import ch.cern.cms.load.eventProcessing.events.SubsystemCrossCheckerEvent;
 
@@ -9,7 +11,6 @@ import com.espertech.esper.client.EPRuntime;
 import com.espertech.esper.client.EPServiceProvider;
 import com.espertech.esper.client.EPServiceProviderManager;
 import com.espertech.esper.client.EPStatement;
-import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.UpdateListener;
 
 /**
@@ -57,7 +58,23 @@ public class EventProcessor {
 		cepStatement.addListener(listener);
 	}
 
+	public EPStatement registerStatement(String statement, Object subscriber) {
+		EPStatement cepStatement = epAdmin.createEPL(statement);
+		cepStatement.setSubscriber(subscriber);
+		return cepStatement;
+	}
+
 	public void sendEvent(Object event) {
 		epRT.sendEvent(event);
 	}
+
+	public static interface MultirowSubscriber {
+		public void update(Map<?, ?> data);
+
+		public void updateStart(int insertStreamLength, int removeStreamLength);
+
+		public void updateEnd();
+
+	}
+
 }
