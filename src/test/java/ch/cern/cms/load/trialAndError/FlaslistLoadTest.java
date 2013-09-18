@@ -107,24 +107,9 @@ public class FlaslistLoadTest {
 	private int simpleCount = 0;
 
 	@Test
-	public void testWithContextPartitions() throws IOException {
-		EventProcessor ep = EventProcessor.getInstance();
-		/** put data into cores vs processed view **/
-		ep.registerStatement("insert into Records select epMicroStateInt.size() as cores, nbProcessed as processed from " + EPS,
-				dummySubscriber);
-		/**
-		 * create a context to segment cores vs processed view by number of
-		 * cores
-		 **/
-		ep.registerStatement("create context SegmentedByCores partition by cores from Records", dummySubscriber);
-
-		// ep.registerStatement("context SegmentedByCores select cores, avg(processed) from Records group by cores",
-		// this.subscriber);
-
-		ep.getAdministrator().createEPL("create window MyWindow.win:keepall() as (cores Integer, processed long)");
-		ep.getAdministrator().createEPL("insert into MyWindow select x.nbProcessed as processed, x.epMicroStateInt.size() as cores from " + EPS+" as x");
-		
-		//ep.registerStatement("select * from MyWindow", subscriber);
+	public void testWithNamedWindowsAndOnDemandQueries() throws IOException {
+		final EventProcessor ep = EventProcessor.getInstance();
+		/** stuff for some debug, irrelevant **/
 		ep.registerStatement("select * from " + EPS, new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
@@ -132,108 +117,79 @@ public class FlaslistLoadTest {
 			}
 		});
 
+		/**
+		 * create Records stream containing individual cores - nbProcessed
+		 * records
+		 **/
+		ep.registerStatement("insert into Records select epMicroStateInt.size() as cores, nbProcessed as processed from " + EPS,
+				dummySubscriber);
+
+		/** create window so that the Records stream events don't get dropped **/
+		ep.getAdministrator().createEPL("create window MyWindow.win:keepall() as (cores int, processed long)");
+		ep.getAdministrator().createEPL(
+				"insert into MyWindow select x.nbProcessed as processed, x.epMicroStateInt.size() as cores from " + EPS + " as x");
+
+		/** create window holding groped (by cores) processed averages **/
+		ep.getAdministrator().createEPL("create window Stats.std:unique(cores) as (cores int, throughput double)");
+		ep.getAdministrator().createEPL("insert into Stats select cores, avg(processed) as throughput from MyWindow group by cores");
+
+		/** query doesn't see qvrg l8r **/
+		// ep.registerStatement("select avg(processed) as avrg from MyWindow",
+		// new UpdateListener() {
+		// @Override
+		// public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+		// ep.getConfiguration().addVariable("avrg", Double.class,
+		// newEvents[0].get("avrg"));
+		// }
+		// });
+
+		/**
+		 * create window containing average and stddev of all nbProcessed and
+		 * variables to hold these values (on-demand queries support no
+		 * subqueries)
+		 **/
+		ep.getAdministrator().createEPL("create window JustAvg.std:lastevent() as(procAvg double, procStdev double)");
+		ep.getAdministrator().createEPL(
+				"insert into JustAvg select average as procAvg, stddev as procStdev from MyWindow.stat:uni(processed)");
+		ep.getAdministrator().createEPL("create variable double avrg=0");
+		ep.getAdministrator().createEPL("on JustAvg set avrg=procAvg");
+		ep.getAdministrator().createEPL("create variable double sdev=0");
+		ep.getAdministrator().createEPL("on JustAvg set sdev=procStdev");
+
+		/** push all the events into engine **/
 		pumpEvents(ep);
 
-		print(ep.getRuntime().executeQuery("select avg(processed), cores from MyWindow group by cores"));
+		/** run the on-demand queries **/
+		print(ep.getRuntime().executeQuery("select s.cores, s.throughput from Stats as s where s.throughput > avrg+sdev"));
+		print(ep.getRuntime().executeQuery("select * from JustAvg"));
 		System.out.println("simple update count: " + simpleCount);
 
-		// ep.getRuntime().executeQuery("context SegmentedByCores select * from Records");
 	}
 
+	@Test
 	public void test() throws IOException {
 
 		EventProcessor ep = EventProcessor.getInstance();
 		ep.registerStatement("select irstream * from " + EventProcessorStatus.class.getSimpleName(), new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-				// System.out.println("trivial condition met, new events: " +
-				// (newEvents != null ? newEvents.length : "null")
-				// + ", old events: " + (oldEvents != null ? oldEvents.length :
-				// "null"));
 			}
 		});
 
 		/** try putting the processed-to-cores info first **/
-		ep.registerStatement("insert into Stats select nbProcessed as processed, epMicroStateInt.size() as cores from " + EPS,
-				new UpdateListener() {
-					@Override
-					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-						// System.out.println("inserted new data");
-					}
-				});
-
-		ep.registerStatement("insert into SthNew select avg(processed) as throughput, cores from Stats group by cores", dummySubscriber);
-		ep.registerStatement("insert into Ref select avg(processed) as ref from Stats", dummySubscriber);
+		ep.getAdministrator()
+				.createEPL("insert into CoreProc select nbProcessed as processed, epMicroStateInt.size() as cores from " + EPS);
+		ep.getAdministrator().createEPL("insert into Performance select avg(processed) as throughput, cores from CoreProc group by cores");
+		ep.getAdministrator().createEPL("insert into Ref select average as ref, stddev as sdev from CoreProc.stat:uni(processed)");
 		ep.registerStatement(
-				"select y.cores, y.throughput as avgThroughput from SthNew.win:time_batch(1000 msec).std:unique(cores) as y where y.throughput > (select x.ref from Ref.std:lastevent() as x)",
+				"select y.cores, y.throughput as avgThroughput from Performance.win:time_batch(1000 msec).std:unique(cores) as y where y.throughput > (select x.ref from Ref.std:lastevent() as x) + (select x.sdev from Ref.std:lastevent() as x)",
 				subscriber);
-
-		// ep.registerStatement("select avg(processed) as average, cores from Stats group by cores",
-		// new UpdateListener() {
-		// @Override
-		// public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-		// System.out.println("selected and grouped, new events: " + (newEvents
-		// != null ? newEvents.length : "null")
-		// + ", old events: " + (oldEvents != null ? oldEvents.length :
-		// "null"));
-		// System.out.println(newEvents[0].getUnderlying().toString());
-		// }
-		// });
-
-		// EPStatement statement = ep.registerStatement(
-		// "select {avg(s.processed)} as average, {s.cores} from Stats.win:length_batch(100) as s group by cores",
-		// subscriber);
-
-		// ep.registerStatement("select avg(eps.nbProcessed) from " + EPS +
-		// ".win:keepall() as eps", subscriber);
-
-		// EPStatement statement =
-		// ep.registerStatement("select s.cores, s.processed from Stats as s where processed > (select avg(eps.nbProcessed) from "
-		// + EPS
-		// + ".win:keepall() as eps)", subscriber);
-
-		// EPStatement statement = ep
-		// .registerStatement(
-		// "select s.cores, avg(s.processed) from Stats as s having avg(s.processed) > (select average from Stats.win:length(10).stat:uni(processed)) from "
-		// + EPS + ".win:keepall() as eps)", subscriber);
-
-		// ep.registerStatement("select {avg(s.processed)} as average, {s.cores} from Stats.win:time_batch(1 sec) as s,  "
-		// + EPS
-		// +
-		// " as eps group by cores having avg(s.processed) > avg(eps.nbProcessed)",
-		// subscriber);
-
-		/** respond to a new insert into stats **/
-		// ep.registerStatement("select average from Averages", new
-		// UpdateListener() {
-		// @Override
-		// public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-		// System.out.println("selected from averages: " +
-		// newEvents[0].get("average"));
-		// }
-		// });
-
-		// ep.registerStatement("select * from " +
-		// EventProcessorStatus.class.getSimpleName()
-		// + " where nbProcessed > select avg(nbProcessed) from " +
-		// EventProcessorStatus.class.getSimpleName(), new UpdateListener() {
-		// @Override
-		// public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-		// System.out.println("average triggered");
-		// for (EventBean newEvent : newEvents) {
-		// System.out.println("avg: " + newEvent.get("average"));
-		// }
-		// }
-		// });
-
 		pumpEvents(ep);
-
 		try {
 			Thread.sleep(1000l);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-
 	}
 
 	private MultirowSubscriber dummySubscriber = new EventProcessor.MultirowSubscriber() {
