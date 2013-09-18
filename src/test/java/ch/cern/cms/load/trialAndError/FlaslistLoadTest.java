@@ -22,6 +22,7 @@ import ch.cern.cms.load.eventProcessing.EventProcessor.MultirowSubscriber;
 import ch.cern.cms.load.mocks.MockEPSEventParser;
 import ch.cern.cms.load.utils.Stats;
 
+import com.espertech.esper.client.EPOnDemandQueryResult;
 import com.espertech.esper.client.EPStatement;
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.UpdateListener;
@@ -46,16 +47,100 @@ public class FlaslistLoadTest {
 	public void tearDown() throws Exception {
 	}
 
-	@Test
-	public void test() throws IOException {
+	private void pumpEvents(EventProcessor ep) throws IOException {
 		File file = new File("dmp/" + Settings.getInstance().flashlistDumpName);
 		Assert.assertTrue(file.exists());
 		MockEPSEventParser parser = new MockEPSEventParser();
 		List<EventProcessorStatus> list = parser.bruteParse(file);
 
-		List<Long> accepted = new LinkedList<Long>();
-		List<Long> processed = new LinkedList<Long>();
-		List<Integer> pes = new LinkedList<Integer>();
+		// List<Long> accepted = new LinkedList<Long>();
+		// List<Long> processed = new LinkedList<Long>();
+		// List<Integer> pes = new LinkedList<Integer>();
+
+		for (EventProcessorStatus eps : list) {
+			ep.sendEvent(eps);
+			/** this block could send some info for printouts **/
+			// accepted.add(eps.getNbAccepted());
+			// processed.add(eps.getNbProcessed());
+			// pes.add(eps.getEpMicroStateInt() != null ?
+			// eps.getEpMicroStateInt().size() : 0);
+		}
+
+		// System.out.println("BY_HAND: accepted: " + Stats.min(accepted) + ", "
+		// + Stats.mean(accepted) + ", " + Stats.max(accepted));
+		// System.out.println("BY_HAND: processed: " + Stats.min(processed) +
+		// ", " + Stats.mean(processed) + ", " + Stats.max(processed));
+		// System.out.println("BY_HAND: PES list: " + Stats.min(pes) + ", " +
+		// Stats.mean(pes) + ", " + Stats.max(pes));
+
+	}
+
+	// @Test
+	public void testOnDemandQueries() throws IOException {
+		EventProcessor ep = EventProcessor.getInstance();
+		pumpEvents(ep);
+
+		EPOnDemandQueryResult rslt = ep.getRuntime().executeQuery("select * from " + EPS);
+		System.out.println(rslt.getArray().length);
+		for (EventBean eb : rslt.getArray()) {
+			System.out.println(eb.getUnderlying());
+		}
+
+	}
+
+	private void print(EPOnDemandQueryResult rslt) {
+		if (rslt != null && rslt.getArray() != null) {
+			System.out.println("Results size: " + rslt.getArray().length);
+			for (EventBean eb : rslt.getArray()) {
+				System.out.println(eb.getUnderlying());
+			}
+		} else {
+			if (rslt == null) {
+				System.out.println("rslt is null");
+			} else {
+				System.out.println("results array is null");
+			}
+		}
+
+	}
+
+	private int simpleCount = 0;
+
+	@Test
+	public void testWithContextPartitions() throws IOException {
+		EventProcessor ep = EventProcessor.getInstance();
+		/** put data into cores vs processed view **/
+		ep.registerStatement("insert into Records select epMicroStateInt.size() as cores, nbProcessed as processed from " + EPS,
+				dummySubscriber);
+		/**
+		 * create a context to segment cores vs processed view by number of
+		 * cores
+		 **/
+		ep.registerStatement("create context SegmentedByCores partition by cores from Records", dummySubscriber);
+
+		// ep.registerStatement("context SegmentedByCores select cores, avg(processed) from Records group by cores",
+		// this.subscriber);
+
+		ep.getAdministrator().createEPL("create window MyWindow.win:keepall() as (cores Integer, processed long)");
+		ep.getAdministrator().createEPL("insert into MyWindow select x.nbProcessed as processed, x.epMicroStateInt.size() as cores from " + EPS+" as x");
+		
+		//ep.registerStatement("select * from MyWindow", subscriber);
+		ep.registerStatement("select * from " + EPS, new UpdateListener() {
+			@Override
+			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+				FlaslistLoadTest.this.simpleCount++;
+			}
+		});
+
+		pumpEvents(ep);
+
+		print(ep.getRuntime().executeQuery("select avg(processed), cores from MyWindow group by cores"));
+		System.out.println("simple update count: " + simpleCount);
+
+		// ep.getRuntime().executeQuery("context SegmentedByCores select * from Records");
+	}
+
+	public void test() throws IOException {
 
 		EventProcessor ep = EventProcessor.getInstance();
 		ep.registerStatement("select irstream * from " + EventProcessorStatus.class.getSimpleName(), new UpdateListener() {
@@ -141,15 +226,7 @@ public class FlaslistLoadTest {
 		// }
 		// });
 
-		for (EventProcessorStatus eps : list) {
-			ep.sendEvent(eps);
-			accepted.add(eps.getNbAccepted());
-			processed.add(eps.getNbProcessed());
-			pes.add(eps.getEpMicroStateInt() != null ? eps.getEpMicroStateInt().size() : 0);
-		}
-		System.out.println("BY_HAND: accepted: " + Stats.min(accepted) + ", " + Stats.mean(accepted) + ", " + Stats.max(accepted));
-		System.out.println("BY_HAND: processed: " + Stats.min(processed) + ", " + Stats.mean(processed) + ", " + Stats.max(processed));
-		System.out.println("BY_HAND: PES list: " + Stats.min(pes) + ", " + Stats.mean(pes) + ", " + Stats.max(pes));
+		pumpEvents(ep);
 
 		try {
 			Thread.sleep(1000l);

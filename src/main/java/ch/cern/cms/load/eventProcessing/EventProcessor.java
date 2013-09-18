@@ -48,6 +48,22 @@ public class EventProcessor {
 	private EPRuntime epRT;
 	private EPAdministrator epAdmin;
 
+	public Configuration getConfiguration() {
+		return epConfig;
+	}
+
+	public EPServiceProvider getProvider() {
+		return epProvider;
+	}
+
+	public EPRuntime getRuntime() {
+		return epRT;
+	}
+
+	public EPAdministrator getAdministrator() {
+		return epAdmin;
+	}
+
 	private void addEventType(Class<?> eventObjectClass) {
 		System.out.println("adding event type: " + eventObjectClass.getSimpleName() + " [" + eventObjectClass.getName() + "]");
 		epConfig.addEventType(eventObjectClass.getSimpleName(), eventObjectClass.getName());
