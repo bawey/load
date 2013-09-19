@@ -106,7 +106,7 @@ public class FlaslistLoadTest {
 
 	private int simpleCount = 0;
 
-	@Test
+	// @Test
 	public void testWithNamedWindowsAndOnDemandQueries() throws IOException {
 		final EventProcessor ep = EventProcessor.getInstance();
 		/** stuff for some debug, irrelevant **/
@@ -121,8 +121,9 @@ public class FlaslistLoadTest {
 		 * create Records stream containing individual cores - nbProcessed
 		 * records
 		 **/
-		ep.registerStatement("insert into Records select epMicroStateInt.size() as cores, nbProcessed as processed from " + EPS,
-				dummySubscriber);
+		// ep.registerStatement("insert into Records select epMicroStateInt.size() as cores, nbProcessed as processed from "
+		// + EPS,
+		// dummySubscriber);
 
 		/** create window so that the Records stream events don't get dropped **/
 		ep.getAdministrator().createEPL("create window MyWindow.win:keepall() as (cores int, processed long)");
@@ -167,6 +168,36 @@ public class FlaslistLoadTest {
 	}
 
 	@Test
+	public void findOutliersWithinGroups() throws IOException {
+		EventProcessor ep = EventProcessor.getInstance();
+		/** create window holding only the most-recent info per context **/
+		ep.createEPL("create window Reads.std:unique(name) as (name String, yield long, units int)");
+		ep.createEPL("insert into Reads select context as name, nbProcessed as yield, epMicroStateInt.size() as units from " + EPS+"");
+
+		ep.createEPL("create window GroupStats.std:unique(units) as (units int, avrg double, sdev double)");
+		ep.createEPL("insert into GroupStats select units, avg(yield) as avrg, stddev(yield) as sdev from Reads group by units");
+		
+		/** simply put, count all **/
+		ep.createEPL("create window Overperformers.std:unique(name) as (name String, units int, yield long)");
+		ep.createEPL("on GroupStats as gs delete from Overperformers o where o.yield < gs.avrg+3*gs.sdev and o.units=gs.units");
+		ep.createEPL("insert into Overperformers select r.* from Reads as r, GroupStats as gs where r.units = gs.units and r.yield > gs.avrg+3*gs.sdev");
+		
+		
+		/** try doing something more elaborate for underachievers **/
+		ep.createEPL("create window Underperformers.std:unique(name) as (name String, units int, yield long)");
+		ep.createEPL("on GroupStats as gs delete from Underperformers u where gs.units = u.units and u.yield > gs.avrg-3*gs.sdev");
+		ep.createEPL("insert into Underperformers select r.* from Reads as r, GroupStats as gs where r.units = gs.units and r.yield < gs.avrg-3*gs.sdev");
+		
+		pumpEvents(ep);
+		print(ep.getRuntime().executeQuery("select count(*) from Reads"));
+		print(ep.getRuntime().executeQuery("select * from GroupStats"));
+		System.out.println("overperformers:");
+		print(ep.getRuntime().executeQuery("select * from Overperformers"));
+		System.out.println("underperformers:");
+		print(ep.getRuntime().executeQuery("select * from Underperformers"));
+	}
+
+	// @Test
 	public void test() throws IOException {
 
 		EventProcessor ep = EventProcessor.getInstance();
@@ -182,7 +213,7 @@ public class FlaslistLoadTest {
 		ep.getAdministrator().createEPL("insert into Performance select avg(processed) as throughput, cores from CoreProc group by cores");
 		ep.getAdministrator().createEPL("insert into Ref select average as ref, stddev as sdev from CoreProc.stat:uni(processed)");
 		ep.registerStatement(
-				"select y.cores, y.throughput as avgThroughput from Performance.win:time_batch(1000 msec).std:unique(cores) as y where y.throughput > (select x.ref from Ref.std:lastevent() as x) + (select x.sdev from Ref.std:lastevent() as x)",
+				"select y.cores, y.throughput as avgThroughput from Performance.win:time_batch(1000 msec).std:unique(cores) as y where y.throughput > (select ref from Ref.std:lastevent()) + (select sdev from Ref.std:lastevent())",
 				subscriber);
 		pumpEvents(ep);
 		try {

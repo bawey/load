@@ -48,6 +48,10 @@ public class EventProcessor {
 	private EPRuntime epRT;
 	private EPAdministrator epAdmin;
 
+	public EPStatement createEPL(String eplStatement) {
+		return getAdministrator().createEPL(eplStatement);
+	}
+
 	public Configuration getConfiguration() {
 		return epConfig;
 	}

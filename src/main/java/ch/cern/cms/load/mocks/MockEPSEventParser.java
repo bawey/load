@@ -54,7 +54,7 @@ public class MockEPSEventParser {
 			} else if (line.contains("_updatetime")) {
 
 			} else if (line.contains("context")) {
-
+				context = getString(line);
 			} else if (line.contains("epMacroStateStr")) {
 
 			} else if (line.contains("nbProcessed")) {
@@ -65,9 +65,9 @@ public class MockEPSEventParser {
 
 				list.add(new EventProcessorStatus(nbAccepted, epMacroStateInt, age, lid, instance, runNumber, stateName, timestamp,
 						updateTime, context, epMacroStateStr, nbProcessed, epMicroStateInt, sessionId));
-				
+
 				epMicroStateInt = null;
-				
+
 			}
 		}
 		return list;
