@@ -1,11 +1,13 @@
 package ch.cern.cms.load.trialAndError;
 
+import java.awt.GridLayout;
 import java.io.File;
 import java.io.IOException;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+
+import javax.swing.JFrame;
+import javax.swing.JTextArea;
 
 import junit.framework.Assert;
 
@@ -20,10 +22,8 @@ import ch.cern.cms.load.eventData.EventProcessorStatus;
 import ch.cern.cms.load.eventProcessing.EventProcessor;
 import ch.cern.cms.load.eventProcessing.EventProcessor.MultirowSubscriber;
 import ch.cern.cms.load.mocks.MockEPSEventParser;
-import ch.cern.cms.load.utils.Stats;
 
 import com.espertech.esper.client.EPOnDemandQueryResult;
-import com.espertech.esper.client.EPStatement;
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.UpdateListener;
 
@@ -48,31 +48,31 @@ public class FlaslistLoadTest {
 	}
 
 	private void pumpEvents(EventProcessor ep) throws IOException {
+		pumpEvents(ep, 1, 0l);
+	}
+
+	private void pumpEvents(EventProcessor ep, int rounds, long sleeptime) throws IOException {
 		File file = new File("dmp/" + Settings.getInstance().flashlistDumpName);
 		Assert.assertTrue(file.exists());
 		MockEPSEventParser parser = new MockEPSEventParser();
 		List<EventProcessorStatus> list = parser.bruteParse(file);
 
-		// List<Long> accepted = new LinkedList<Long>();
-		// List<Long> processed = new LinkedList<Long>();
-		// List<Integer> pes = new LinkedList<Integer>();
-
-		for (EventProcessorStatus eps : list) {
-			ep.sendEvent(eps);
-			/** this block could send some info for printouts **/
-			// accepted.add(eps.getNbAccepted());
-			// processed.add(eps.getNbProcessed());
-			// pes.add(eps.getEpMicroStateInt() != null ?
-			// eps.getEpMicroStateInt().size() : 0);
+		for (int iter = 0; iter < rounds; ++iter) {
+			for (EventProcessorStatus eps : list) {
+				EventProcessorStatus eps2 = new EventProcessorStatus(eps.getNbAccepted(), eps.getEpMacroStateInt(), eps.getAge(),
+						eps.getLid(), eps.getInstance(), eps.getRunNumber(), eps.getStateName(), eps.getTimestamp(), eps.getUpdateTime(),
+						eps.getContext(), eps.getEpMacroStateStr(),
+						// (int) (eps.getNbProcessed() * (1 + (iter / 10d))),
+						eps.getNbProcessed() + 1000 * iter, eps.getEpMicroStateInt(), eps.getSessionId());
+				ep.sendEvent(eps2);
+				/** this block could send some info for printouts **/
+			}
+			try {
+				Thread.sleep(sleeptime);
+			} catch (InterruptedException ie) {
+				System.err.println("Ouch'a!");
+			}
 		}
-
-		// System.out.println("BY_HAND: accepted: " + Stats.min(accepted) + ", "
-		// + Stats.mean(accepted) + ", " + Stats.max(accepted));
-		// System.out.println("BY_HAND: processed: " + Stats.min(processed) +
-		// ", " + Stats.mean(processed) + ", " + Stats.max(processed));
-		// System.out.println("BY_HAND: PES list: " + Stats.min(pes) + ", " +
-		// Stats.mean(pes) + ", " + Stats.max(pes));
-
 	}
 
 	// @Test
@@ -89,10 +89,20 @@ public class FlaslistLoadTest {
 	}
 
 	private void print(EPOnDemandQueryResult rslt) {
+		print(rslt, null);
+	}
+
+	private void print(EPOnDemandQueryResult rslt, StringBuffer sb) {
 		if (rslt != null && rslt.getArray() != null) {
-			System.out.println("Results size: " + rslt.getArray().length);
+			if (sb == null) {
+				System.out.println("Results size: " + rslt.getArray().length);
+			}
 			for (EventBean eb : rslt.getArray()) {
-				System.out.println(eb.getUnderlying());
+				if (sb == null) {
+					System.out.println(eb.getUnderlying());
+				} else {
+					sb.append(eb.getUnderlying()).append("\n");
+				}
 			}
 		} else {
 			if (rslt == null) {
@@ -168,33 +178,61 @@ public class FlaslistLoadTest {
 	}
 
 	@Test
-	public void findOutliersWithinGroups() throws IOException {
-		EventProcessor ep = EventProcessor.getInstance();
+	public void findOutliersWithinGroups() throws IOException, InterruptedException {
+
+		final JFrame frame = new JFrame();
+		frame.setSize(640, 480);
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.setLayout(new GridLayout(1, 1));
+		final JTextArea txt = new JTextArea("");
+		frame.getContentPane().add(txt);
+		frame.setVisible(true);
+
+		final EventProcessor ep = EventProcessor.getInstance();
+
+		// ep.createEPL("on every Reads -> not Reads where timer:within(300 msec)")
+
 		/** create window holding only the most-recent info per context **/
 		ep.createEPL("create window Reads.std:unique(name) as (name String, yield long, units int)");
-		ep.createEPL("insert into Reads select context as name, nbProcessed as yield, epMicroStateInt.size() as units from " + EPS+"");
+		ep.createEPL("insert into Reads select context as name, nbProcessed as yield, epMicroStateInt.size() as units from " + EPS);
 
 		ep.createEPL("create window GroupStats.std:unique(units) as (units int, avrg double, sdev double)");
 		ep.createEPL("insert into GroupStats select units, avg(yield) as avrg, stddev(yield) as sdev from Reads group by units");
-		
+
 		/** simply put, count all **/
 		ep.createEPL("create window Overperformers.std:unique(name) as (name String, units int, yield long)");
 		ep.createEPL("on GroupStats as gs delete from Overperformers o where o.yield < gs.avrg+3*gs.sdev and o.units=gs.units");
-		ep.createEPL("insert into Overperformers select r.* from Reads as r, GroupStats as gs where r.units = gs.units and r.yield > gs.avrg+3*gs.sdev");
-		
-		
+		ep.createEPL("insert into Overperformers select eps.context as name, eps.epMicroStateInt.size() as units, eps.nbProcessed as yield from "
+				+ EPS
+				+ ".std:lastevent() as eps, GroupStats as gs where gs.units = eps.epMicroStateInt.size() and eps.nbProcessed > gs.avrg+3*gs.sdev");
+
 		/** try doing something more elaborate for underachievers **/
 		ep.createEPL("create window Underperformers.std:unique(name) as (name String, units int, yield long)");
 		ep.createEPL("on GroupStats as gs delete from Underperformers u where gs.units = u.units and u.yield > gs.avrg-3*gs.sdev");
-		ep.createEPL("insert into Underperformers select r.* from Reads as r, GroupStats as gs where r.units = gs.units and r.yield < gs.avrg-3*gs.sdev");
-		
-		pumpEvents(ep);
-		print(ep.getRuntime().executeQuery("select count(*) from Reads"));
-		print(ep.getRuntime().executeQuery("select * from GroupStats"));
-		System.out.println("overperformers:");
-		print(ep.getRuntime().executeQuery("select * from Overperformers"));
-		System.out.println("underperformers:");
-		print(ep.getRuntime().executeQuery("select * from Underperformers"));
+		ep.createEPL("insert into Underperformers select eps.context as name, eps.epMicroStateInt.size() as units, eps.nbProcessed as yield from "
+				+ EPS
+				+ ".std:lastevent() as eps, GroupStats as gs where gs.units = eps.epMicroStateInt.size() and eps.nbProcessed < gs.avrg-3*gs.sdev");
+
+		ep.registerStatement(
+				"select (select count(*) as underperformers from Underperformers), count(*) as overperformers from Overperformers",
+				new UpdateListener() {
+					private int i = 0;
+
+					@Override
+					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+						StringBuffer out = new StringBuffer("update No: ");
+						out.append(++i).append("\n\nOverperformers: ").append(newEvents[0].get("overperformers")).append("\n");
+						print(ep.getRuntime().executeQuery("select * from Overperformers"), out);
+						out.append("\nUnderperformers: ").append(newEvents[0].get("underperformers")).append("\n");
+						print(ep.getRuntime().executeQuery("select * from Underperformers"), out);
+						out.append("\n\n");
+						print(ep.getRuntime().executeQuery("select count(*) as totalReads from Reads"), out);
+						print(ep.getRuntime().executeQuery("select * from GroupStats"), out);
+						txt.setText(out.toString());
+					}
+				});
+
+		pumpEvents(ep, 100, 2000);
 	}
 
 	// @Test
