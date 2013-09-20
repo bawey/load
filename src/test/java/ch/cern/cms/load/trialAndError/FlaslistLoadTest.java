@@ -26,7 +26,6 @@ import ch.cern.cms.load.mocks.MockEPSEventParser;
 import com.espertech.esper.client.EPOnDemandQueryResult;
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.UpdateListener;
-import com.espertech.esper.core.start.EPPreparedExecuteMethod;
 
 public class FlaslistLoadTest {
 
@@ -52,6 +51,9 @@ public class FlaslistLoadTest {
 		pumpEvents(ep, 1, 0l);
 	}
 
+	//if a fed in alarm for 5sec then alarm, otherwise ignore\
+	//if fmmio.fractionBusy > threshold (~.001) and observed over > 5 sec. then scream
+	
 	private void pumpEvents(EventProcessor ep, int rounds, long sleeptime) throws IOException {
 		File file = new File("dmp/" + Settings.getInstance().flashlistDumpName);
 		Assert.assertTrue(file.exists());
@@ -60,16 +62,18 @@ public class FlaslistLoadTest {
 
 		for (int iter = 0; iter < rounds; ++iter) {
 			for (EventProcessorStatus eps : list) {
+				long yield = eps.getNbProcessed() + 1000 * iter;
+				if (iter % 10 > 6) {
+					yield = (long) (Math.random() * 5 * yield);
+				}
 				EventProcessorStatus eps2 = new EventProcessorStatus(eps.getNbAccepted(), eps.getEpMacroStateInt(), eps.getAge(),
 						eps.getLid(), eps.getInstance(), eps.getRunNumber(), eps.getStateName(), eps.getTimestamp(), eps.getUpdateTime(),
-						eps.getContext(), eps.getEpMacroStateStr(),
-						// (int) (eps.getNbProcessed() * (1 + (iter / 10d))),
-						eps.getNbProcessed() + 1000 * iter, eps.getEpMicroStateInt(), eps.getSessionId());
+						eps.getContext(), eps.getEpMacroStateStr(), yield, eps.getEpMicroStateInt(), eps.getSessionId());
 				ep.sendEvent(eps2);
 				/** this block could send some info for printouts **/
 			}
 			try {
-				Thread.sleep(sleeptime);
+				Thread.sleep((long) (sleeptime * Math.random()));
 			} catch (InterruptedException ie) {
 				System.err.println("Ouch'a!");
 			}
@@ -203,11 +207,12 @@ public class FlaslistLoadTest {
 		ep.createEPL("create window GroupStats.std:unique(units) as (units int, avrg double, sdev double)");
 
 		ep.registerStatement(
-				"on pattern[every timer:interval(2000 msec)] insert into GroupStats select r.units as units, avg(r.yield) as avrg, stddev(r.yield) as sdev from Reads as r group by r.units",
+				"on pattern[every timer:interval(1000 msec)] insert into GroupStats select r.units as units, avg(r.yield) as avrg, stddev(r.yield) as sdev from Reads as r group by r.units",
 				new UpdateListener() {
 					@Override
 					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-						System.out.println("groupstats updated!");
+						System.out.println("groupstats updated: " + newEvents.length + ", old: "
+								+ (oldEvents != null ? oldEvents.length : "null"));
 					}
 				});
 
@@ -218,7 +223,8 @@ public class FlaslistLoadTest {
 				new UpdateListener() {
 					@Override
 					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-						System.out.println("adding overperformers: "+newEvents.length);
+						System.out.println("adding overperformers(" + newEvents[0].get("units").getClass() + "): " + newEvents.length
+								+ ", under: " + newEvents[0].getUnderlying());
 					}
 				});
 
@@ -229,28 +235,28 @@ public class FlaslistLoadTest {
 				new UpdateListener() {
 					@Override
 					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-						System.out.println("adding underperformers: "+newEvents.length);
+						System.out.println("adding underperformers: " + newEvents.length);
 					}
 				});
+		ep.createEPL("on GroupStats as gs delete from Underperformers u where gs.units = u.units and (select r.yield from Reads as r where r.name = u.name) > gs.avrg-3*gs.sdev");
+		ep.createEPL("on GroupStats as gs delete from Overperformers o where gs.units = o.units and (select r.yield from Reads as r where r.name = o.name) < gs.avrg+3*gs.sdev");
 
-		ep.registerStatement(
-				"select count(*) from Underperformers, Overperformers",
-				new UpdateListener() {
-					private int i = 0;
+		ep.registerStatement("select count(*) from Underperformers, Overperformers", new UpdateListener() {
+			private int i = 0;
 
-					@Override
-					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-						StringBuffer out = new StringBuffer("update No: ");
-						out.append(++i).append("\n\nOverperformers: ").append("\n");
-						print(ep.getRuntime().executeQuery("select * from Overperformers"), out);
-						out.append("\nUnderperformers: ").append("\n");
-						print(ep.getRuntime().executeQuery("select * from Underperformers"), out);
-						out.append("\n\n");
-						print(ep.getRuntime().executeQuery("select count(*) as totalReads from Reads"), out);
-						print(ep.getRuntime().executeQuery("select * from GroupStats"), out);
-						txt.setText(out.toString());
-					}
-				});
+			@Override
+			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+				StringBuffer out = new StringBuffer("update No: ");
+				out.append(++i).append("\n\nOverperformers: ").append("\n");
+				print(ep.getRuntime().executeQuery("select * from Overperformers"), out);
+				out.append("\nUnderperformers: ").append("\n");
+				print(ep.getRuntime().executeQuery("select * from Underperformers"), out);
+				out.append("\n\n");
+				print(ep.getRuntime().executeQuery("select count(*) as totalReads from Reads"), out);
+				print(ep.getRuntime().executeQuery("select * from GroupStats"), out);
+				txt.setText(out.toString());
+			}
+		});
 
 		pumpEvents(ep, 100, 2000);
 	}
