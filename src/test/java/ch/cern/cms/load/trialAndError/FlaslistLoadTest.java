@@ -26,6 +26,7 @@ import ch.cern.cms.load.mocks.MockEPSEventParser;
 import com.espertech.esper.client.EPOnDemandQueryResult;
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.UpdateListener;
+import com.espertech.esper.core.start.EPPreparedExecuteMethod;
 
 public class FlaslistLoadTest {
 
@@ -177,6 +178,11 @@ public class FlaslistLoadTest {
 
 	}
 
+	// @Test
+	// public void windowOnStreamTest() {
+	//
+	// }
+
 	@Test
 	public void findOutliersWithinGroups() throws IOException, InterruptedException {
 
@@ -190,40 +196,54 @@ public class FlaslistLoadTest {
 
 		final EventProcessor ep = EventProcessor.getInstance();
 
-		// ep.createEPL("on every Reads -> not Reads where timer:within(300 msec)")
-
 		/** create window holding only the most-recent info per context **/
 		ep.createEPL("create window Reads.std:unique(name) as (name String, yield long, units int)");
 		ep.createEPL("insert into Reads select context as name, nbProcessed as yield, epMicroStateInt.size() as units from " + EPS);
 
 		ep.createEPL("create window GroupStats.std:unique(units) as (units int, avrg double, sdev double)");
-		ep.createEPL("insert into GroupStats select units, avg(yield) as avrg, stddev(yield) as sdev from Reads group by units");
+
+		ep.registerStatement(
+				"on pattern[every timer:interval(2000 msec)] insert into GroupStats select r.units as units, avg(r.yield) as avrg, stddev(r.yield) as sdev from Reads as r group by r.units",
+				new UpdateListener() {
+					@Override
+					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+						System.out.println("groupstats updated!");
+					}
+				});
 
 		/** simply put, count all **/
 		ep.createEPL("create window Overperformers.std:unique(name) as (name String, units int, yield long)");
-		ep.createEPL("on GroupStats as gs delete from Overperformers o where o.yield < gs.avrg+3*gs.sdev and o.units=gs.units");
-		ep.createEPL("insert into Overperformers select eps.context as name, eps.epMicroStateInt.size() as units, eps.nbProcessed as yield from "
-				+ EPS
-				+ ".std:lastevent() as eps, GroupStats as gs where gs.units = eps.epMicroStateInt.size() and eps.nbProcessed > gs.avrg+3*gs.sdev");
+		ep.registerStatement(
+				"on GroupStats as gs insert into Overperformers select r.* from Reads as r where r.units=gs.units and r.yield > gs.avrg+3*gs.sdev",
+				new UpdateListener() {
+					@Override
+					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+						System.out.println("adding overperformers: "+newEvents.length);
+					}
+				});
 
 		/** try doing something more elaborate for underachievers **/
 		ep.createEPL("create window Underperformers.std:unique(name) as (name String, units int, yield long)");
-		ep.createEPL("on GroupStats as gs delete from Underperformers u where gs.units = u.units and u.yield > gs.avrg-3*gs.sdev");
-		ep.createEPL("insert into Underperformers select eps.context as name, eps.epMicroStateInt.size() as units, eps.nbProcessed as yield from "
-				+ EPS
-				+ ".std:lastevent() as eps, GroupStats as gs where gs.units = eps.epMicroStateInt.size() and eps.nbProcessed < gs.avrg-3*gs.sdev");
+		ep.registerStatement(
+				"on GroupStats as gs insert into Underperformers select r.* from Reads as r where r.units=gs.units and r.yield < gs.avrg-3*gs.sdev",
+				new UpdateListener() {
+					@Override
+					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+						System.out.println("adding underperformers: "+newEvents.length);
+					}
+				});
 
 		ep.registerStatement(
-				"select (select count(*) as underperformers from Underperformers), count(*) as overperformers from Overperformers",
+				"select count(*) from Underperformers, Overperformers",
 				new UpdateListener() {
 					private int i = 0;
 
 					@Override
 					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 						StringBuffer out = new StringBuffer("update No: ");
-						out.append(++i).append("\n\nOverperformers: ").append(newEvents[0].get("overperformers")).append("\n");
+						out.append(++i).append("\n\nOverperformers: ").append("\n");
 						print(ep.getRuntime().executeQuery("select * from Overperformers"), out);
-						out.append("\nUnderperformers: ").append(newEvents[0].get("underperformers")).append("\n");
+						out.append("\nUnderperformers: ").append("\n");
 						print(ep.getRuntime().executeQuery("select * from Underperformers"), out);
 						out.append("\n\n");
 						print(ep.getRuntime().executeQuery("select count(*) as totalReads from Reads"), out);
