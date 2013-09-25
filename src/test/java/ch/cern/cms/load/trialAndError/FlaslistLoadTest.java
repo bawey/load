@@ -53,6 +53,7 @@ public class FlaslistLoadTest {
 
 	//if a fed in alarm for 5sec then alarm, otherwise ignore\
 	//if fmmio.fractionBusy > threshold (~.001) and observed over > 5 sec. then scream
+	//jump in overall trigger rate  
 	
 	private void pumpEvents(EventProcessor ep, int rounds, long sleeptime) throws IOException {
 		File file = new File("dmp/" + Settings.getInstance().flashlistDumpName);

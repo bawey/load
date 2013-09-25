@@ -66,7 +66,7 @@ public class WindowedMain implements ModelListener, TreeSelectionListener, Updat
 	}
 
 	public static final void main(String[] args) {
-		switchToOfflineMode();
+		//switchToOfflineMode();
 		Model model = Model.getInstance();
 		JFrame frame = new JFrame("Parameters overview");
 		instance = new WindowedMain(frame, model);
