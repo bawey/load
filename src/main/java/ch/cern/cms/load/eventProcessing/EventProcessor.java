@@ -2,10 +2,8 @@ package ch.cern.cms.load.eventProcessing;
 
 import java.util.Map;
 
-import ch.cern.cms.load.eventData.EventProcessorStatus;
-import ch.cern.cms.load.eventProcessing.events.SubsystemCrossCheckerEvent;
-
 import com.espertech.esper.client.Configuration;
+import com.espertech.esper.client.ConfigurationOperations;
 import com.espertech.esper.client.EPAdministrator;
 import com.espertech.esper.client.EPRuntime;
 import com.espertech.esper.client.EPServiceProvider;
@@ -35,13 +33,11 @@ public class EventProcessor {
 	}
 
 	private EventProcessor() {
-		epConfig = new Configuration();
-		epProvider = EPServiceProviderManager.getProvider("myCEPEngine", epConfig);
+		epProvider = EPServiceProviderManager.getProvider("myCEPEngine", new Configuration());
 		epRT = epProvider.getEPRuntime();
 		epAdmin = epProvider.getEPAdministrator();
 	}
 
-	private Configuration epConfig = null;
 	private EPServiceProvider epProvider = null;
 	private EPRuntime epRT;
 	private EPAdministrator epAdmin;
@@ -50,8 +46,8 @@ public class EventProcessor {
 		return getAdministrator().createEPL(eplStatement);
 	}
 
-	public Configuration getConfiguration() {
-		return epConfig;
+	public ConfigurationOperations getConfiguration() {
+		return epAdmin.getConfiguration();
 	}
 
 	public EPServiceProvider getProvider() {
@@ -68,7 +64,7 @@ public class EventProcessor {
 
 	private void addEventType(Class<?> eventObjectClass) {
 		System.out.println("adding event type: " + eventObjectClass.getSimpleName() + " [" + eventObjectClass.getName() + "]");
-		epConfig.addEventType(eventObjectClass.getSimpleName(), eventObjectClass.getName());
+		getConfiguration().addEventType(eventObjectClass.getSimpleName(), eventObjectClass.getName());
 	}
 
 	public void registerStatement(String statement, UpdateListener listener) {

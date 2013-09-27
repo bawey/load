@@ -50,7 +50,7 @@ public class FlashlistTest {
 					def.put(f, ((FieldTypeResolver) Settings.getInstance().get(AbstractFlashlistEventsTap.PKEY_FIELD_TYPE)).getFieldType(f,
 							STREAM_NAME));
 				}
-				EventProcessor.getInstance().getAdministrator().getConfiguration().addEventType(STREAM_NAME, def);
+				EventProcessor.getInstance().getConfiguration().addEventType(STREAM_NAME, def);
 			}
 
 			@Override
