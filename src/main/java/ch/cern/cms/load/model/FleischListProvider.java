@@ -31,9 +31,8 @@ public class FleischListProvider {
 					Map<String, Object> types = new HashMap<String, Object>();
 					br = new BufferedReader(new FileReader(f));
 					for(String field : br.readLine().split(",")){
-						types.put(field, String.class);
+						types.put(field, FlashListDatatypeDictionary.getInstance().getFieldType(field, d.getName()));
 					}
-					System.out.println("registering event "+d.getName()+" as "+types.toString());
 					ep.getAdministrator().getConfiguration().addEventType(d.getName(), types);
 					break;
 				}

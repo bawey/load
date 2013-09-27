@@ -1,9 +1,15 @@
 package ch.cern.cms.load.configuration;
 
 import java.io.File;
+import java.util.Properties;
 
-public class Settings {
+public class Settings extends Properties {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 2461597629371497239L;
+	
 	public enum Runmode {
 		ONLINE, // usual run with on-the-fly data processing
 		OFFLINE, // processing previously recorded data

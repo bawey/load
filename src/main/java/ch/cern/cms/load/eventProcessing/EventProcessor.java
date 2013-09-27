@@ -36,8 +36,6 @@ public class EventProcessor {
 
 	private EventProcessor() {
 		epConfig = new Configuration();
-		addEventType(SubsystemCrossCheckerEvent.class);
-		addEventType(EventProcessorStatus.class);
 		epProvider = EPServiceProviderManager.getProvider("myCEPEngine", epConfig);
 		epRT = epProvider.getEPRuntime();
 		epAdmin = epProvider.getEPAdministrator();
