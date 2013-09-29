@@ -21,7 +21,8 @@ public class Flashlist extends LinkedList<Map<String, Object>> {
 	private String streamName;
 	private Settings settings = Settings.getInstance();
 	private static FieldTypeResolver resolver = null;
-
+	
+	
 	public Flashlist(URL url, String listName) {
 		super();
 		if (resolver == null) {

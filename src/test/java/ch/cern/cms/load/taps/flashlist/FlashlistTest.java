@@ -9,25 +9,29 @@ import java.util.Map;
 
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
-import com.espertech.esper.client.EventBean;
-import com.espertech.esper.client.UpdateListener;
 
 import ch.cern.cms.load.ExpertController;
 import ch.cern.cms.load.configuration.Settings;
 import ch.cern.cms.load.eventProcessing.EventProcessor;
 import ch.cern.cms.load.taps.flashlist.AbstractFlashlistEventsTap.FieldTypeResolver;
 
+import com.espertech.esper.client.EventBean;
+import com.espertech.esper.client.UpdateListener;
+
 public class FlashlistTest {
+
+	public final static long waitTime = 200;
 
 	private static final String[] fields = { "word", "length", "vowels", "consonants" };
 
-	public static final String REMOTE_URL = "http://localhost:10000/functionmanagers/file";
-	public static final String LOCAL_URL = "file:///usr/local/apache-tomcat-6.0.29/webapps/ROOT/functionmanagers/file";
+	public static final String REMOTE_URL = "http://akson.sgh.waw.pl/~tb47893/words";
+	public static final String LOCAL_URL = "file:///home/bawey/Workspace/load/dmp/words";
 	public static final String STREAM_NAME = "Word";
+	private static boolean callbackCalled = false;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -47,8 +51,8 @@ public class FlashlistTest {
 			public void registerEventTypes(EventProcessor eps) {
 				Map<String, Object> def = new HashMap<String, Object>();
 				for (String f : fields) {
-					def.put(f, ((FieldTypeResolver) Settings.getInstance().get(AbstractFlashlistEventsTap.PKEY_FIELD_TYPE)).getFieldType(f,
-							STREAM_NAME));
+					def.put(f, ((FieldTypeResolver) Settings.getInstance().get(AbstractFlashlistEventsTap.PKEY_FIELD_TYPE))
+							.getFieldType(f, STREAM_NAME));
 				}
 				EventProcessor.getInstance().getConfiguration().addEventType(STREAM_NAME, def);
 			}
@@ -73,7 +77,8 @@ public class FlashlistTest {
 		EventProcessor.getInstance().registerStatement("select * from " + STREAM_NAME + " where vowels>1", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-				System.out.println("hey");
+				System.out.println("UpdateListener called for " + newEvents[0].getUnderlying());
+				callbackCalled = true;
 			}
 		});
 
@@ -84,21 +89,27 @@ public class FlashlistTest {
 	}
 
 	@Test
-	public void testParsingRemoteFile() throws MalformedURLException {
+	public void testParsingRemoteFile() throws MalformedURLException, InterruptedException {
+		callbackCalled = false;
 		URL url = new URL(REMOTE_URL);
 		Flashlist fl = new Flashlist(url, STREAM_NAME);
-		assertEquals(2, fl.size());
+		assertEquals(3, fl.size());
 		assertEquals(Integer.class, fl.get(1).get("vowels").getClass());
 		fl.emit(EventProcessor.getInstance());
+		Thread.sleep(waitTime);
+		Assert.assertTrue(callbackCalled);
 	}
 
 	@Test
-	public void testParsingLocalFile() throws MalformedURLException {
+	public void testParsingLocalFile() throws MalformedURLException, InterruptedException {
+		callbackCalled = false;
 		URL url = new URL(LOCAL_URL);
 		Flashlist fl = new Flashlist(url, STREAM_NAME);
-		assertEquals(2, fl.size());
+		assertEquals(3, fl.size());
 		assertEquals(Double.class, fl.get(1).get("consonants").getClass());
 		fl.emit(EventProcessor.getInstance());
+		Thread.sleep(waitTime);
+		Assert.assertTrue(callbackCalled);
 	}
 
 }

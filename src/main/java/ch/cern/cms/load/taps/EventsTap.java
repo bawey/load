@@ -4,7 +4,7 @@ import ch.cern.cms.load.ExpertController;
 import ch.cern.cms.load.eventProcessing.EventProcessor;
 
 public interface EventsTap {
-	/** adds event definitions to cofiguration **/
+	/** adds event definitions to configuration **/
 	public void registerEventTypes(EventProcessor eps);
 	/** launches events streaming. should run in a separate thread **/
 	public void openStreams(EventProcessor eps);

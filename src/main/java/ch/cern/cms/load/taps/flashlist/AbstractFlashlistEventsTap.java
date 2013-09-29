@@ -8,18 +8,21 @@ import ch.cern.cms.load.taps.EventsTap;
 public abstract class AbstractFlashlistEventsTap implements EventsTap {
 
 	public static final String PKEY_FIELD_TYPE = "PROPERTY_KEY_FIELD_NAME_TO_TYPE_MAP";
+	protected static FieldTypeResolver resolver;
 
 	@Override
 	public void defineProperties(ExpertController controller) {
-		/** Multiple flashlist taps might co-exists **/
+		/** Multiple taps might exists simultaneously **/
 		synchronized (AbstractFlashlistEventsTap.class) {
 			if (!controller.getSettings().containsKey(PKEY_FIELD_TYPE)) {
-				controller.getSettings().put(PKEY_FIELD_TYPE, new FieldTypeResolver());
+				resolver = new FieldTypeResolver();
+				controller.getSettings().put(PKEY_FIELD_TYPE, resolver);
 			}
 		}
 	}
 
-	public static final class FieldTypeResolver extends HashMap<String, Class<?>> {
+	public static final class FieldTypeResolver extends
+			HashMap<String, Class<?>> {
 		private FieldTypeResolver() {
 		}
 
@@ -30,7 +33,9 @@ public abstract class AbstractFlashlistEventsTap implements EventsTap {
 		}
 
 		public Class<?> getFieldType(String fieldName, String listName) {
-			Class<?> result = containsKey(listName + "." + fieldName) ? get(listName + "." + fieldName) : null;
+			Class<?> result = containsKey(listName + "." + fieldName) ? get(listName
+					+ "." + fieldName)
+					: null;
 			result = result != null ? result : get(fieldName);
 			return result != null ? result : String.class;
 		}
@@ -39,7 +44,8 @@ public abstract class AbstractFlashlistEventsTap implements EventsTap {
 			put(fieldName, type);
 		}
 
-		public void setFieldType(String fieldName, String listName, Class<?> type) {
+		public void setFieldType(String fieldName, String listName,
+				Class<?> type) {
 			put(listName + "." + fieldName, type);
 		}
 
