@@ -3,11 +3,29 @@ package ch.cern.cms.load.taps;
 import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.ExpertController;
 
-public interface EventsTap {
+public abstract class EventsTap {
+
+	protected EventsTap() {
+
+	}
+
+	protected EventsTap(ExpertController expert) {
+		initWithExpert(expert);
+	}
+
+	protected void initWithExpert(ExpertController expert) {
+		registerEventTypes(expert.getEventProcessor());
+	}
+
 	/** adds event definitions to configuration **/
-	public void registerEventTypes(EventProcessor eps);
+	public abstract void registerEventTypes(EventProcessor eps);
+
 	/** launches events streaming. should run in a separate thread **/
-	public void openStreams(EventProcessor eps);
-	/** inserts tap-related properties into expert's map **/
-	public void defineProperties(ExpertController expert);
+	public abstract void openStreams(EventProcessor eps);
+
+	/**
+	 * allows setting things up before performing the full registration with
+	 * expert {@link EventsTap#initWithExpert(ExpertController)}
+	 **/
+	public abstract void setUp(ExpertController expert);
 }

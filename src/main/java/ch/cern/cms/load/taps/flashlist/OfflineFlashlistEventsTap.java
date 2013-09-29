@@ -12,18 +12,21 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import ch.cern.cms.load.EventProcessor;
+import ch.cern.cms.load.ExpertController;
 
 public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
 	private File rootFolder;
 	private double pace = 1;
 
-	public OfflineFlashlistEventsTap(String path) {
+	public OfflineFlashlistEventsTap(ExpertController expert, String path) {
+		super();
 		try {
 			rootFolder = new File(path);
 		} catch (Exception e) {
 			throw new RuntimeException("Path issue", e);
 		}
+		initWithExpert(expert);
 	}
 
 	@Override
@@ -36,7 +39,7 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 						Map<String, Object> types = new HashMap<String, Object>();
 						br = new BufferedReader(new FileReader(f));
 						for (String field : br.readLine().split(",")) {
-							types.put(field, resolver.getFieldType(field, d.getName()));
+							types.put(field, ExpertController.getInstance().getResolver().getFieldType(field, d.getName()));
 						}
 						ep.getAdministrator().getConfiguration().addEventType(d.getName(), types);
 						break;
@@ -94,6 +97,11 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
 	public synchronized void setPace(double pace) {
 		this.pace = pace;
+	}
+
+	@Override
+	public void setUp(ExpertController expert) {
+		
 	}
 
 }

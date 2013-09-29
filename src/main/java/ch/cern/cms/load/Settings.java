@@ -16,6 +16,8 @@ public class Settings extends Properties {
 		ONLINE_RECORD; // system receives data but only saves it
 	}
 
+	public final static String KEY_RESOLVER = "SETTINGS_KEY_RESOLVER";
+
 	protected Settings() {
 	}
 

@@ -1,11 +1,13 @@
 package ch.cern.cms.load;
 
+import java.text.RuleBasedCollator;
 import java.util.HashSet;
 import java.util.Set;
 
 import ch.cern.cms.load.guis.DefaultGui;
 import ch.cern.cms.load.guis.ExpertGui;
 import ch.cern.cms.load.taps.EventsTap;
+import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;
 
 /**
  * Core components, singletons etc. should be initialized here. However, the
@@ -45,8 +47,12 @@ public class ExpertController {
 
 	private final Set<EventsTap> taps = new HashSet<EventsTap>();
 
-	private ExpertController() {
+	private final FieldTypeResolver resolver = new FieldTypeResolver();
 
+	private final RulesBase rulesBase = new RulesBase(this);
+
+	private ExpertController() {
+		settings.put(Settings.KEY_RESOLVER, resolver);
 	}
 
 	public EventProcessor getEventProcessor() {
@@ -57,6 +63,14 @@ public class ExpertController {
 		return settings;
 	}
 
+	public FieldTypeResolver getResolver() {
+		return resolver;
+	}
+
+	public RulesBase getRulesBase() {
+		return rulesBase;
+	}
+
 	/**
 	 * this should allow to attach swing / net gui
 	 */
@@ -65,8 +79,7 @@ public class ExpertController {
 	}
 
 	private void autoStart() {
-		registerTaps();
-		tapsSetup();
+		registerTap(new OfflineFlashlistEventsTap(this, "/home/bawey/Workspace/load/dmp/offlineFL/"));
 		openTaps();
 		registerStatements();
 		attachViews();
@@ -90,19 +103,11 @@ public class ExpertController {
 	}
 
 	/**
-	 * Inserts into the list of known taps
-	 * this should depend on some configuration later on or start-up choice
+	 * Inserts into the list of known taps this should depend on some
+	 * configuration later on or start-up choice
 	 */
-	private void registerTaps() {
-		// taps.add(null);
-		// taps.add(null);
-	}
-
-	private void tapsSetup() {
-		for (EventsTap et : taps) {
-			et.defineProperties(this);
-			et.registerEventTypes(ep);
-		}
+	public void registerTap(EventsTap tap) {
+		taps.add(tap);
 	}
 
 }

@@ -13,22 +13,14 @@ import java.util.Map;
 
 import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.ExpertController;
-import ch.cern.cms.load.Settings;
-import ch.cern.cms.load.taps.flashlist.AbstractFlashlistEventsTap.FieldTypeResolver;
 
 public class Flashlist extends LinkedList<Map<String, Object>> {
 
 	private static final long serialVersionUID = 1L;
 	private String streamName;
-	private Settings settings = ExpertController.getInstance().getSettings();
-	private static FieldTypeResolver resolver = null;
-	
-	
+
 	public Flashlist(URL url, String listName) {
 		super();
-		if (resolver == null) {
-			linkFieldDefinitions();
-		}
 		this.streamName = listName;
 		String[] keys = null;
 		try {
@@ -45,7 +37,7 @@ public class Flashlist extends LinkedList<Map<String, Object>> {
 						throw new RuntimeException("tokens and keys lengths differ for: " + url);
 					}
 					for (int i = 0; i < tokens.length; ++i) {
-						map.put(keys[i], resolver == null ? tokens[i] : resolver.convert(tokens[i], keys[i], listName));
+						map.put(keys[i], ExpertController.getInstance().getResolver().convert(tokens[i], keys[i], listName));
 					}
 					this.add(map);
 				}
@@ -115,18 +107,5 @@ public class Flashlist extends LinkedList<Map<String, Object>> {
 			}
 		}
 		return pos;
-	}
-
-	private static synchronized void linkFieldDefinitions() {
-		if (resolver == null) {
-			if (resolver == null) {
-				Object value = ExpertController.getInstance().getSettings().get(AbstractFlashlistEventsTap.PKEY_FIELD_TYPE);
-				if (value instanceof FieldTypeResolver) {
-					resolver = (FieldTypeResolver) value;
-				} else {
-					throw new RuntimeException("Expected to find an object of " + FieldTypeResolver.class.getSimpleName());
-				}
-			}
-		}
 	}
 }

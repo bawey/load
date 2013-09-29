@@ -16,8 +16,7 @@ import org.junit.Test;
 
 import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.ExpertController;
-import ch.cern.cms.load.Settings;
-import ch.cern.cms.load.taps.flashlist.AbstractFlashlistEventsTap.FieldTypeResolver;
+import ch.cern.cms.load.FieldTypeResolver;
 
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.UpdateListener;
@@ -33,6 +32,9 @@ public class FlashlistTest {
 	public static final String STREAM_NAME = "Word";
 	private static boolean callbackCalled = false;
 
+	private ExpertController ctl;
+	private EventProcessor ep;
+
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 	}
@@ -44,15 +46,18 @@ public class FlashlistTest {
 	@Before
 	public void setUp() throws Exception {
 		/** simulate a running environment **/
-		final ExpertController ctl = ExpertController.getInstance();
+		ctl = ExpertController.getInstance();
+		FieldTypeResolver ftr = ExpertController.getInstance().getResolver();
+		ftr.setFieldType("length", Long.class);
+		ftr.setFieldType("vowels", Integer.class);
+		ftr.setFieldType("consonants", Double.class);
 		/** prepare a dummy FlashlistEventsTap **/
-		AbstractFlashlistEventsTap tap = new AbstractFlashlistEventsTap() {
+		AbstractFlashlistEventsTap tap = new AbstractFlashlistEventsTap(ctl) {
 			@Override
 			public void registerEventTypes(EventProcessor eps) {
 				Map<String, Object> def = new HashMap<String, Object>();
 				for (String f : fields) {
-					def.put(f, ((FieldTypeResolver) ctl.getSettings().get(AbstractFlashlistEventsTap.PKEY_FIELD_TYPE))
-							.getFieldType(f, STREAM_NAME));
+					def.put(f, ExpertController.getInstance().getResolver().getFieldType(f, STREAM_NAME));
 				}
 				ctl.getEventProcessor().getConfiguration().addEventType(STREAM_NAME, def);
 			}
@@ -61,15 +66,15 @@ public class FlashlistTest {
 			public void openStreams(EventProcessor eps) {
 				// TODO Auto-generated method stub
 			}
-		};
-		tap.defineProperties(ctl);
 
-		{
-			FieldTypeResolver ftr = (FieldTypeResolver) ctl.getSettings().get(AbstractFlashlistEventsTap.PKEY_FIELD_TYPE);
-			ftr.setFieldType("length", Long.class);
-			ftr.setFieldType("vowels", Integer.class);
-			ftr.setFieldType("consonants", Double.class);
-		}
+			@Override
+			public void setUp(ExpertController expert) {
+				// TODO Auto-generated method stub
+				
+			}
+		};
+		tap.setUp(ctl);
+
 		tap.registerEventTypes(ctl.getEventProcessor());
 		// empty anyway
 		tap.openStreams(ctl.getEventProcessor());

@@ -14,8 +14,13 @@ import com.espertech.esper.client.UpdateListener;
 /**
  * a wrap-up for esper engine
  * 
- * @author Tomasz Bawej
+ * @author Tomasz Bawej startup order:
  * 
+ *         1. field types
+ * 
+ *         2. register events
+ * 
+ *         3. register rules
  */
 
 public class EventProcessor {
