@@ -11,15 +11,16 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import ch.cern.cms.load.configuration.Settings;
-import ch.cern.cms.load.eventProcessing.EventProcessor;
+import ch.cern.cms.load.EventProcessor;
+import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Settings;
 import ch.cern.cms.load.taps.flashlist.AbstractFlashlistEventsTap.FieldTypeResolver;
 
 public class Flashlist extends LinkedList<Map<String, Object>> {
 
 	private static final long serialVersionUID = 1L;
 	private String streamName;
-	private Settings settings = Settings.getInstance();
+	private Settings settings = ExpertController.getInstance().getSettings();
 	private static FieldTypeResolver resolver = null;
 	
 	
@@ -119,7 +120,7 @@ public class Flashlist extends LinkedList<Map<String, Object>> {
 	private static synchronized void linkFieldDefinitions() {
 		if (resolver == null) {
 			if (resolver == null) {
-				Object value = Settings.getInstance().get(AbstractFlashlistEventsTap.PKEY_FIELD_TYPE);
+				Object value = ExpertController.getInstance().getSettings().get(AbstractFlashlistEventsTap.PKEY_FIELD_TYPE);
 				if (value instanceof FieldTypeResolver) {
 					resolver = (FieldTypeResolver) value;
 				} else {

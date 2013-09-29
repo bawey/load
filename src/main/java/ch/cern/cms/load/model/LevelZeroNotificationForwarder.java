@@ -12,7 +12,8 @@ import java.util.Set;
 
 import notificationService.NotificationEvent;
 import notificationService.NotificationServiceSoapBindingStub;
-import ch.cern.cms.load.configuration.Settings;
+import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Settings;
 import ch.cern.cms.load.model.Recorder.Sample;
 
 /**
@@ -53,7 +54,7 @@ public class LevelZeroNotificationForwarder {
 			case OFFLINE:
 				ObjectInputStream ois;
 				try {
-					ois = new ObjectInputStream(new FileInputStream(Settings.getInstance().getDataSource()));
+					ois = new ObjectInputStream(new FileInputStream(ExpertController.getInstance().getSettings().getDataSource()));
 					@SuppressWarnings("unchecked")
 					List<Sample> samples = (List<Sample>) ois.readObject();
 					long previousTimestamp = 0;
@@ -96,7 +97,7 @@ public class LevelZeroNotificationForwarder {
 	};
 
 	long previousReturnTimestamp = 0;
-	Settings settings = Settings.getInstance();
+	Settings settings = ExpertController.getInstance().getSettings();
 	NotificationServiceSoapBindingStub stub = null;
 	private Set<NotificationSubscriber> subscribers;
 	private Thread worker = new Thread(this.jobDescription);

@@ -13,8 +13,9 @@ import java.util.Vector;
 
 import parameterService.ParameterBean;
 import parameterService.ParameterControllerSoapBindingStub;
-import ch.cern.cms.load.configuration.Settings;
-import ch.cern.cms.load.configuration.Settings.Runmode;
+import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Settings;
+import ch.cern.cms.load.Settings.Runmode;
 import ch.cern.cms.load.model.Recorder.Sample;
 
 /**
@@ -47,22 +48,22 @@ public class LevelZeroDataProvider {
 
 	/** instance code **/
 
-	private Settings settings = Settings.getInstance();
+	private Settings settings = ExpertController.getInstance().getSettings();
 	private ParameterControllerSoapBindingStub stub = null;
 
 	public ParameterBean[] getRawData() throws MalformedURLException, RemoteException {
-		if (Settings.getInstance().getRunmode() == Runmode.ONLINE) {
+		if (ExpertController.getInstance().getSettings().getRunmode() == Runmode.ONLINE) {
 			return stub.getParameter(settings.getIDS());
-		} else if (Settings.getInstance().getRunmode() == Runmode.OFFLINE) {
+		} else if (ExpertController.getInstance().getSettings().getRunmode() == Runmode.OFFLINE) {
 			try {
-				ObjectInputStream ois = new ObjectInputStream(new FileInputStream(Settings.getInstance().getDataSource()));
+				ObjectInputStream ois = new ObjectInputStream(new FileInputStream(ExpertController.getInstance().getSettings().getDataSource()));
 				@SuppressWarnings("unchecked")
 				List<Sample> samples = (List<Sample>) ois.readObject();
 				ois.close();
 
 				for (Sample s : samples) {
 					if (s.beans != null) {
-						long sleeptime = (long) ((s.timestamp - samples.get(0).timestamp) / Settings.getInstance().getPlaybackRate());
+						long sleeptime = (long) ((s.timestamp - samples.get(0).timestamp) / ExpertController.getInstance().getSettings().getPlaybackRate());
 						System.out.println("read data from file and will sleep for " + sleeptime + "ms");
 						Thread.sleep(sleeptime);
 						return s.beans;

@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import ch.cern.cms.load.eventProcessing.EventProcessor;
+import ch.cern.cms.load.EventProcessor;
 
 public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 

@@ -6,7 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 
-import ch.cern.cms.load.eventProcessing.EventProcessor;
+import ch.cern.cms.load.EventProcessor;
 
 public class RoboFrame {
 	/**

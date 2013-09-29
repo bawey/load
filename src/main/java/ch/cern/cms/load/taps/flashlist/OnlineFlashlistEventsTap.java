@@ -2,7 +2,7 @@ package ch.cern.cms.load.taps.flashlist;
 
 import java.net.URL;
 
-import ch.cern.cms.load.eventProcessing.EventProcessor;
+import ch.cern.cms.load.EventProcessor;
 
 public class OnlineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 

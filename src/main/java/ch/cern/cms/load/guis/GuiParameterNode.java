@@ -1,4 +1,4 @@
-package ch.cern.cms.load;
+package ch.cern.cms.load.guis;
 
 import java.util.HashMap;
 import java.util.Map;

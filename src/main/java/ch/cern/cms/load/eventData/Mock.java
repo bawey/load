@@ -1,6 +1,6 @@
 package ch.cern.cms.load.eventData;
 
-import ch.cern.cms.load.eventProcessing.EventProcessor;
+import ch.cern.cms.load.EventProcessor;
 
 public class Mock {
 	// if a fed in alarm for 5sec then alarm, otherwise ignore\

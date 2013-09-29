@@ -13,7 +13,8 @@ import org.junit.Test;
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.UpdateListener;
 
-import ch.cern.cms.load.eventProcessing.EventProcessor;
+import ch.cern.cms.load.EventProcessor;
+import ch.cern.cms.load.ExpertController;
 
 public class FrameTest {
 
@@ -38,7 +39,7 @@ public class FrameTest {
 
 	@Test
 	public void test() throws FileNotFoundException {
-		EventProcessor ep = EventProcessor.getInstance();
+		EventProcessor ep = ExpertController.getInstance().getEventProcessor();
 		ep.getConfiguration().addEventType(RoboFrame.class);
 		ep.registerStatement("select count(*) from " + FRAME, new UpdateListener() {
 			@Override

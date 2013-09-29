@@ -1,4 +1,4 @@
-package ch.cern.cms.load.eventProcessing;
+package ch.cern.cms.load;
 
 import java.util.Map;
 
@@ -19,20 +19,8 @@ import com.espertech.esper.client.UpdateListener;
  */
 
 public class EventProcessor {
-	private static EventProcessor instance;
 
-	public static EventProcessor getInstance() {
-		if (instance == null) {
-			synchronized (EventProcessor.class) {
-				if (instance == null) {
-					instance = new EventProcessor();
-				}
-			}
-		}
-		return instance;
-	}
-
-	private EventProcessor() {
+	protected EventProcessor() {
 		epProvider = EPServiceProviderManager.getProvider("myCEPEngine", new Configuration());
 		epRT = epProvider.getEPRuntime();
 		epAdmin = epProvider.getEPAdministrator();

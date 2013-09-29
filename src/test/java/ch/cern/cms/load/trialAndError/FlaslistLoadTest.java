@@ -17,10 +17,11 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import ch.cern.cms.load.configuration.Settings;
+import ch.cern.cms.load.EventProcessor;
+import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Settings;
+import ch.cern.cms.load.EventProcessor.MultirowSubscriber;
 import ch.cern.cms.load.eventData.EventProcessorStatus;
-import ch.cern.cms.load.eventProcessing.EventProcessor;
-import ch.cern.cms.load.eventProcessing.EventProcessor.MultirowSubscriber;
 import ch.cern.cms.load.mocks.MockEPSEventParser;
 
 import com.espertech.esper.client.EPOnDemandQueryResult;
@@ -56,7 +57,7 @@ public class FlaslistLoadTest {
 	//jump in overall trigger rate  
 	
 	private void pumpEvents(EventProcessor ep, int rounds, long sleeptime) throws IOException {
-		File file = new File("dmp/" + Settings.getInstance().flashlistDumpName);
+		File file = new File("dmp/" + ExpertController.getInstance().getSettings().flashlistDumpName);
 		Assert.assertTrue(file.exists());
 		MockEPSEventParser parser = new MockEPSEventParser();
 		List<EventProcessorStatus> list = parser.bruteParse(file);
@@ -83,7 +84,7 @@ public class FlaslistLoadTest {
 
 	// @Test
 	public void testOnDemandQueries() throws IOException {
-		EventProcessor ep = EventProcessor.getInstance();
+		EventProcessor ep = ExpertController.getInstance().getEventProcessor();
 		pumpEvents(ep);
 
 		EPOnDemandQueryResult rslt = ep.getRuntime().executeQuery("select * from " + EPS);
@@ -124,7 +125,7 @@ public class FlaslistLoadTest {
 
 	// @Test
 	public void testWithNamedWindowsAndOnDemandQueries() throws IOException {
-		final EventProcessor ep = EventProcessor.getInstance();
+		final EventProcessor ep = ExpertController.getInstance().getEventProcessor();
 		/** stuff for some debug, irrelevant **/
 		ep.registerStatement("select * from " + EPS, new UpdateListener() {
 			@Override
@@ -199,7 +200,7 @@ public class FlaslistLoadTest {
 		frame.getContentPane().add(txt);
 		frame.setVisible(true);
 
-		final EventProcessor ep = EventProcessor.getInstance();
+		final EventProcessor ep = ExpertController.getInstance().getEventProcessor();
 
 		/** create window holding only the most-recent info per context **/
 		ep.createEPL("create window Reads.std:unique(name) as (name String, yield long, units int)");
@@ -265,7 +266,7 @@ public class FlaslistLoadTest {
 	// @Test
 	public void test() throws IOException {
 
-		EventProcessor ep = EventProcessor.getInstance();
+		EventProcessor ep = ExpertController.getInstance().getEventProcessor();
 		ep.registerStatement("select irstream * from " + EventProcessorStatus.class.getSimpleName(), new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {

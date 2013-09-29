@@ -1,7 +1,7 @@
 package ch.cern.cms.load.taps;
 
+import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.ExpertController;
-import ch.cern.cms.load.eventProcessing.EventProcessor;
 
 public interface EventsTap {
 	/** adds event definitions to configuration **/

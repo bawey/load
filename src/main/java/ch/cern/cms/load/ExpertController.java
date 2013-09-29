@@ -3,8 +3,6 @@ package ch.cern.cms.load;
 import java.util.HashSet;
 import java.util.Set;
 
-import ch.cern.cms.load.configuration.Settings;
-import ch.cern.cms.load.eventProcessing.EventProcessor;
 import ch.cern.cms.load.guis.DefaultGui;
 import ch.cern.cms.load.guis.ExpertGui;
 import ch.cern.cms.load.taps.EventsTap;
@@ -16,10 +14,6 @@ import ch.cern.cms.load.taps.EventsTap;
  */
 
 public class ExpertController {
-
-	public Settings getSettings() {
-		return settings;
-	}
 
 	private static ExpertController instance;
 
@@ -43,16 +37,31 @@ public class ExpertController {
 
 	}
 
-	private final Settings settings = Settings.getInstance();
-
-	private final EventProcessor ep = EventProcessor.getInstance();
+	private final EventProcessor ep = new EventProcessor();
 
 	private final Set<ExpertGui> guis = new HashSet<ExpertGui>();
+
+	private final Settings settings = new Settings();
 
 	private final Set<EventsTap> taps = new HashSet<EventsTap>();
 
 	private ExpertController() {
 
+	}
+
+	public EventProcessor getEventProcessor() {
+		return ep;
+	}
+
+	public Settings getSettings() {
+		return settings;
+	}
+
+	/**
+	 * this should allow to attach swing / net gui
+	 */
+	private void attachViews() {
+		guis.add(new DefaultGui().attach(this));
 	}
 
 	private void autoStart() {
@@ -61,13 +70,6 @@ public class ExpertController {
 		openTaps();
 		registerStatements();
 		attachViews();
-	}
-
-	/**
-	 * this should allow to attach swing / net gui
-	 */
-	private void attachViews() {
-		guis.add(new DefaultGui().attach(this));
 	}
 
 	private void consolePrint() {

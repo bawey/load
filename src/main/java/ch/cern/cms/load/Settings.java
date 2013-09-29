@@ -1,4 +1,4 @@
-package ch.cern.cms.load.configuration;
+package ch.cern.cms.load;
 
 import java.io.File;
 import java.util.Properties;
@@ -9,27 +9,14 @@ public class Settings extends Properties {
 	 * 
 	 */
 	private static final long serialVersionUID = 2461597629371497239L;
-	
+
 	public enum Runmode {
 		ONLINE, // usual run with on-the-fly data processing
 		OFFLINE, // processing previously recorded data
 		ONLINE_RECORD; // system receives data but only saves it
 	}
 
-	private static Settings instance = null;
-
-	public static Settings getInstance() {
-		if (instance == null) {
-			synchronized (Settings.class) {
-				if (instance == null) {
-					instance = new Settings();
-				}
-			}
-		}
-		return instance;
-	}
-
-	private Settings() {
+	protected Settings() {
 	}
 
 	/**

@@ -1,4 +1,4 @@
-package ch.cern.cms.load;
+package ch.cern.cms.load.guis;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -22,9 +22,10 @@ import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreeSelectionModel;
 
-import ch.cern.cms.load.configuration.Settings;
-import ch.cern.cms.load.configuration.Settings.Runmode;
-import ch.cern.cms.load.eventProcessing.EventProcessor;
+import ch.cern.cms.load.EventProcessor;
+import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Settings;
+import ch.cern.cms.load.Settings.Runmode;
 import ch.cern.cms.load.eventProcessing.events.SubsystemCrossCheckerEvent;
 import ch.cern.cms.load.model.Model;
 import ch.cern.cms.load.model.ModelListener;
@@ -38,7 +39,7 @@ public class WindowedMain implements ModelListener, TreeSelectionListener, Updat
 	private JFrame frame = null;
 	private Model model;
 	private JScrollPane leftScrollPane = null;
-	private Settings settings = Settings.getInstance();
+	private Settings settings = ExpertController.getInstance().getSettings();
 
 	private JPanel rightPanel = new JPanel(new GridLayout(1, 1));
 	private JScrollPane rightScrollPane = new JScrollPane(rightPanel);
@@ -60,9 +61,9 @@ public class WindowedMain implements ModelListener, TreeSelectionListener, Updat
 	}
 
 	private static void switchToOfflineMode() {
-		Settings.getInstance().setRunmode(Runmode.OFFLINE);
-		Settings.getInstance().setPlaybackRate(10d);
-		Settings.getInstance().setDataSource(new File("dmp/data.bt"));
+		ExpertController.getInstance().getSettings().setRunmode(Runmode.OFFLINE);
+		ExpertController.getInstance().getSettings().setPlaybackRate(10d);
+		ExpertController.getInstance().getSettings().setDataSource(new File("dmp/data.bt"));
 	}
 
 	public static final void main(String[] args) {
@@ -78,7 +79,7 @@ public class WindowedMain implements ModelListener, TreeSelectionListener, Updat
 		frame.setVisible(true);
 
 		// register a sample statement
-		EventProcessor.getInstance().registerStatement(
+		ExpertController.getInstance().getEventProcessor().registerStatement(
 				"select * from " + SubsystemCrossCheckerEvent.class.getSimpleName() + "(subsys='DAQ') having subsys='DAQ'", instance);
 
 	}

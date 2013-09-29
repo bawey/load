@@ -11,8 +11,9 @@ import org.junit.Test;
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.UpdateListener;
 
+import ch.cern.cms.load.EventProcessor;
+import ch.cern.cms.load.ExpertController;
 import ch.cern.cms.load.eventData.Mock;
-import ch.cern.cms.load.eventProcessing.EventProcessor;
 
 /**
  *	Changing states vs. broadcasting each active alert with an incoming event 
@@ -41,7 +42,7 @@ public class MockTest {
 
 	@Test
 	public void test() {
-		EventProcessor ep = EventProcessor.getInstance();
+		EventProcessor ep = ExpertController.getInstance().getEventProcessor();
 		ep.getConfiguration().addEventType(Mock.class);
 		ep.registerStatement("select * from " + MOCK, new UpdateListener() {
 			@Override

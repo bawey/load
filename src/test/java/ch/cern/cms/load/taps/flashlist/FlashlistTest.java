@@ -14,9 +14,9 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.ExpertController;
-import ch.cern.cms.load.configuration.Settings;
-import ch.cern.cms.load.eventProcessing.EventProcessor;
+import ch.cern.cms.load.Settings;
 import ch.cern.cms.load.taps.flashlist.AbstractFlashlistEventsTap.FieldTypeResolver;
 
 import com.espertech.esper.client.EventBean;
@@ -44,17 +44,17 @@ public class FlashlistTest {
 	@Before
 	public void setUp() throws Exception {
 		/** simulate a running environment **/
-		ExpertController ctl = ExpertController.getInstance();
+		final ExpertController ctl = ExpertController.getInstance();
 		/** prepare a dummy FlashlistEventsTap **/
 		AbstractFlashlistEventsTap tap = new AbstractFlashlistEventsTap() {
 			@Override
 			public void registerEventTypes(EventProcessor eps) {
 				Map<String, Object> def = new HashMap<String, Object>();
 				for (String f : fields) {
-					def.put(f, ((FieldTypeResolver) Settings.getInstance().get(AbstractFlashlistEventsTap.PKEY_FIELD_TYPE))
+					def.put(f, ((FieldTypeResolver) ctl.getSettings().get(AbstractFlashlistEventsTap.PKEY_FIELD_TYPE))
 							.getFieldType(f, STREAM_NAME));
 				}
-				EventProcessor.getInstance().getConfiguration().addEventType(STREAM_NAME, def);
+				ctl.getEventProcessor().getConfiguration().addEventType(STREAM_NAME, def);
 			}
 
 			@Override
@@ -70,11 +70,11 @@ public class FlashlistTest {
 			ftr.setFieldType("vowels", Integer.class);
 			ftr.setFieldType("consonants", Double.class);
 		}
-		tap.registerEventTypes(EventProcessor.getInstance());
+		tap.registerEventTypes(ctl.getEventProcessor());
 		// empty anyway
-		tap.openStreams(EventProcessor.getInstance());
+		tap.openStreams(ctl.getEventProcessor());
 
-		EventProcessor.getInstance().registerStatement("select * from " + STREAM_NAME + " where vowels>1", new UpdateListener() {
+		ctl.getEventProcessor().registerStatement("select * from " + STREAM_NAME + " where vowels>1", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 				System.out.println("UpdateListener called for " + newEvents[0].getUnderlying());
@@ -95,7 +95,7 @@ public class FlashlistTest {
 		Flashlist fl = new Flashlist(url, STREAM_NAME);
 		assertEquals(3, fl.size());
 		assertEquals(Integer.class, fl.get(1).get("vowels").getClass());
-		fl.emit(EventProcessor.getInstance());
+		fl.emit(ExpertController.getInstance().getEventProcessor());
 		Thread.sleep(waitTime);
 		Assert.assertTrue(callbackCalled);
 	}
@@ -107,7 +107,7 @@ public class FlashlistTest {
 		Flashlist fl = new Flashlist(url, STREAM_NAME);
 		assertEquals(3, fl.size());
 		assertEquals(Double.class, fl.get(1).get("consonants").getClass());
-		fl.emit(EventProcessor.getInstance());
+		fl.emit(ExpertController.getInstance().getEventProcessor());
 		Thread.sleep(waitTime);
 		Assert.assertTrue(callbackCalled);
 	}

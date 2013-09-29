@@ -10,8 +10,9 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import ch.cern.cms.load.configuration.Settings;
-import ch.cern.cms.load.configuration.Settings.Runmode;
+import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Settings;
+import ch.cern.cms.load.Settings.Runmode;
 import ch.cern.cms.load.model.Model;
 
 /**
@@ -25,9 +26,9 @@ public class OfflineProcessingTest {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		Settings.getInstance().setRunmode(Runmode.OFFLINE);
-		Settings.getInstance().setDataSource(new File("dmp/data.bt"));
-		Settings.getInstance().setPlaybackRate(10d);
+		ExpertController.getInstance().getSettings().setRunmode(Runmode.OFFLINE);
+		ExpertController.getInstance().getSettings().setDataSource(new File("dmp/data.bt"));
+		ExpertController.getInstance().getSettings().setPlaybackRate(10d);
 	}
 
 	@AfterClass
