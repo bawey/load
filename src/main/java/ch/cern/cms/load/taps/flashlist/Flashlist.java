@@ -55,7 +55,6 @@ public class Flashlist extends LinkedList<Map<String, Object>> {
 
 	public void emit(EventProcessor ep) {
 		for (Map<String, Object> event : this) {
-			System.out.println("sending " + streamName + ": " + event);
 			ep.getRuntime().sendEvent(event, streamName);
 		}
 	}

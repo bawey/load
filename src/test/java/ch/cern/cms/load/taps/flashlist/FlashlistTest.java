@@ -28,7 +28,7 @@ public class FlashlistTest {
 	private static final String[] fields = { "word", "length", "vowels", "consonants" };
 
 	public static final String REMOTE_URL = "http://akson.sgh.waw.pl/~tb47893/words";
-	public static final String LOCAL_URL = "file:///home/bawey/Workspace/load/dmp/words";
+	public static final String LOCAL_URL = "file:///home/bawey/Workspace/LOAD/dmp/words";
 	public static final String STREAM_NAME = "Word";
 	private static boolean callbackCalled = false;
 

@@ -41,6 +41,7 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 						for (String field : br.readLine().split(",")) {
 							types.put(field, ExpertController.getInstance().getResolver().getFieldType(field, d.getName()));
 						}
+						System.out.println("registering event type: " + d.getName());
 						ep.getAdministrator().getConfiguration().addEventType(d.getName(), types);
 						break;
 					}
@@ -101,7 +102,7 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
 	@Override
 	public void setUp(ExpertController expert) {
-		
+
 	}
 
 }

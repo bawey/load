@@ -23,7 +23,7 @@ public class OfflineFlashlistEventsTapTest {
 	public void setUp() {
 		expert = ExpertController.getInstance();
 		ep = ExpertController.getInstance().getEventProcessor();
-		tap = new OfflineFlashlistEventsTap(expert, "/home/bawey/Workspace/load/dmp/offlineFL/");
+		tap = new OfflineFlashlistEventsTap(expert, "/home/bawey/Workspace/LOAD/dmp/offlineFL/");
 		tap.setUp(expert);
 		tap.registerEventTypes(ep);
 
