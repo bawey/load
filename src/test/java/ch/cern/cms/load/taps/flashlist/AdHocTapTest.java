@@ -1,5 +1,7 @@
 package ch.cern.cms.load.taps.flashlist;
 
+import java.util.Map;
+
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -9,17 +11,18 @@ import org.junit.Test;
 import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.ExpertController;
 import ch.cern.cms.load.FieldTypeResolver;
+import ch.cern.cms.load.SwingTest;
 import ch.cern.cms.load.taps.EventsTap;
 
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.UpdateListener;
 
-public class AdHocTapTest {
+public class AdHocTapTest extends SwingTest {
 
 	ExpertController ec;
 	EventProcessor ep;
 	EventsTap tap;
-	private double pace = 10;
+	private double pace = 1000;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -30,19 +33,27 @@ public class AdHocTapTest {
 	}
 
 	@Before
-	public void setUp() throws Exception {
-		ec = ExpertController.getInstance();
-		ec.getResolver().setFieldType("deltaT", Double.class);
-		ec.getResolver().setFieldType("deltaN", Double.class);
-		ec.getResolver().setFieldType("fifoAlmostFullCnt", Integer.class);
-		ep = ec.getEventProcessor();
-		FieldTypeResolver ftr = ec.getResolver();
-		tap = new OfflineFlashlistEventsTap(ec, "/home/bawey/Desktop/flashlists/41/");
-		((OfflineFlashlistEventsTap) tap).setPace(pace);
-		ec.registerTap(tap);
-		// task1(ep);
-		task2(ep);
+	public void setUp() {
+		super.setUp();
+		try {
+			ec = ExpertController.getInstance();
+			ec.getResolver().setFieldType("deltaT", Double.class);
+			ec.getResolver().setFieldType("deltaN", Double.class);
+			ec.getResolver().setFieldType("fifoAlmostFullCnt", Long.class);
+			ec.getResolver().setFieldType("fractionBusy", Double.class);
+			ec.getResolver().setFieldType("fractionWarning", Double.class);
+			ec.getResolver().setFieldType("clockCount", Double.class);
+			ep = ec.getEventProcessor();
+			FieldTypeResolver ftr = ec.getResolver();
+			tap = new OfflineFlashlistEventsTap(ec, "/home/bawey/Desktop/flashlists/41/");
+			((OfflineFlashlistEventsTap) tap).setPace(pace);
+			ec.registerTap(tap);
 
+			task1(ep);
+			task2(ep);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	/**
@@ -51,16 +62,54 @@ public class AdHocTapTest {
 
 	public void task2(EventProcessor ep) {
 		// I need FED_INFO_MAP: FMM-FED_FRL connection
+		ep.createEPL("create variable String FED_INFO_STR = ''");
+
+		ep.registerStatement("on levelZeroFM_static(FED_INFO_MAP!=FED_INFO_STR) as s set FED_INFO_STR=s.FED_INFO_MAP",
+				new UpdateListener() {
+					@Override
+					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+						String maptxt = (String) ((Map) newEvents[0].getUnderlying()).get("FED_INFO_STR");
+						String[] tokens = maptxt.split(",");
+						for (String token : tokens) {
+							AdHocTapTest.this.output(token, 0);
+						}
+					}
+				});
 
 		// FMMInput fractionBusy(or Warning) > 0
+		ep.registerStatement("select * from FMMInput where fractionBusy > 0 or fractionWarning > 0", new UpdateListener() {
 
-		// frlcontrollerLink: 2 consecutive fifoAlmostFullCount
-		ep.registerStatement("select a.fifoAlmostFullCnt as firstCount, a.deltaT as firstT, b.fifoAlmostFullCnt as secondCount, b.deltaT as secondT from pattern[every a=frlcontrollerLink(fifoAlmostFullCnt>0)->b=frlcontrollerLink(fifoAlmostFullCnt>0)]", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-				System.out.println(newEvents[0].getUnderlying());
+				AdHocTapTest.this.output("fractions exceeded: " + newEvents[0].getUnderlying().toString(), 3);
 			}
 		});
+
+		ep.createEPL("create window Backpressure.win:keepall() as (bpFraction double, slotNumber String, sessionid String)");
+		ep.createEPL("on pattern[every a=frlcontrollerLink(fifoAlmostFullCnt>0)->b=frlcontrollerLink(fifoAlmostFullCnt>0,context=a.context,slotNumber=a.slotNumber,sessionid=a.sessionid,clockCount>a.clockCount)]"
+				+ " insert into Backpressure select (b.fifoAlmostFullCnt-a.fifoAlmostFullCnt)/(b.clockCount-a.clockCount) as bpFraction, b.slotNumber as slotNumber, b.sessionid as sessionid");
+		// 2 back-to-back events with fifoAlmostFullCnt > 0.
+
+		ep.createEPL("create window PositiveBackpressure.win:keepall() as select * from Backpressure");
+		ep.createEPL("insert into PositiveBackpressure select * from Backpressure where bpFraction>0");
+
+		ep.registerStatement("select * from PositiveBackpressure", new UpdateListener() {
+			@Override
+			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+				AdHocTapTest.this.output(newEvents[0].getUnderlying().toString(), 2);
+			}
+		});
+
+		// ep.registerStatement(
+		// "select (b.fifoAlmostFullCnt-a.fifoAlmostFullCnt)/(b.clockCount-a.clockCount) as bpFraction, b.slotNumber as slotNumber, b.sessionid as sessionid from pattern"
+		// +
+		// "[every a=frlcontrollerLink(fifoAlmostFullCnt>0)->b=frlcontrollerLink(fifoAlmostFullCnt>0,context=a.context,slotNumber=a.slotNumber,sessionid=a.sessionid,clockCount>a.clockCount)]",
+		// new UpdateListener() {
+		// @Override
+		// public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+		// AdHocTapTest.this.output(newEvents[0].getUnderlying().toString(), 2);
+		// }
+		// });
 
 		// get the FED by link number
 
@@ -70,7 +119,7 @@ public class AdHocTapTest {
 	 * sum the rate in EVM as deltaN/deltaT for given session id
 	 */
 
-	public void task1(EventProcessor ep) {
+	public void task1(final EventProcessor ep) {
 		/**
 		 * creates a variable holding the SID associated with current
 		 * PublicGlobal session
@@ -87,12 +136,12 @@ public class AdHocTapTest {
 		 * create for EVM data. Keep only the most recent record per context-lid
 		 * pair. Also, discard events older than 30 seconds
 		 **/
-		ep.createEPL("create window subrates.std:unique(url,lid).win:time(" + 30 / pace
-				+ " sec) as (subrate double, url String, lid String)");
-		ep.createEPL("insert into subrates select deltaN/deltaT as subrate, context as url, lid from EVM where sessionid=sid");
+		ep.createEPL("create window subrates.std:unique(url,lid).win:time(" + 30000 / pace
+				+ " msec) as (subrate double, url String, lid String)");
+		ep.createEPL("insert into subrates select deltaN/deltaT as subrate, context as url, lid from EVM where sessionid=sid and deltaT>0");
 
 		/** create a window to contain observed rates **/
-		ep.createEPL("create window rates.win:time(" + 60 / pace + " sec) as (rate double)");
+		ep.createEPL("create window rates.win:time(" + 60000 / pace + " sec) as (rate double)");
 		/** and fill it periodically **/
 		ep.createEPL("on pattern[every timer:interval(1)] insert into rates select sum(subrate) as rate from subrates");
 
@@ -104,7 +153,7 @@ public class AdHocTapTest {
 		ep.registerStatement("on rates set avgRate=(select avg(rate) from rates)", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-				System.out.println("average rate value updated to: " + newEvents[0].getUnderlying());
+				//System.out.println("average rate value updated to: " + newEvents[0].getUnderlying());
 			}
 		});
 		// ep.registerStatement("select * from rates", verbose);
@@ -114,6 +163,7 @@ public class AdHocTapTest {
 					@Override
 					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 						System.out.println("Deviation!" + newEvents[0].getUnderlying());
+						ep.getRuntime().executeQuery("delete from rates");
 					}
 				});
 
