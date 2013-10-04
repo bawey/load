@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import com.espertech.esper.client.EPAdministrator;
+
 import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.ExpertController;
 
@@ -18,6 +20,7 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
 	private File rootFolder;
 	private double pace = 1;
+	private long fastForward = 0;
 
 	public OfflineFlashlistEventsTap(ExpertController expert, String path) {
 		super();
@@ -52,6 +55,11 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 		}
 	}
 
+	public void openStreams(EventProcessor ep, long skipFrames) {
+		this.fastForward = skipFrames;
+		openStreams(ep);
+	}
+
 	@Override
 	public void openStreams(EventProcessor eps) {
 		try {
@@ -73,7 +81,15 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 			}
 			System.out.println("Files ready for playback in " + dumpFiles.size() + " buckets");
 			Long lastTime = null;
+			long lastSkipped = 0;
 			for (Long time : dumpFiles.keySet()) {
+				if (fastForward > 0) {
+					if (lastSkipped != 0) {
+						fastForward -= (time - lastSkipped);
+					}
+					lastSkipped = time;
+					continue;
+				}
 				if (lastTime != null) {
 					try {
 						Thread.sleep((long) ((time - lastTime) / getPace()));
