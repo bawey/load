@@ -22,7 +22,7 @@ public class AdHocTapTest extends SwingTest {
 	ExpertController ec;
 	EventProcessor ep;
 	EventsTap tap;
-	private double pace = 7;
+	private double pace = 30;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -48,12 +48,33 @@ public class AdHocTapTest extends SwingTest {
 			tap = new OfflineFlashlistEventsTap(ec, "/home/bawey/Desktop/flashlists/41/");
 			((OfflineFlashlistEventsTap) tap).setPace(pace);
 			ec.registerTap(tap);
-
+			createConclusionStreams(ep);
 			task1(ep);
 			task2(ep);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+
+	private void createConclusionStreams(EventProcessor ep) {
+		ep.createEPL("create schema BackpressureAlarm as (kontext String, slotNumber String, linkNumber String)");
+		ep.createEPL("create variant schema AnyEvent as *");
+		ep.createEPL("create variant schema Alarms as BackpressureAlarm");
+
+		ep.registerStatement("select * from BackpressureAlarm", new UpdateListener() {
+			@Override
+			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+				AdHocTapTest.this.raiseAlarm(newEvents[0].getUnderlying().toString());
+			}
+		});
+
+		ep.registerStatement("select rstream * from BackpressureAlarm", new UpdateListener() {
+			@Override
+			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+				AdHocTapTest.this.cancelAlarm(newEvents[0].getUnderlying().toString());
+			}
+		});
+
 	}
 
 	/**
@@ -77,6 +98,7 @@ public class AdHocTapTest extends SwingTest {
 				});
 
 		ep.createEPL("create window BackpressureFilter.std:unique(kontext, slotNumber, linkNumber) as (bpFraction double, kontext String, slotNumber String, linkNumber String, timestamp String)");
+
 		ep.createEPL("on pattern[every a=frlcontrollerLink(fifoAlmostFullCnt>0)->b=frlcontrollerLink(fifoAlmostFullCnt>0,context=a.context,slotNumber=a.slotNumber,sessionid=a.sessionid,clockCount>a.clockCount)]"
 				+ " insert into BackpressureFilter select (b.fifoAlmostFullCnt-a.fifoAlmostFullCnt)/(b.clockCount-a.clockCount) as bpFraction, b.slotNumber as slotNumber, b.linkNumber as linkNumber, b.timestamp as timestamp, b.context as kontext");
 		// 2 back-to-back events with fifoAlmostFullCnt > 0.
@@ -85,36 +107,21 @@ public class AdHocTapTest extends SwingTest {
 
 		// on every positive BackpressureFilter.bpFraction only if (kontext,
 		// link, slot) not yet giving backpressure
-		
-		
-		ep.registerStatement("on pattern[every bf=BackpressureFilter] select count(*) as backpressures4triplet from Backpressure where kontext=bf.kontext and linkNumber=bf.linkNumber and slotNumber=bf.slotNumber", watchUpdater);
-		
-		ep.createEPL("on BackpressureFilter(bpFraction>0) as bf insert into Backpressure select bf.* where (select count(*) as cnt from Backpressure where kontext=bf.kontext and linkNumber=bf.linkNumber and slotNumber=bf.slotNumber)=0");
-				
 
-		
+		ep.registerStatement(
+				"on pattern[every bf=BackpressureFilter] select count(*) as backpressures4triplet from Backpressure where kontext=bf.kontext and linkNumber=bf.linkNumber and slotNumber=bf.slotNumber",
+				watchUpdater);
+
+		ep.createEPL("on BackpressureFilter(bpFraction>0) as bf insert into BackpressureAlarm select bf.kontext as kontext, bf.linkNumber as linkNumber, bf.slotNumber as slotNumber where (select count(*) as cnt from Backpressure where kontext=bf.kontext and linkNumber=bf.linkNumber and slotNumber=bf.slotNumber)=0"
+				+ " insert into Backpressure select bf.*" + " output all");
+
 		/** playground **/
-		
-//		ep.registerStatement(
-//				"on BackpressureFilter(bpFraction>0) as bf insert into Backpressure select bf.*",
-//				new UpdateListener() {
-//					@Override
-//					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-//						console("BP update", "updating Backpressure");
-//						//AdHocTapTest.this.raiseAlarm(backpressureDesc(newEvents[0].getUnderlying()));
-//					}
-//				});
-		
-		/** playground ed **/
-		
-		
-		
-		
-		
-		
-		
-		ep.registerStatement("select count(*) as rowsInBackpressure from Backpressure", watchUpdater);
 
+		// ep.createEPL("on BackpressureFilter(bpFraction>0) as bf insert into Backpressure select bf.*");
+
+		/** playground ed **/
+
+		ep.registerStatement("select count(*) as rowsInBackpressure from Backpressure", watchUpdater);
 
 		ep.registerStatement("select b.* from pattern[every b=Backpressure]", new UpdateListener() {
 			@Override
@@ -126,15 +133,7 @@ public class AdHocTapTest extends SwingTest {
 		});
 
 		// should fire only if deleting... and does
-		ep.registerStatement(
-				"on BackpressureFilter(bpFraction<0.0000000000000000000000000000000000000000000000000000000000000001) as bf delete from Backpressure b where b.kontext=bf.kontext and b.slotNumber=bf.slotNumber and b.linkNumber=bf.linkNumber",
-				new UpdateListener() {
-					@Override
-					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-						AdHocTapTest.this.console("backpressure", "removing backpressure");
-						AdHocTapTest.this.cancelAlarm(backpressureDesc(newEvents[0].getUnderlying()));
-					}
-				});
+		ep.createEPL("on BackpressureFilter(bpFraction=0) as bf delete from BackpressureAlarm b where b.kontext=bf.kontext and b.slotNumber=bf.slotNumber and b.linkNumber=bf.linkNumber");
 	}
 
 	/**
