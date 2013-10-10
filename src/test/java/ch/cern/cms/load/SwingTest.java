@@ -28,6 +28,7 @@ import org.junit.Test;
 
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.UpdateListener;
+import com.espertech.esper.event.WrapperEventBean;
 import com.espertech.esper.event.map.MapEventBean;
 
 public class SwingTest {
@@ -209,20 +210,54 @@ public class SwingTest {
 
 		@Override
 		public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-			if (newEvents != null && newEvents.length > 0 && newEvents[0] instanceof MapEventBean) {
-				Map<String, Object> props = ((MapEventBean) newEvents[0]).getProperties();
-				String[] timeKeys = { "timestamp", "time", "timeStamp", "time_stamp" };
-				String timestamp = null;
-				for (String key : timeKeys) {
-					if (props.containsKey(key)) {
-						timestamp = props.get(key).toString();
-						props.remove(key);
-						break;
-					}
+			Map<?, ?> props = null;
+			if (newEvents != null && newEvents.length > 0) {
+				Object src = newEvents[0].getUnderlying();
+
+				if (src instanceof WrapperEventBean) {
+					src = ((WrapperEventBean) src).getUnderlyingEvent();
 				}
 
-				for (Object key : props.keySet()) {
-					SwingTest.this.watch(key.toString(), props.get(key).toString() + (timestamp != null ? " (" + timestamp + ")" : ""));
+				if (src instanceof MapEventBean) {
+					props = ((MapEventBean) src).getProperties();
+				} else if (src instanceof Map<?, ?>) {
+					props = (Map<?, ?>) src;
+				} else {
+					console("warning", "received sth strange in watchUpdater");
+				}
+			}
+			if (props != null) {
+				if (props.size() == 1) {
+					Object key = props.keySet().iterator().next();
+					SwingTest.this.watch(key.toString(), props.get(key).toString());
+				} else {
+					String[] timeKeys = { "timestamp", "time", "timeStamp", "time_stamp" };
+					String[] labelKeys = { "label" };
+					String[] valueKeys = { "value", "val" };
+					String timestamp = null;
+					String value = null;
+					String label = null;
+					for (String key : timeKeys) {
+						if (props.containsKey(key)) {
+							timestamp = props.get(key).toString();
+							props.remove(key);
+							break;
+						}
+					}
+					for (String key : labelKeys) {
+						if (props.containsKey(key)) {
+							label = props.get(key).toString();
+							break;
+						}
+					}
+					for (String key : valueKeys) {
+						if (props.containsKey(key)) {
+							value = props.get(key).toString();
+							break;
+						}
+					}
+
+					SwingTest.this.watch(label, value + (timestamp != null ? " (" + timestamp + ")" : ""));
 				}
 			}
 		}
