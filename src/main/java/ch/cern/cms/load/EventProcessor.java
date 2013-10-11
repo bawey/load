@@ -2,6 +2,9 @@ package ch.cern.cms.load;
 
 import java.util.Map;
 
+import ch.cern.cms.load.hwdb.CmsHw;
+import ch.cern.cms.load.hwdb.HwInfo;
+
 import com.espertech.esper.client.Configuration;
 import com.espertech.esper.client.ConfigurationOperations;
 import com.espertech.esper.client.EPAdministrator;
@@ -26,7 +29,11 @@ import com.espertech.esper.client.UpdateListener;
 public class EventProcessor {
 
 	protected EventProcessor() {
-		epProvider = EPServiceProviderManager.getProvider("myCEPEngine", new Configuration());
+		Configuration c = new Configuration();
+		c.addImport(HwInfo.class);
+		c.addImport(CmsHw.class);
+
+		epProvider = EPServiceProviderManager.getProvider("myCEPEngine", c);
 		epRT = epProvider.getEPRuntime();
 		epAdmin = epProvider.getEPAdministrator();
 	}

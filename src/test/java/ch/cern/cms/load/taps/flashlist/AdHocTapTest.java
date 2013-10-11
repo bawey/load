@@ -8,13 +8,15 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import rcms.common.db.DBConnectorException;
+import rcms.utilities.hwcfg.eq.FED;
 import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.ExpertController;
 import ch.cern.cms.load.FieldTypeResolver;
 import ch.cern.cms.load.SwingTest;
+import ch.cern.cms.load.hwdb.HwInfo;
 import ch.cern.cms.load.taps.EventsTap;
 
-import com.espertech.esper.client.EPAdministrator;
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.UpdateListener;
 
@@ -24,6 +26,7 @@ public class AdHocTapTest extends SwingTest {
 	EventProcessor ep;
 	EventsTap tap;
 	private double pace = 30;
+	HwInfo nn = HwInfo.getInstance();
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -44,7 +47,12 @@ public class AdHocTapTest extends SwingTest {
 			ec.getResolver().setFieldType("fractionBusy", Double.class);
 			ec.getResolver().setFieldType("fractionWarning", Double.class);
 			ec.getResolver().setFieldType("clockCount", Double.class);
+			ec.getResolver().setFieldType("linkNumber", Integer.class);
+			ec.getResolver().setFieldType("slotNumber", Integer.class);
+			ec.getResolver().setFieldType("geoslot", Integer.class);
+			ec.getResolver().setFieldType("io", Integer.class);
 			ep = ec.getEventProcessor();
+			ep.getConfiguration().addImport(HwInfo.class.getName());
 			FieldTypeResolver ftr = ec.getResolver();
 			tap = new OfflineFlashlistEventsTap(ec, "/home/bawey/Desktop/flashlists/41/");
 			((OfflineFlashlistEventsTap) tap).setPace(pace);
@@ -116,7 +124,7 @@ public class AdHocTapTest extends SwingTest {
 
 	public void backpressure(EventProcessor ep) {
 		/** create BackpressureFilter window **/
-		ep.createEPL("create window BackpressureFilter.std:unique(kontext, slotNumber, linkNumber) as (bpFraction double, kontext String, slotNumber String, linkNumber String, timestamp String)");
+		ep.createEPL("create window BackpressureFilter.std:unique(kontext, slotNumber, linkNumber) as (bpFraction double, kontext String, slotNumber Integer, linkNumber Integer, timestamp String)");
 		/** connect BackpressureFilter with data sources **/
 		ep.createEPL("on pattern[every a=frlcontrollerLink(fifoAlmostFullCnt>0)->b=frlcontrollerLink(fifoAlmostFullCnt>0,context=a.context,slotNumber=a.slotNumber,sessionid=a.sessionid,clockCount>a.clockCount)]"
 				+ " insert into BackpressureFilter select (b.fifoAlmostFullCnt-a.fifoAlmostFullCnt)/(b.clockCount-a.clockCount) as bpFraction, b.slotNumber as slotNumber, b.linkNumber as linkNumber, b.timestamp as timestamp, b.context as kontext");
@@ -137,17 +145,17 @@ public class AdHocTapTest extends SwingTest {
 		ep.createEPL("on BackpressureFilter(bpFraction=0) as bf delete from Conclusions c where c.kontext.toString()=bf.kontext.toString() and c.slotNumber.toString()=bf.slotNumber.toString() and c.linkNumber.toString()=bf.linkNumber.toString()");
 
 		ep.registerStatement(
-				"select b.bpFraction as value, 'BP '||b.kontext||'L'||b.linkNumber||'S'||b.slotNumber as label from pattern[every b=Backpressure]",
+				"select b.bpFraction as value, 'BP '||b.kontext||'L'||b.linkNumber.toString()||'S'||b.slotNumber.toString() as label from pattern[every b=Backpressure]",
 				watchUpdater);
 
 	}
 
 	public void deadtime(EventProcessor ep) {
 		ep.registerStatement(
-				"select 'frBsy: '||context||'G'||geoslot||'IO'||io as label, timestamp, fractionBusy as value from FMMInput where fractionBusy > 0",
+				"select 'frBsy: '||context||'G'||geoslot.toString()||'IO'||io.toString() as label, timestamp, fractionBusy as value from FMMInput where fractionBusy > 0",
 				watchUpdater);
 		ep.registerStatement(
-				"select 'frWrn: '||context||'G'||geoslot||'IO'||io as label, timestamp, fractionWarning as value from FMMInput where fractionWarning > 0",
+				"select 'frWrn: '||context||'G'||geoslot.toString()||'IO'||io.toString() as label, timestamp, fractionWarning as value from FMMInput where fractionWarning > 0",
 				watchUpdater);
 
 		/** want to copy datatypes, hence the stream will be created from window **/
@@ -159,11 +167,76 @@ public class AdHocTapTest extends SwingTest {
 				+ "(select count(*) from DeadtimeAlarm.win:keepall() where kontext=fmi.context and geoslot=fmi.geoslot and io = fmi.io)=0");
 
 		ep.createEPL("on FMMInput(fractionWarning<0.000001, fractionBusy < 0.00001) as fmi delete from Conclusions as c where"
-				+ " c.kontext.toString() = fmi.context and c.io.toString() = fmi.io.toString() and c.geoslot.toString() = fmi.geoslot");
+				+ " c.kontext.toString() = fmi.context and c.io.toString() = fmi.io.toString() and c.geoslot.toString() = fmi.geoslot.toString()");
 
 	}
 
-	public void deadVsPressure(EventProcessor ep) {
+	/** KeepItSimple, for now **/
+	public void deadVsPressure(final EventProcessor ep) {
+
+		ep.createEPL("create window BpFeds.win:keepall() as (id String)");
+		ep.createEPL("create window DtFeds.win:keepall() as (id String)");
+
+		HwInfo.esperCheck();
+
+		ep.createEPL("on pattern[every c=Conclusions(title='backpressure')] insert into BpFeds select HwInfo.getInstance().getFedId(c.kontext.toString(), c.slotNumber ,c.linkNumber ,CmsHw.FRL).toString() as id" );
+		ep.registerStatement("select count(*) as bpFeds from BpFeds", watchUpdater);
+		ep.registerStatement("select count(*) as bpFeds from BpFeds", consoleLogger);
+		
+		
+		//ep.registerState("rstream on Conclusion(title='backpressure') as c insert into BpFeds select 12 as id");
+
+		// problem: BackpressureAlarm is a stream...
+		ep.registerStatement("select irstream * from Conclusions where title='backpressure'", new UpdateListener() {
+			@Override
+			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+				// boolean old = oldEvents != null && oldEvents.length > 0;
+				// Map<?, ?> src = (Map<?, ?>) (old ? oldEvents : newEvents)[0].getUnderlying();
+				// try {
+				// FED fed = nn.getFedIdForFrl(src.get("kontext").toString(), (Integer) src.get("slotNumber"), (Integer)
+				// src.get("linkNumber"));
+				// if (old) {
+				// ep.getRuntime().executeQuery("delete from BpFeds where id=" + fed.getSrcId());
+				// } else {
+				// console("debug","before");
+				// ep.getRuntime().executeQuery("insert into BpFeds (id) select " + fed.getSrcId() + "");
+				// console("debug","after!");
+				// }
+				// } catch (DBConnectorException e) {
+				// e.printStackTrace();
+				// }
+			}
+		});
+
+		ep.registerStatement("select irstream * from DeadtimeAlarm", new UpdateListener() {
+
+			@Override
+			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+				// boolean old = oldEvents != null && oldEvents.length > 0;
+				// Map<?, ?> src = (Map<?, ?>) (old ? oldEvents : newEvents)[0].getUnderlying();
+				// try {
+				// FED fed = nn.getFedForFrl(src.get("kontext").toString(), (Integer) src.get("geoslot"), (Integer) src.get("io"));
+				// if (old) {
+				// ep.getRuntime().executeQuery("delete from DtFeds where id=" + fed.getSrcId());
+				// } else {
+				// ep.getRuntime().executeQuery("insert into DtFeds select " + fed.getSrcId() + " as id");
+				// }
+				// } catch (DBConnectorException e) {
+				// e.printStackTrace();
+				// }
+			}
+		});
+
+		ep.registerStatement("select * from BpFeds as bpf, DtFeds as dtf where bpf.id=dtf.id", new UpdateListener() {
+			@Override
+			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+				console("backpressure FEDS", newEvents[0].getUnderlying().toString());
+			}
+		});
+
+		ep.registerStatement("select * from BpFeds", consoleLogger);
+		ep.registerStatement("select * from DtFeds", consoleLogger);
+
 
 	}
 

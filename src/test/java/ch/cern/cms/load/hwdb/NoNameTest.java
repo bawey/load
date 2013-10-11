@@ -30,8 +30,8 @@ public class NoNameTest {
 
 	@Test
 	public void test() throws DBConnectorException {
-		NoName nn = NoName.getInstance();
-		System.out.println(nn.getFedIdForFrl("http://frlpc-s2d10-14.cms:11100", 1, 0));
+		HwInfo nn = HwInfo.getInstance();
+		System.out.println(nn.getFedForFrl("http://frlpc-s2d10-14.cms:11100", 1, 0));
 //		
 	}
 

@@ -14,18 +14,18 @@ import rcms.utilities.hwcfg.eq.FMMCrate;
 import rcms.utilities.hwcfg.eq.FRL;
 import rcms.utilities.hwcfg.eq.FRLCrate;
 
-public class NoName {
+public final class HwInfo {
 
 	private final static String hwcfgDbURL = "jdbc:oracle:thin:@localhost:10121/cms_omds_tunnel.cern.ch";
 	private final static String hwcfgPassword = "mickey2mouse";
 	private final static String hwcfgUser = "CMS_DAQ_HW_CONF_R";
-	private static NoName instance = null;
+	private static HwInfo instance = null;
 
-	public static NoName getInstance() {
+	public static HwInfo getInstance() {
 		if (instance == null) {
-			synchronized (NoName.class) {
+			synchronized (HwInfo.class) {
 				if (instance == null) {
-					instance = new NoName();
+					instance = new HwInfo();
 				}
 			}
 		}
@@ -39,14 +39,13 @@ public class NoName {
 
 	private HWCfgConnector hwconn = null;
 
-	private NoName() {
+	private HwInfo() {
 		try {
 			dbconn = new DBConnectorOracle(hwcfgDbURL, hwcfgUser, hwcfgPassword);
 
 			hwconn = new HWCfgConnector(dbconn);
 			dpNode = hwconn.getNode("/cms/eq_120503/RUN_2012/fb_all_2012routing2_rev120320_SplitCSC/dp_4SL0f_bl688_158BU_4SMr06");
 			eqs = hwconn.retrieveDPSet(dpNode).getEquipmentSet();
-			dbconn.closeConnection();
 		} catch (Exception r) {
 			System.err.println("die die die my darling");
 			r.printStackTrace();
@@ -64,8 +63,7 @@ public class NoName {
 		return hostname;
 	}
 
-	public FED getFedIdForFrl(String hostname, int geoSlot, int link) throws DBConnectorException {
-		dbconn.openConnection();
+	public FED getFedForFrl(String hostname, int geoSlot, int link) throws DBConnectorException {
 		FED fed = null;
 		FRLCrate frlCrate = eqs.getFRLCrateByHostName(peelHostname(hostname));
 		if (frlCrate != null) {
@@ -74,12 +72,10 @@ public class NoName {
 				fed = frl.getFEDByLink(link);
 			}
 		}
-		dbconn.closeConnection();
 		return fed;
 	}
 
-	public FED getFedIdForFmm(String hostname, int geoSlot, int io) throws DBConnectorException {
-		dbconn.openConnection();
+	public FED getFedForFmm(String hostname, int geoSlot, int io) throws DBConnectorException {
 		FED fed = null;
 		FMMCrate fmmCrate = eqs.getFMMCrateByHostName(hostname);
 		if (fmmCrate != null) {
@@ -88,8 +84,35 @@ public class NoName {
 				fed = fmm.getFEDByIO(io);
 			}
 		}
-		dbconn.closeConnection();
 		return fed;
+	}
+
+	public FED getFed(String context, int geoSlotOrSlot, int linkOrIo, CmsHw seenByHw) {
+		try {
+			switch (seenByHw) {
+			case FMM:
+				return getFedForFmm(context, geoSlotOrSlot, linkOrIo);
+			case FRL:
+				return getFedForFrl(context, geoSlotOrSlot, linkOrIo);
+			default:
+				return null;
+			}
+		} catch (DBConnectorException e) {
+			throw new RuntimeException("time to get a logger", e);
+		}
+	}
+
+	public Integer getFedId(Object context, Object geoSlotOrSlot, Object linkOrIo, CmsHw seenByHw) {
+		if (context instanceof String && geoSlotOrSlot instanceof Integer && linkOrIo instanceof Integer) {
+			return getFedId((String) context, (Integer) geoSlotOrSlot, (Integer) linkOrIo, seenByHw);
+		} else {
+			return getFedId(context.toString(), Integer.parseInt(geoSlotOrSlot.toString()), Integer.parseInt(linkOrIo.toString()), seenByHw);
+		}
+	}
+
+	public Integer getFedId(String context, int geoSlotOrSlot, int linkOrIo, CmsHw seenByHw) {
+		FED fed = getFed(context, geoSlotOrSlot, linkOrIo, seenByHw);
+		return fed == null ? null : fed.getSrcId();
 	}
 
 	public void getFRLCratesAndPrintStuff() {
@@ -97,5 +120,10 @@ public class NoName {
 		for (Long l : crates.keySet()) {
 			System.out.println(l + ": " + crates.get(l).getHostName());
 		}
+		// eqs.getFMMFMMLinks()
+	}
+
+	public static final String esperCheck() {
+		return "If you see this message than you have configured your class import correctly";
 	}
 }
