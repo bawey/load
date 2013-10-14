@@ -1,5 +1,7 @@
 package ch.cern.cms.load.hwdb;
 
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Map;
 
 import rcms.common.db.DBConnectorException;
@@ -11,6 +13,7 @@ import rcms.utilities.hwcfg.eq.EquipmentSet;
 import rcms.utilities.hwcfg.eq.FED;
 import rcms.utilities.hwcfg.eq.FMM;
 import rcms.utilities.hwcfg.eq.FMMCrate;
+import rcms.utilities.hwcfg.eq.FMMFMMLink;
 import rcms.utilities.hwcfg.eq.FRL;
 import rcms.utilities.hwcfg.eq.FRLCrate;
 
@@ -77,13 +80,7 @@ public final class HwInfo {
 
 	public FED getFedForFmm(String hostname, int geoSlot, int io) throws DBConnectorException {
 		FED fed = null;
-		FMMCrate fmmCrate = eqs.getFMMCrateByHostName(hostname);
-		if (fmmCrate != null) {
-			FMM fmm = fmmCrate.getFMMbyGeoSlot(geoSlot);
-			if (fmm != null) {
-				fed = fmm.getFEDByIO(io);
-			}
-		}
+		FMMCrate fmmCrate = eqs.getFMMCrateByHostName(peelHostname(hostname));
 		return fed;
 	}
 
@@ -98,6 +95,8 @@ public final class HwInfo {
 				return null;
 			}
 		} catch (DBConnectorException e) {
+			System.out.println("wrong!");
+			e.printStackTrace();
 			throw new RuntimeException("time to get a logger", e);
 		}
 	}
@@ -115,12 +114,50 @@ public final class HwInfo {
 		return fed == null ? null : fed.getSrcId();
 	}
 
+	public Integer getFedId(Object c, Object g, Object l, CmsHw s, String str) {
+		Integer v = getFedId(c, g, l, s);
+		System.out.println(str + "(" + c + ", " + g + ", " + l + ", " + s + ") source id: " + v);
+		return v;
+	}
+
 	public void getFRLCratesAndPrintStuff() {
 		Map<Long, FRLCrate> crates = eqs.getFRLCrates();
 		for (Long l : crates.keySet()) {
 			System.out.println(l + ": " + crates.get(l).getHostName());
 		}
 		// eqs.getFMMFMMLinks()
+	}
+
+	/** the fed connected directly to fmm or one of its main feds **/
+	public Collection<Integer> getDeadtimeRelevantFedIds(Object context, Object geoslot, Object io) {
+		Collection<Integer> ids = new HashSet<Integer>();
+		FED fed = getFed(context instanceof String ? (String) context : context.toString(),
+				geoslot instanceof Integer ? (Integer) geoslot : Integer.parseInt(geoslot.toString()),
+				io instanceof Integer ? (Integer) io : Integer.parseInt(io.toString()), CmsHw.FMM);
+		if (fed != null) {
+			if (fed.getSrcId() != null) {
+				ids.add(fed.getSrcId());
+			}
+			if (fed.getMainFEDs() != null) {
+				for (FED mainFed : fed.getMainFEDs()) {
+					ids.add(mainFed.getSrcId());
+				}
+			}
+		} else {
+			FMMCrate crate = eqs.getFMMCrateByHostName(peelHostname(context.toString()));
+			if (crate != null) {
+				FMM fmm = crate.getFMMbyGeoSlot((Integer) geoslot);
+				for (FMMFMMLink link : eqs.getFMMFMMLinks()) {
+					if (link.getSourceFMMIO() == (Integer) io) {
+						System.out.println("is source for: " + link.toString());
+					} else if (link.getTargetFMMIO() == (Integer) io) {
+						System.out.println("is target for: " + link.toString());
+					}
+				}
+			}
+
+		}
+		return ids;
 	}
 
 	public static final String esperCheck() {

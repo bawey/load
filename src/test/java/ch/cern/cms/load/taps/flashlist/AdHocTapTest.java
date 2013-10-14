@@ -179,53 +179,19 @@ public class AdHocTapTest extends SwingTest {
 
 		HwInfo.esperCheck();
 
-		ep.createEPL("on pattern[every c=Conclusions(title='backpressure')] insert into BpFeds select HwInfo.getInstance().getFedId(c.kontext.toString(), c.slotNumber ,c.linkNumber ,CmsHw.FRL).toString() as id" );
+		/** naively hold bp-guilty feds **/
+		ep.createEPL("on pattern[every c=Conclusions(title='backpressure')] insert into BpFeds(id) select HwInfo.getInstance().getFedId(c.kontext, c.slotNumber.toString() ,c.linkNumber.toString() ,CmsHw.FRL).toString()");
+		ep.createEPL("on BackpressureFilter(bpFraction<0.000000000000001) as bf delete from BpFeds where id = HwInfo.getInstance().getFedId(bf.kontext, bf.slotNumber.toString(), bf.linkNumber, CmsHw.FRL).toString()");
 		ep.registerStatement("select count(*) as bpFeds from BpFeds", watchUpdater);
-		ep.registerStatement("select count(*) as bpFeds from BpFeds", consoleLogger);
+
+		/** naively hold dt-guilty feds **/
+		ep.createEPL("on pattern[every c=Conclusions(title='deadtime')] insert into DtFeds(id) select"
+				+ " HwInfo.getInstance().getFedId(c.kontextm, c.geoslot.toString(), c.io.toString(), CmsHw.FMM, 'inserting DT').toString()");
+		ep.createEPL("on FMMInput(fractionWarning=0, fractionBusy=0) as fmi delete from DtFeds where" +
+				" id = HwInfo.getInstance().getFedId(fmi.context, fmi.geoslot.toString(), fmi.io, CmsHw.FMM, 'removing DT').toString()");
 		
-		
-		//ep.registerState("rstream on Conclusion(title='backpressure') as c insert into BpFeds select 12 as id");
-
-		// problem: BackpressureAlarm is a stream...
-		ep.registerStatement("select irstream * from Conclusions where title='backpressure'", new UpdateListener() {
-			@Override
-			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-				// boolean old = oldEvents != null && oldEvents.length > 0;
-				// Map<?, ?> src = (Map<?, ?>) (old ? oldEvents : newEvents)[0].getUnderlying();
-				// try {
-				// FED fed = nn.getFedIdForFrl(src.get("kontext").toString(), (Integer) src.get("slotNumber"), (Integer)
-				// src.get("linkNumber"));
-				// if (old) {
-				// ep.getRuntime().executeQuery("delete from BpFeds where id=" + fed.getSrcId());
-				// } else {
-				// console("debug","before");
-				// ep.getRuntime().executeQuery("insert into BpFeds (id) select " + fed.getSrcId() + "");
-				// console("debug","after!");
-				// }
-				// } catch (DBConnectorException e) {
-				// e.printStackTrace();
-				// }
-			}
-		});
-
-		ep.registerStatement("select irstream * from DeadtimeAlarm", new UpdateListener() {
-
-			@Override
-			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-				// boolean old = oldEvents != null && oldEvents.length > 0;
-				// Map<?, ?> src = (Map<?, ?>) (old ? oldEvents : newEvents)[0].getUnderlying();
-				// try {
-				// FED fed = nn.getFedForFrl(src.get("kontext").toString(), (Integer) src.get("geoslot"), (Integer) src.get("io"));
-				// if (old) {
-				// ep.getRuntime().executeQuery("delete from DtFeds where id=" + fed.getSrcId());
-				// } else {
-				// ep.getRuntime().executeQuery("insert into DtFeds select " + fed.getSrcId() + " as id");
-				// }
-				// } catch (DBConnectorException e) {
-				// e.printStackTrace();
-				// }
-			}
-		});
+		ep.registerStatement("select count(*) as dtFeds from DtFeds", watchUpdater);
+		ep.registerStatement("select id as dtFedId from DtFeds", consoleLogger);
 
 		ep.registerStatement("select * from BpFeds as bpf, DtFeds as dtf where bpf.id=dtf.id", new UpdateListener() {
 			@Override
@@ -236,7 +202,6 @@ public class AdHocTapTest extends SwingTest {
 
 		ep.registerStatement("select * from BpFeds", consoleLogger);
 		ep.registerStatement("select * from DtFeds", consoleLogger);
-
 
 	}
 
