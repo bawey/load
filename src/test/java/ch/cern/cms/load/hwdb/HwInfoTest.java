@@ -30,11 +30,12 @@ public class HwInfoTest {
 
 	@Test
 	public void test() throws DBConnectorException {
+		String ctx = "http://fmmpc-s1d12-08.cms:11100";
+		int gslot = 7;
 		HwInfo nn = HwInfo.getInstance();
-		System.out.println(nn.getFedForFrl("http://frlpc-s2d10-14.cms:11100", 1, 0));
-		// {geoslot=7, title=deadtime, kontext=http://fmmpc-s1d12-08.cms:11100, io=0}
 		for (Integer i = 0; i < 20; ++i) {
-			System.out.println(nn.getFedId("http://fmmpc-s1d12-08.cms:11100", "7", i.toString(), CmsHw.FMM, "testing"));
+			System.out.println("connected FED: " + nn.getFedId(ctx, gslot, i.toString(), CmsHw.FMM));
+			System.out.println("source FMM: " + nn.getSrcFMM(nn.getFMM(ctx, gslot), i));
 			System.out.println(nn.getDeadtimeRelevantFedIds("http://fmmpc-s1d12-08.cms:11100", 7, i));
 		}
 		//

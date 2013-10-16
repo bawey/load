@@ -1,5 +1,7 @@
 package ch.cern.cms.load.taps.flashlist;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.After;
@@ -8,8 +10,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import rcms.common.db.DBConnectorException;
-import rcms.utilities.hwcfg.eq.FED;
 import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.ExpertController;
 import ch.cern.cms.load.FieldTypeResolver;
@@ -79,7 +79,28 @@ public class AdHocTapTest extends SwingTest {
 		ep.createEPL("create variable String FED_INFO_STR = ''");
 		ep.createEPL("on levelZeroFM_static(FED_INFO_MAP!=FED_INFO_STR) as s set FED_INFO_STR=s.FED_INFO_MAP");
 		ep.registerStatement("select FED_INFO_STR as value, 'FED INFO MAP' as label from EVM as evm", watchUpdater);
+		ep.registerStatement("select count(*) as conclusions from Conclusions", watchUpdater);
+		ep.registerStatement("select count(*) as bpFeds from BpFeds", watchUpdater);
+		// ep.registerStatement("select rstream count(*) as ppFedsRemoved from BpFeds", watchUpdater);
 
+		ep.registerStatement("select irstream * from BpFeds", new UpdateListener() {
+
+			@Override
+			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+				if (newEvents != null) {
+					console("BpFeds", "added");
+					for (EventBean bean : newEvents) {
+						console("BpFeds", bean.getUnderlying().toString());
+					}
+				}
+				if (oldEvents != null) {
+					console("BpFeds", "removed");
+					for (EventBean bean : oldEvents) {
+						console("BpFeds", bean.getUnderlying().toString());
+					}
+				}
+			}
+		});
 	}
 
 	private void createConclusionStream(EventProcessor ep, String name, String body) {
@@ -105,7 +126,9 @@ public class AdHocTapTest extends SwingTest {
 		ep.registerStatement("select rstream * from Conclusions", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-				AdHocTapTest.this.cancelAlarm(newEvents[0].getUnderlying().toString());
+				for (EventBean bean : newEvents) {
+					AdHocTapTest.this.cancelAlarm(bean.getUnderlying().toString());
+				}
 			}
 		});
 
@@ -138,11 +161,12 @@ public class AdHocTapTest extends SwingTest {
 		 * split the BackpressureFilter and insert into BackpressureAlarms and/or Backpressure when necessary
 		 **/
 		ep.createEPL("on BackpressureFilter(bpFraction>0) as bf "
-				+ "insert into BackpressureAlarm select 'backpressure' as title, bf.kontext as kontext, bf.linkNumber as linkNumber, bf.slotNumber as slotNumber where (select count(*) as cnt from Backpressure where kontext=bf.kontext and linkNumber=bf.linkNumber and slotNumber=bf.slotNumber)=0"
+				+ "insert into BackpressureAlarm select 'frl backpressure' as title, bf.kontext as kontext, bf.linkNumber as linkNumber, bf.slotNumber as slotNumber where (select count(*) as cnt from Backpressure where kontext=bf.kontext and linkNumber=bf.linkNumber and slotNumber=bf.slotNumber)=0"
 				+ " insert into Backpressure select bf.*" + " output all");
 		/** cancel the associated alarm when bpFraction goes back down for a triplet **/
 		ep.createEPL("on BackpressureFilter(bpFraction=0) as bf delete from Backpressure b where bf.linkNumber = b.linkNumber and bf.slotNumber = b.slotNumber and bf.kontext=b.kontext");
-		ep.createEPL("on BackpressureFilter(bpFraction=0) as bf delete from Conclusions c where c.kontext.toString()=bf.kontext.toString() and c.slotNumber.toString()=bf.slotNumber.toString() and c.linkNumber.toString()=bf.linkNumber.toString()");
+		ep.createEPL("on BackpressureFilter(bpFraction=0) as bf delete from Conclusions c where " +
+				"c.title.toString()='frl backpressure' and c.kontext.toString()=bf.kontext.toString() and c.slotNumber.toString()=bf.slotNumber.toString() and c.linkNumber.toString()=bf.linkNumber.toString()");
 
 		ep.registerStatement(
 				"select b.bpFraction as value, 'BP '||b.kontext||'L'||b.linkNumber.toString()||'S'||b.slotNumber.toString() as label from pattern[every b=Backpressure]",
@@ -163,42 +187,82 @@ public class AdHocTapTest extends SwingTest {
 		createConclusionStream(ep, "DeadtimeAlarm", "(title String) copyfrom DeadtimeTmp ");
 
 		ep.createEPL("on FMMInput(fractionWarning>0 or fractionBusy>0) as fmi insert into DeadtimeAlarm select "
-				+ "'deadtime' as title, fmi.context as kontext, fmi.geoslot as geoslot, fmi.io as io where "
+				+ "'fmm deadtime' as title, fmi.context as kontext, fmi.geoslot as geoslot, fmi.io as io where "
 				+ "(select count(*) from DeadtimeAlarm.win:keepall() where kontext=fmi.context and geoslot=fmi.geoslot and io = fmi.io)=0");
 
-		ep.createEPL("on FMMInput(fractionWarning<0.000001, fractionBusy < 0.00001) as fmi delete from Conclusions as c where"
-				+ " c.kontext.toString() = fmi.context and c.io.toString() = fmi.io.toString() and c.geoslot.toString() = fmi.geoslot.toString()");
+		ep.createEPL("on FMMInput(fractionWarning=0, fractionBusy=0) as fmi delete from Conclusions as c where"
+				+ " c.title.toString()='fmm deadtime' and c.kontext.toString() = fmi.context and c.io.toString() = fmi.io.toString() and c.geoslot.toString() = fmi.geoslot.toString()");
 
 	}
 
 	/** KeepItSimple, for now **/
 	public void deadVsPressure(final EventProcessor ep) {
 
-		ep.createEPL("create window BpFeds.win:keepall() as (id String)");
-		ep.createEPL("create window DtFeds.win:keepall() as (id String)");
+		ep.createEPL("create window BpFeds.win:keepall() as (id Integer)");
+		ep.createEPL("create window DtFeds.win:keepall() as (id Integer, kontext String, geoslot Integer, io Integer)");
 
 		HwInfo.esperCheck();
 
-		/** naively hold bp-guilty feds **/
-		ep.createEPL("on pattern[every c=Conclusions(title='backpressure')] insert into BpFeds(id) select HwInfo.getInstance().getFedId(c.kontext, c.slotNumber.toString() ,c.linkNumber.toString() ,CmsHw.FRL).toString()");
-		ep.createEPL("on BackpressureFilter(bpFraction<0.000000000000001) as bf delete from BpFeds where id = HwInfo.getInstance().getFedId(bf.kontext, bf.slotNumber.toString(), bf.linkNumber, CmsHw.FRL).toString()");
-		ep.registerStatement("select count(*) as bpFeds from BpFeds", watchUpdater);
-
-		/** naively hold dt-guilty feds **/
-		ep.createEPL("on pattern[every c=Conclusions(title='deadtime')] insert into DtFeds(id) select"
-				+ " HwInfo.getInstance().getFedId(c.kontextm, c.geoslot.toString(), c.io.toString(), CmsHw.FMM, 'inserting DT').toString()");
-		ep.createEPL("on FMMInput(fractionWarning=0, fractionBusy=0) as fmi delete from DtFeds where" +
-				" id = HwInfo.getInstance().getFedId(fmi.context, fmi.geoslot.toString(), fmi.io, CmsHw.FMM, 'removing DT').toString()");
 		
-		ep.registerStatement("select count(*) as dtFeds from DtFeds", watchUpdater);
-		ep.registerStatement("select id as dtFedId from DtFeds", consoleLogger);
+		/** naively hold bp-guilty feds **/
+		ep.createEPL("on pattern[every c=BackpressureAlarm(title='frl backpressure')] insert into BpFeds(id) select HwInfo.getInstance().getFedId(c.kontext, c.slotNumber, c.linkNumber, CmsHw.FRL ) where " +
+				"HwInfo.getInstance().getFedId(c.kontext, c.slotNumber ,c.linkNumber ,CmsHw.FRL) is not null");
+		ep.registerStatement(
+				"on BackpressureFilter(bpFraction=0) as bf delete from BpFeds as bfeds where bfeds.id = HwInfo.getInstance().getFedId(bf.kontext, bf.slotNumber, bf.linkNumber, CmsHw.FRL )",
+				new UpdateListener() {
+					@Override
+					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+						console("BpFeds", "sth deleted!");
+					}
+				});
 
-		ep.registerStatement("select * from BpFeds as bpf, DtFeds as dtf where bpf.id=dtf.id", new UpdateListener() {
+		/** seems really hard to retrieve the set of Ids and use them to instantiate events, so we'll go around **/
+		ep.registerStatement("select c.* from pattern[every c=Conclusions(title='deadtime')] ", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-				console("backpressure FEDS", newEvents[0].getUnderlying().toString());
+				Map<?, ?> attrs = (Map<?, ?>) newEvents[0].getUnderlying();
+				Collection<Integer> fedIds = HwInfo.getInstance().getDeadtimeRelevantFedIds(attrs.get("kontext"), attrs.get("geoslot"), attrs.get("io"));
+				console("e(x)", fedIds.toString());
+				for (Integer id : fedIds) {
+					Map<Object, Object> map = new HashMap<Object, Object>();
+					map.put("id", id);
+					map.putAll(attrs);
+					ep.getRuntime().sendEvent(map, "DtFeds");
+				}
 			}
 		});
+		ep.createEPL("on FMMInput(fractionWarning=0, fractionBusy=0) as fmi delete from DtFeds as dtf where"
+				+ " kontext=fmi.context and dtf.geoslot=fmi.geoslot and dtf.io=fmi.io");
+
+		ep.registerStatement("select count(*) as dtFeds from DtFeds", watchUpdater);
+
+		ep.registerStatement("select id as dtFedId, kontext, geoslot, io from DtFeds", consoleLogger);
+
+		createConclusionStream(ep, "misFEDs", "(title String, fedId int)");
+		ep.createEPL("on pattern[ every bfed=BpFeds or dfed=DtFeds ] "
+				+ "insert into misFEDs select 'backpressure and deadtime' as title, bfed.id as fedId where bfed is not null and bfed.id in (select id from DtFeds) "
+				+ "insert into misFEDs select 'backpressure and deadtime' as title, dfed.id as fedId where dfed is not null and dfed.id in (select id from BpFeds) "
+				+ "insert into misFEDs select 'backpressure' as title, bfed.id as fedId where bfed is not null and bfed.id is not null "
+				+ "insert into misFEDs select 'deadime' as title, dfed.id as fedId where dfed is not null and dfed.id is not null");
+
+		// the best would be just to detect deletions :-( like "on rstream Sth"
+		ep.createEPL("on pattern[every timer:interval(1 msec)] delete from Conclusions as c where c.title.toString().contains('backpressure') and "
+				+ "c.fedId is not null and c.fedId.toString() not in (select id.toString() from BpFeds)");
+
+		ep.createEPL("on pattern[every timer:interval(1 msec)] delete from Conclusions as c where c.title.toString().contains('deadtime') and "
+				+ "c.fedId is not null and c.fedId.toString() not in (select id.toString() from DtFeds)");
+
+		ep.registerStatement("select id.toString() as id from DtFeds", new UpdateListener() {
+
+			@Override
+			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+				for (EventBean b : newEvents) {
+					console("DtFeds", b.getUnderlying().toString());
+				}
+			}
+		});
+
+		ep.registerStatement("select count(*) as suspiciousFeds from BpFeds as bpf, DtFeds as dtf where bpf.id=dtf.id", watchUpdater);
 
 		ep.registerStatement("select * from BpFeds", consoleLogger);
 		ep.registerStatement("select * from DtFeds", consoleLogger);
@@ -234,11 +298,15 @@ public class AdHocTapTest extends SwingTest {
 		/** and fill it periodically **/
 		ep.createEPL("on pattern[every timer:interval(" + (1000 / pace) + " msec)] insert into rates select sum(subrate) as rate from subrates");
 		ep.registerStatement("select prior(1,rate) as value, 'trigger rate' as label, lastEVMtimestamp as timestamp from rates", watchUpdater);
+		
+		/** avg rate needs to be updated only when there is sth to average **/
+		ep.createEPL("create window RatesLength.win:length(1) as (length long)");
+		ep.createEPL("on rates insert into RatesLength(length) select count(*) from rates");
 		/**
 		 * create variable for rate reference level (avg rate observed over last minute)
 		 **/
 		ep.createEPL("create variable double avgRate=0");
-		ep.createEPL("on rates set avgRate=Math.round((select avg(rate) from rates))");
+		ep.createEPL("on RatesLength(length>0) set avgRate = (select Math.round(avg(rate)) from rates)");
 
 		ep.registerStatement("select avgRate as value, lastEVMtimestamp as timestamp, 'avg rate' as label from rates", watchUpdater);
 

@@ -2,7 +2,10 @@ package ch.cern.cms.load.hwdb;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
+import java.util.logging.Logger;
 
 import rcms.common.db.DBConnectorException;
 import rcms.common.db.DBConnectorIF;
@@ -81,7 +84,25 @@ public final class HwInfo {
 	public FED getFedForFmm(String hostname, int geoSlot, int io) throws DBConnectorException {
 		FED fed = null;
 		FMMCrate fmmCrate = eqs.getFMMCrateByHostName(peelHostname(hostname));
+		if (fmmCrate != null) {
+			FMM fmm = fmmCrate.getFMMbyGeoSlot(geoSlot);
+			if (fmm != null) {
+				fed = fmm.getFEDByIO(io);
+			} else {
+				System.err.println("fmm is null");
+			}
+		} else {
+			System.err.println("crate is null");
+		}
 		return fed;
+	}
+
+	public FMM getFMM(String context, int geoSlot) {
+		FMMCrate crate = eqs.getFMMCrateByHostName(peelHostname(context));
+		if (crate != null) {
+			return crate.getFMMbyGeoSlot(geoSlot);
+		}
+		return null;
 	}
 
 	public FED getFed(String context, int geoSlotOrSlot, int linkOrIo, CmsHw seenByHw) {
@@ -103,7 +124,7 @@ public final class HwInfo {
 
 	public Integer getFedId(Object context, Object geoSlotOrSlot, Object linkOrIo, CmsHw seenByHw) {
 		if (context instanceof String && geoSlotOrSlot instanceof Integer && linkOrIo instanceof Integer) {
-			return getFedId((String) context, (Integer) geoSlotOrSlot, (Integer) linkOrIo, seenByHw);
+			return getFedId((String) context, ((Integer) geoSlotOrSlot).intValue(), ((Integer) linkOrIo).intValue(), seenByHw);
 		} else {
 			return getFedId(context.toString(), Integer.parseInt(geoSlotOrSlot.toString()), Integer.parseInt(linkOrIo.toString()), seenByHw);
 		}
@@ -115,6 +136,7 @@ public final class HwInfo {
 	}
 
 	public Integer getFedId(Object c, Object g, Object l, CmsHw s, String str) {
+		System.out.println("whattahell!");
 		Integer v = getFedId(c, g, l, s);
 		System.out.println(str + "(" + c + ", " + g + ", " + l + ", " + s + ") source id: " + v);
 		return v;
@@ -128,39 +150,60 @@ public final class HwInfo {
 		// eqs.getFMMFMMLinks()
 	}
 
-	/** the fed connected directly to fmm or one of its main feds **/
+	public FMM getSrcFMM(FMM fmm, int io) {
+		Set<FMMFMMLink> ffls = eqs.getFMMFMMLinks();
+		for (Iterator<FMMFMMLink> iter = ffls.iterator(); iter.hasNext();) {
+			FMMFMMLink link = iter.next();
+			if (link.getTargetFMMId() == fmm.getId() && link.getTargetFMMIO() == io) {
+				return eqs.getFMMs().get(link.getTargetFMMId());
+			}
+		}
+		return null;
+	}
+
 	public Collection<Integer> getDeadtimeRelevantFedIds(Object context, Object geoslot, Object io) {
 		Collection<Integer> ids = new HashSet<Integer>();
-		FED fed = getFed(context instanceof String ? (String) context : context.toString(),
-				geoslot instanceof Integer ? (Integer) geoslot : Integer.parseInt(geoslot.toString()),
-				io instanceof Integer ? (Integer) io : Integer.parseInt(io.toString()), CmsHw.FMM);
+		String c = toText(context);
+		int slot = toInt(geoslot);
+		int i = toInt(io);
+		FED fed = getFed(peelHostname(c), slot, i, CmsHw.FMM);
 		if (fed != null) {
-			if (fed.getSrcId() != null) {
-				ids.add(fed.getSrcId());
+			ids.add(fed.getSrcId());
+			for (FED mainFed : fed.getMainFEDs()) {
+				ids.add(mainFed.getSrcId());
 			}
-			if (fed.getMainFEDs() != null) {
-				for (FED mainFed : fed.getMainFEDs()) {
-					ids.add(mainFed.getSrcId());
-				}
-			}
-		} else {
-			FMMCrate crate = eqs.getFMMCrateByHostName(peelHostname(context.toString()));
-			if (crate != null) {
-				FMM fmm = crate.getFMMbyGeoSlot((Integer) geoslot);
-				for (FMMFMMLink link : eqs.getFMMFMMLinks()) {
-					if (link.getSourceFMMIO() == (Integer) io) {
-						System.out.println("is source for: " + link.toString());
-					} else if (link.getTargetFMMIO() == (Integer) io) {
-						System.out.println("is target for: " + link.toString());
-					}
-				}
-			}
-
 		}
 		return ids;
 	}
 
+	public void devoid(){
+		FED fed = null;
+		
+	}
+	
 	public static final String esperCheck() {
 		return "If you see this message than you have configured your class import correctly";
+	}
+
+	private Integer toInt(Object o) {
+		if (o == null) {
+			return null;
+		}
+		if (o instanceof Integer) {
+			return (Integer) o;
+		} else {
+			return Integer.parseInt(o.toString());
+		}
+	}
+
+	private String toText(Object o) {
+		if (o == null) {
+			return null;
+		}
+		if (o instanceof String) {
+			return (String) o;
+		} else {
+			return o.toString();
+		}
 	}
 }

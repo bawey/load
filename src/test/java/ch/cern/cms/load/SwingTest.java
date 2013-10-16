@@ -48,6 +48,7 @@ public class SwingTest {
 	private Runnable updater = new Runnable() {
 		@Override
 		public void run() {
+
 			if (!(watchVals.keySet().containsAll(watchLabels.keySet()) && watchLabels.keySet().containsAll(watchVals.keySet()))) {
 				throw new RuntimeException("Watched values contain a key not present among the labels or the other way round");
 			}
@@ -246,13 +247,13 @@ public class SwingTest {
 					}
 					for (String key : labelKeys) {
 						if (props.containsKey(key)) {
-							label = props.get(key).toString();
+							label = (props.get(key) != null) ? props.get(key).toString() : null;
 							break;
 						}
 					}
 					for (String key : valueKeys) {
 						if (props.containsKey(key)) {
-							value = props.get(key).toString();
+							value = (props.get(key) != null) ? props.get(key).toString() : null;
 							break;
 						}
 					}

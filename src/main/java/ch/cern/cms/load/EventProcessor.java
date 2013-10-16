@@ -2,6 +2,8 @@ package ch.cern.cms.load;
 
 import java.util.Map;
 
+import org.apache.log4j.Logger;
+
 import ch.cern.cms.load.hwdb.CmsHw;
 import ch.cern.cms.load.hwdb.HwInfo;
 
@@ -28,6 +30,8 @@ import com.espertech.esper.client.UpdateListener;
 
 public class EventProcessor {
 
+	private final static Logger logger = Logger.getLogger(EventProcessor.class);
+
 	protected EventProcessor() {
 		Configuration c = new Configuration();
 		c.addImport(HwInfo.class);
@@ -43,7 +47,9 @@ public class EventProcessor {
 	private EPAdministrator epAdmin;
 
 	public EPStatement createEPL(String eplStatement) {
-		return getAdministrator().createEPL(eplStatement);
+		EPStatement result = getAdministrator().createEPL(eplStatement);
+		logger.info("Statement created: " + result.getName() + " as: " + eplStatement);
+		return result;
 	}
 
 	public ConfigurationOperations getConfiguration() {
