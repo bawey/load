@@ -320,7 +320,6 @@ public class AdHocTapTest extends SwingTest {
 				});
 
 		ep.registerStatement("select count(*) as value, 'totalEVM' as label from EVM", watchUpdater);
-
 	}
 
 	@After

@@ -39,8 +39,6 @@ public class ExpertController {
 
 	}
 
-	private AbstractCheckSuite[] checkSuites = new AbstractCheckSuite[] { new FedCheckSuite() };
-
 	private final EventProcessor ep = new EventProcessor();
 
 	private final Set<ExpertGui> guis = new HashSet<ExpertGui>();
@@ -79,11 +77,6 @@ public class ExpertController {
 	 */
 	private void doDefaultSetup() {
 		registerTap(new OfflineFlashlistEventsTap(this, "/home/bawey/Workspace/load/dmp/offlineFL/"));
-		for (AbstractCheckSuite suite : this.checkSuites) {
-			suite.registerViews(ep);
-			suite.registerVariables(ep);
-			suite.registerLogic(ep);
-		}
 		openTaps();
 		attachViews();
 	}
