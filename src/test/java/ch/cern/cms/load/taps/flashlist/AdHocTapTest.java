@@ -27,7 +27,7 @@ public class AdHocTapTest extends SwingTest {
 	EventsTap tap41;
 	EventsTap tap42;
 	private double pace = 30;
-	HwInfo nn = HwInfo.getInstance();
+	HwInfo nn = null;// HwInfo.getInstance();
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -64,13 +64,13 @@ public class AdHocTapTest extends SwingTest {
 			ec.registerTap(tap42);
 
 			createConclusionStreams(ep);
-			task1(ep);
-			backpressure(ep);
-			deadtime(ep);
-			deadVsPressure(ep);
+			// task1(ep);
+			// backpressure(ep);
+			// deadtime(ep);
+			// deadVsPressure(ep);
 			performers(ep);
 			bx(ep);
-			registerSillyDebugs(ep);
+			// registerSillyDebugs(ep);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -278,6 +278,14 @@ public class AdHocTapTest extends SwingTest {
 
 	public void performers(EventProcessor ep) {
 		/** create window holding only the most-recent info per context **/
+
+		ep.registerStatement("select * from EventProcessorStatus", consoleLogger);
+		ep.registerStatement("select count(*) from EventProcessorStatus", watchUpdater);
+
+		if (2 > 1) {
+			return;
+		}
+
 		ep.createEPL("create window Reads.std:unique(name) as (name String, yield long, units int)");
 		ep.createEPL("insert into Reads select context as name, nbProcessed as yield, epMicroStateInt.size() as units from EventProcessorStatus");
 
@@ -288,8 +296,7 @@ public class AdHocTapTest extends SwingTest {
 				new UpdateListener() {
 					@Override
 					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-						System.out.println("groupstats updated: " + newEvents.length + ", old: "
-								+ (oldEvents != null ? oldEvents.length : "null"));
+						System.out.println("groupstats updated: " + newEvents.length + ", old: " + (oldEvents != null ? oldEvents.length : "null"));
 					}
 				});
 
@@ -300,8 +307,8 @@ public class AdHocTapTest extends SwingTest {
 				new UpdateListener() {
 					@Override
 					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-						System.out.println("adding overperformers(" + newEvents[0].get("units").getClass() + "): " + newEvents.length
-								+ ", under: " + newEvents[0].getUnderlying());
+						System.out.println("adding overperformers(" + newEvents[0].get("units").getClass() + "): " + newEvents.length + ", under: "
+								+ newEvents[0].getUnderlying());
 					}
 				});
 
@@ -386,7 +393,7 @@ public class AdHocTapTest extends SwingTest {
 	@Test
 	public void test() {
 		((OfflineFlashlistEventsTap) tap41).openStreams(ep, 600000);
-		((OfflineFlashlistEventsTap) tap42).openStreams(ep, 600000);
+		((OfflineFlashlistEventsTap) tap42).openStreams(ep);
 	}
 
 	public static final void main(String[] args) {
