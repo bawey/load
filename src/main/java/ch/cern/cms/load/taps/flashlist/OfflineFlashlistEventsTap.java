@@ -21,22 +21,71 @@ import ch.cern.cms.load.ExpertController;
 public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
 	private File rootFolder;
-	private double pace = 1;
+	private double pace = 100;
 	private long fastForward = 0;
-	private static final Logger lgr = Logger.getLogger(OfflineFlashlistEventsTap.class);
+	private static final Logger logger = Logger.getLogger(OfflineFlashlistEventsTap.class);
 
 	public OfflineFlashlistEventsTap(ExpertController expert, String path) {
-		super();
-		try {
-			rootFolder = new File(path);
-		} catch (Exception e) {
-			throw new RuntimeException("Path issue", e);
-		}
-		initWithExpert(expert);
+		super(expert, path);
+
+		job = new Runnable() {
+			@Override
+			public void run() {
+				try {
+					TreeMap<Long, List<File>> dumpFiles = new TreeMap<Long, List<File>>();
+					for (File d : rootFolder.listFiles()) {
+						if (d.isDirectory()) {
+							for (File f : d.listFiles()) {
+								try {
+									Long timestamp = Long.parseLong(f.getName());
+									if (!dumpFiles.containsKey(timestamp)) {
+										dumpFiles.put(timestamp, new LinkedList<File>());
+									}
+									dumpFiles.get(timestamp).add(f);
+								} catch (Exception e) {
+									logger.warn("Filename: " + f.getName() + " not a number. Ignoring.");
+								}
+							}
+						}
+					}
+					logger.info("Files ready for playback in " + dumpFiles.size() + " buckets");
+					Long lastTime = null;
+					long lastSkipped = 0;
+					logger.info("This tap is ready to start sending the events: " + rootFolder.getAbsolutePath());
+					for (Long time : dumpFiles.keySet()) {
+						if (fastForward > 0) {
+							if (lastSkipped != 0) {
+								fastForward -= (time - lastSkipped);
+							}
+							lastSkipped = time;
+							continue;
+						}
+						if (lastTime != null) {
+							try {
+								Thread.sleep((long) ((time - lastTime) / getPace()));
+							} catch (InterruptedException e) {
+								System.err.println("can't sleep");
+							}
+						}
+						for (File f : dumpFiles.get(time)) {
+							Flashlist fl = new Flashlist(new URL("file://" + f.getAbsolutePath()), f.getParentFile().getName());
+							logger.info("Sending event: " + f.getParentFile().getName());
+							fl.emit(ep);
+						}
+						lastTime = time;
+					}
+					logger.info("This tap is done sending events: " + rootFolder.getAbsolutePath());
+				} catch (Exception e) {
+					logger.error("Damn!", e);
+					throw new RuntimeException("things went wrong", e);
+				}
+			}
+		};
+
 	}
 
 	@Override
-	public void registerEventTypes(EventProcessor ep) {
+	public void registerEventTypes() {
 		try {
 			BufferedReader br = null;
 			for (File d : rootFolder.listFiles()) {
@@ -47,69 +96,22 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 						for (String field : br.readLine().split(",")) {
 							types.put(field, ExpertController.getInstance().getResolver().getFieldType(field, d.getName()));
 						}
-						lgr.info("registering event type: " + d.getName());
+						logger.info("registering event type: " + d.getName());
 						ep.getAdministrator().getConfiguration().addEventType(d.getName(), types);
 						break;
 					}
 				}
 			}
 		} catch (IOException e) {
-			lgr.fatal("IOException while registering event types", e);
+			logger.fatal("IOException while registering event types", e);
 			throw new RuntimeException("IOException while registering event types", e);
 		}
 	}
 
+	/** a method specific for this type of tap, hence not a part of super class **/
 	public void openStreams(EventProcessor ep, long skipFrames) {
 		this.fastForward = skipFrames;
-		openStreams(ep);
-	}
-
-	@Override
-	public void openStreams(EventProcessor eps) {
-		try {
-			TreeMap<Long, List<File>> dumpFiles = new TreeMap<Long, List<File>>();
-			for (File d : rootFolder.listFiles()) {
-				if (d.isDirectory()) {
-					for (File f : d.listFiles()) {
-						try {
-							Long timestamp = Long.parseLong(f.getName());
-							if (!dumpFiles.containsKey(timestamp)) {
-								dumpFiles.put(timestamp, new LinkedList<File>());
-							}
-							dumpFiles.get(timestamp).add(f);
-						} catch (Exception e) {
-							lgr.warn("Filename: " + f.getName() + " not a number. Ignoring.");
-						}
-					}
-				}
-			}
-			lgr.info("Files ready for playback in " + dumpFiles.size() + " buckets");
-			Long lastTime = null;
-			long lastSkipped = 0;
-			for (Long time : dumpFiles.keySet()) {
-				if (fastForward > 0) {
-					if (lastSkipped != 0) {
-						fastForward -= (time - lastSkipped);
-					}
-					lastSkipped = time;
-					continue;
-				}
-				if (lastTime != null) {
-					try {
-						Thread.sleep((long) ((time - lastTime) / getPace()));
-					} catch (InterruptedException e) {
-						System.err.println("can't sleep");
-					}
-				}
-				for (File f : dumpFiles.get(time)) {
-					Flashlist fl = new Flashlist(new URL("file://" + f.getAbsolutePath()), f.getParentFile().getName());
-					fl.emit(eps);
-				}
-				lastTime = time;
-			}
-		} catch (Exception e) {
-			throw new RuntimeException("things went wrong", e);
-		}
+		openStreams();
 	}
 
 	public synchronized double getPace() {
@@ -121,8 +123,12 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	}
 
 	@Override
-	public void setUp(ExpertController expert) {
-
+	public void preRegistrationSetup() {
+		try {
+			rootFolder = new File(path);
+		} catch (Exception e) {
+			throw new RuntimeException("Path issue", e);
+		}
 	}
 
 }

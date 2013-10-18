@@ -5,23 +5,16 @@ import ch.cern.cms.load.ExpertController;
 
 public class OnlineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
-	public OnlineFlashlistEventsTap(ExpertController expert, String path) {
-		super(expert);
-	}
-
 	@Override
-	public void registerEventTypes(EventProcessor eps) {
-		// TODO Auto-generated method stub
-	}
-
-	@Override
-	public void openStreams(EventProcessor eps) {
-		// TODO Auto-generated method stub
-	}
-
-	@Override
-	public void setUp(ExpertController expert) {
+	public void preRegistrationSetup() {
 		// TODO Auto-generated method stub
 		
 	}
+	@Override
+	public void registerEventTypes() {
+		// TODO Auto-generated method stub
+		
+	}
+
+
 }

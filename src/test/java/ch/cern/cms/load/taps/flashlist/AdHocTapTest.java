@@ -15,20 +15,37 @@ import ch.cern.cms.load.ExpertController;
 import ch.cern.cms.load.FieldTypeResolver;
 import ch.cern.cms.load.SwingTest;
 import ch.cern.cms.load.hwdb.HwInfo;
-import ch.cern.cms.load.taps.EventsTap;
+import ch.cern.cms.load.taps.AbstractEventsTap;
 
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.UpdateListener;
 
 public class AdHocTapTest extends SwingTest {
 
+	/**
+	 * SETUP FOR DEADTIME AND DB AND BACKPRESSURE - FULL
+	 */
 	ExpertController ec;
 	EventProcessor ep;
-	EventsTap tap41;
-	EventsTap tap42;
+	AbstractEventsTap tap41;
+	AbstractEventsTap tap42;
 	private double pace = 30;
-	HwInfo nn = null;// HwInfo.getInstance();
-
+	private long delay = 700000;
+	HwInfo nn =  HwInfo.getInstance();
+	
+	
+	/** 
+	 * SETUP FOR OUTPERFORMERS
+	 */
+//	ExpertController ec;
+//	EventProcessor ep;
+//	EventsTap tap41;
+//	EventsTap tap42;
+//	private double pace = 10;
+//	private long delay = 0; // 700000R
+//	HwInfo nn = null;// HwInfo.getInstance();
+	
+	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 	}
@@ -64,10 +81,10 @@ public class AdHocTapTest extends SwingTest {
 			ec.registerTap(tap42);
 
 			createConclusionStreams(ep);
-			// task1(ep);
-			// backpressure(ep);
-			// deadtime(ep);
-			// deadVsPressure(ep);
+			task1(ep);
+			backpressure(ep);
+			deadtime(ep);
+			deadVsPressure(ep);
 			performers(ep);
 			bx(ep);
 			// registerSillyDebugs(ep);
@@ -393,8 +410,8 @@ public class AdHocTapTest extends SwingTest {
 	@Test
 	public void test() {
 		console("default", "starting");
-		((OfflineFlashlistEventsTap) tap41).openStreams(ep, 700000);
-		((OfflineFlashlistEventsTap) tap42).openStreams(ep, 700000);
+		((OfflineFlashlistEventsTap) tap41).openStreams(ep, delay);
+		((OfflineFlashlistEventsTap) tap42).openStreams(ep, delay);
 	}
 
 	public static final void main(String[] args) {

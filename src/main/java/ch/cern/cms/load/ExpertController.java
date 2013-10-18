@@ -7,7 +7,7 @@ import ch.cern.cms.load.guis.DefaultGui;
 import ch.cern.cms.load.guis.ExpertGui;
 import ch.cern.cms.load.suites.AbstractCheckSuite;
 import ch.cern.cms.load.suites.FedCheckSuite;
-import ch.cern.cms.load.taps.EventsTap;
+import ch.cern.cms.load.taps.AbstractEventsTap;
 import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;
 
 /**
@@ -45,7 +45,7 @@ public class ExpertController {
 
 	private final Settings settings = new Settings();
 
-	private final Set<EventsTap> taps = new HashSet<EventsTap>();
+	private final Set<AbstractEventsTap> taps = new HashSet<AbstractEventsTap>();
 
 	private final FieldTypeResolver resolver = new FieldTypeResolver();
 
@@ -86,7 +86,7 @@ public class ExpertController {
 	}
 
 	private void openTaps() {
-		for (EventsTap et : taps) {
+		for (AbstractEventsTap et : taps) {
 			et.openStreams(ep);
 		}
 	}
@@ -94,7 +94,7 @@ public class ExpertController {
 	/**
 	 * Inserts into the list of known taps this should depend on some configuration later on or start-up choice
 	 */
-	public void registerTap(EventsTap tap) {
+	public void registerTap(AbstractEventsTap tap) {
 		taps.add(tap);
 	}
 
