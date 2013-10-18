@@ -94,6 +94,7 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 						br = new BufferedReader(new FileReader(f));
 						for (String field : br.readLine().split(",")) {
 							types.put(field, ExpertController.getInstance().getResolver().getFieldType(field, d.getName()));
+							logger.info("event: " + d.getName() + ", field: " + field);
 						}
 						logger.info("registering event type: " + d.getName());
 						ep.getAdministrator().getConfiguration().addEventType(d.getName(), types);

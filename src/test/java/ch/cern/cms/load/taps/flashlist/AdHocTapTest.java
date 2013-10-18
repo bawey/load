@@ -43,7 +43,7 @@ public class AdHocTapTest extends SwingTest {
 	AbstractEventsTap tap42;
 	private double pace = 1;
 	private long delay = 700000; // 700000R
-	HwInfo nn = null;// HwInfo.getInstance();
+	HwInfo hwInfo = null;// HwInfo.getInstance();
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -72,7 +72,7 @@ public class AdHocTapTest extends SwingTest {
 			ec.getResolver().setFieldType("nbProcessed", Long.class);
 			ep = ec.getEventProcessor();
 			ep.getConfiguration().addImport(HwInfo.class.getName());
-			FieldTypeResolver ftr = ec.getResolver();
+
 			tap41 = new OfflineFlashlistEventsTap(ec, "/home/bawey/Desktop/flashlists/41/");
 			((OfflineFlashlistEventsTap) tap41).setPace(pace);
 			ec.registerTap(tap41);
@@ -82,10 +82,10 @@ public class AdHocTapTest extends SwingTest {
 			ec.registerTap(tap42);
 
 			createConclusionStreams(ep);
+			rateJumps(ep);
 			performers(ep);
 			bx(ep);
-			if (nn != null) {
-				task1(ep);
+			if (hwInfo != null) {
 				backpressure(ep);
 				deadtime(ep);
 				deadVsPressure(ep);
@@ -314,22 +314,35 @@ public class AdHocTapTest extends SwingTest {
 
 		/** try doing something more elaborate for under-achievers **/
 		ep.createEPL("create window Underperformers.std:unique(name) as (name String, units int, yield long)");
-		ep.createEPL("on GroupStats as gs insert into Underperformers" + " select r.* from Reads as r where r.units=gs.units and r.yield < gs.avrg-2.79*gs.sdev");
+		ep.createEPL("on GroupStats as gs insert into Underperformers"
+				+ " select r.* from Reads as r where r.units=gs.units and r.yield < gs.avrg-2.79*gs.sdev");
 		ep.createEPL("on GroupStats as gs "
 				+ "delete from Underperformers u where gs.units = u.units and (select r.yield from Reads as r where r.name = u.name) > gs.avrg-2.79*gs.sdev");
 		ep.createEPL("on GroupStats as gs "
 				+ "delete from Overperformers o where gs.units = o.units and (select r.yield from Reads as r where r.name = o.name) < gs.avrg+2.79*gs.sdev");
 
 		ep.registerStatement("select * from GroupStats", consoleLogger);
-		ep.registerStatement("select 'under' as title, u.*, gs.avrg-2.79*gs.sdev as threshold from Underperformers as u, GroupStats as gs where u.units = gs.units", consoleLogger);
-		ep.registerStatement("select 'over' as title, o.*, gs.avrg+2.79*gs.sdev as threshold from Overperformers as o, GroupStats as gs where o.units = gs.units", consoleLogger);
-		
+		ep.registerStatement(
+				"select 'under' as title, u.*, gs.avrg-2.79*gs.sdev as threshold from Underperformers as u, GroupStats as gs where u.units = gs.units",
+				consoleLogger);
+		ep.registerStatement(
+				"select 'over' as title, o.*, gs.avrg+2.79*gs.sdev as threshold from Overperformers as o, GroupStats as gs where o.units = gs.units",
+				consoleLogger);
+
 		ep.registerStatement("select count(*) as underperformers from Underperformers", watchUpdater);
 		ep.registerStatement("select count(*) as overperformers from Overperformers", watchUpdater);
 
 	}
 
 	public void bx(EventProcessor ep) {
+		// measure how long the trigger rate has been 0
+
+		// if long enough, check bxNumber and triggerNumber of frlcontrollerLink + report on the ones standing out! (unless there is dynamic
+		// backPressureDyn on them)
+
+		ep.registerStatement("select 'rate stuck at 0 for 3 sec' as msg from pattern[every timer:interval(3 sec) and not rates(rate>0)]", consoleLogger);
+		
+		ep.registerStatement("on pattern[every timer:interval(3 sec) and not rates(rate>0)] select count(*) as bxNumbers from frlcontrollerLink.win:time(2 sec) group by bxNumber", consoleLogger);
 
 	}
 
@@ -337,7 +350,7 @@ public class AdHocTapTest extends SwingTest {
 	 * sum the rate in EVM as deltaN/deltaT for given session id
 	 */
 
-	public void task1(final EventProcessor ep) {
+	public void rateJumps(final EventProcessor ep) {
 		/**
 		 * creates a variable holding the SID associated with current PublicGlobal session
 		 **/
