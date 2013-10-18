@@ -2,6 +2,7 @@ package ch.cern.cms.load.taps.flashlist;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.After;
@@ -25,27 +26,25 @@ public class AdHocTapTest extends SwingTest {
 	/**
 	 * SETUP FOR DEADTIME AND DB AND BACKPRESSURE - FULL
 	 */
+	// ExpertController ec;
+	// EventProcessor ep;
+	// AbstractEventsTap tap41;
+	// AbstractEventsTap tap42;
+	// private double pace = 3;
+	// private long delay = 700000;
+	// HwInfo nn = HwInfo.getInstance();
+
+	/**
+	 * SETUP FOR OUTPERFORMERS
+	 */
 	ExpertController ec;
 	EventProcessor ep;
 	AbstractEventsTap tap41;
 	AbstractEventsTap tap42;
-	private double pace = 30;
-	private long delay = 700000;
-	HwInfo nn =  HwInfo.getInstance();
-	
-	
-	/** 
-	 * SETUP FOR OUTPERFORMERS
-	 */
-//	ExpertController ec;
-//	EventProcessor ep;
-//	EventsTap tap41;
-//	EventsTap tap42;
-//	private double pace = 10;
-//	private long delay = 0; // 700000R
-//	HwInfo nn = null;// HwInfo.getInstance();
-	
-	
+	private double pace = 1;
+	private long delay = 700000; // 700000R
+	HwInfo nn = null;// HwInfo.getInstance();
+
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 	}
@@ -69,6 +68,8 @@ public class AdHocTapTest extends SwingTest {
 			ec.getResolver().setFieldType("slotNumber", Integer.class);
 			ec.getResolver().setFieldType("geoslot", Integer.class);
 			ec.getResolver().setFieldType("io", Integer.class);
+			ec.getResolver().setFieldType("epMacroStateInt", List.class);
+			ec.getResolver().setFieldType("nbProcessed", Long.class);
 			ep = ec.getEventProcessor();
 			ep.getConfiguration().addImport(HwInfo.class.getName());
 			FieldTypeResolver ftr = ec.getResolver();
@@ -81,13 +82,16 @@ public class AdHocTapTest extends SwingTest {
 			ec.registerTap(tap42);
 
 			createConclusionStreams(ep);
-			task1(ep);
-			backpressure(ep);
-			deadtime(ep);
-			deadVsPressure(ep);
 			performers(ep);
 			bx(ep);
-			// registerSillyDebugs(ep);
+			if (nn != null) {
+				task1(ep);
+				backpressure(ep);
+				deadtime(ep);
+				deadVsPressure(ep);
+				registerSillyDebugs(ep);
+			}
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -296,53 +300,32 @@ public class AdHocTapTest extends SwingTest {
 	public void performers(EventProcessor ep) {
 		/** create window holding only the most-recent info per context **/
 
-		ep.registerStatement("select * from EventProcessorStatus", consoleLogger);
-		ep.registerStatement("select count(*) from EventProcessorStatus", watchUpdater);
-
-		if (2 > 1) {
-			return;
-		}
-
 		ep.createEPL("create window Reads.std:unique(name) as (name String, yield long, units int)");
-		ep.createEPL("insert into Reads select context as name, nbProcessed as yield, epMicroStateInt.size() as units from EventProcessorStatus");
+		ep.createEPL("insert into Reads select context as name, nbProcessed as yield, epMacroStateInt.size() as units from EventProcessorStatus");
 
 		ep.createEPL("create window GroupStats.std:unique(units) as (units int, avrg double, sdev double)");
 
-		ep.registerStatement(
-				"on pattern[every timer:interval(1000 msec)] insert into GroupStats select r.units as units, avg(r.yield) as avrg, stddev(r.yield) as sdev from Reads as r group by r.units",
-				new UpdateListener() {
-					@Override
-					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-						System.out.println("groupstats updated: " + newEvents.length + ", old: " + (oldEvents != null ? oldEvents.length : "null"));
-					}
-				});
+		ep.createEPL("on pattern[every timer:interval(1000 msec)] "
+				+ "insert into GroupStats select r.units as units, avg(r.yield) as avrg, stddev(r.yield) as sdev from Reads as r group by r.units");
 
 		/** simply put, count all **/
 		ep.createEPL("create window Overperformers.std:unique(name) as (name String, units int, yield long)");
-		ep.registerStatement(
-				"on GroupStats as gs insert into Overperformers select r.* from Reads as r where r.units=gs.units and r.yield > gs.avrg+3*gs.sdev",
-				new UpdateListener() {
-					@Override
-					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-						System.out.println("adding overperformers(" + newEvents[0].get("units").getClass() + "): " + newEvents.length + ", under: "
-								+ newEvents[0].getUnderlying());
-					}
-				});
+		ep.createEPL("on GroupStats as gs " + "insert into Overperformers select r.* from Reads as r where r.units=gs.units and r.yield > gs.avrg+2.79*gs.sdev");
 
-		/** try doing something more elaborate for underachievers **/
+		/** try doing something more elaborate for under-achievers **/
 		ep.createEPL("create window Underperformers.std:unique(name) as (name String, units int, yield long)");
-		ep.registerStatement(
-				"on GroupStats as gs insert into Underperformers select r.* from Reads as r where r.units=gs.units and r.yield < gs.avrg-3*gs.sdev",
-				new UpdateListener() {
-					@Override
-					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-						System.out.println("adding underperformers: " + newEvents.length);
-					}
-				});
-		ep.createEPL("on GroupStats as gs delete from Underperformers u where gs.units = u.units and (select r.yield from Reads as r where r.name = u.name) > gs.avrg-3*gs.sdev");
-		ep.createEPL("on GroupStats as gs delete from Overperformers o where gs.units = o.units and (select r.yield from Reads as r where r.name = o.name) < gs.avrg+3*gs.sdev");
+		ep.createEPL("on GroupStats as gs insert into Underperformers" + " select r.* from Reads as r where r.units=gs.units and r.yield < gs.avrg-2.79*gs.sdev");
+		ep.createEPL("on GroupStats as gs "
+				+ "delete from Underperformers u where gs.units = u.units and (select r.yield from Reads as r where r.name = u.name) > gs.avrg-2.79*gs.sdev");
+		ep.createEPL("on GroupStats as gs "
+				+ "delete from Overperformers o where gs.units = o.units and (select r.yield from Reads as r where r.name = o.name) < gs.avrg+2.79*gs.sdev");
 
-		ep.registerStatement("select * from Underperformers, Overperformers", consoleLogger);
+		ep.registerStatement("select * from GroupStats", consoleLogger);
+		ep.registerStatement("select 'under' as title, u.*, gs.avrg-2.79*gs.sdev as threshold from Underperformers as u, GroupStats as gs where u.units = gs.units", consoleLogger);
+		ep.registerStatement("select 'over' as title, o.*, gs.avrg+2.79*gs.sdev as threshold from Overperformers as o, GroupStats as gs where o.units = gs.units", consoleLogger);
+		
+		ep.registerStatement("select count(*) as underperformers from Underperformers", watchUpdater);
+		ep.registerStatement("select count(*) as overperformers from Overperformers", watchUpdater);
 
 	}
 
@@ -418,7 +401,6 @@ public class AdHocTapTest extends SwingTest {
 		try {
 			AdHocTapTest ahtt = new AdHocTapTest();
 			ahtt.setUp();
-			//((OfflineFlashlistEventsTap) ahtt.tap41).openStreams(ahtt.ep, 700000);
 			ahtt.test();
 		} catch (Exception e) {
 			e.printStackTrace();

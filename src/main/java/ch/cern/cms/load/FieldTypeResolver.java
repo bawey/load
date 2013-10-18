@@ -1,6 +1,9 @@
 package ch.cern.cms.load;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 
 public final class FieldTypeResolver extends HashMap<String, Class<?>> {
 	protected FieldTypeResolver() {
@@ -35,6 +38,14 @@ public final class FieldTypeResolver extends HashMap<String, Class<?>> {
 				return Long.parseLong(rawValue);
 			} else if (type.equals(Double.class)) {
 				return Double.parseDouble(rawValue);
+			} else if (Collection.class.isAssignableFrom(type)) {
+				rawValue = rawValue.substring(rawValue.indexOf('[') + 1, rawValue.lastIndexOf(']'));
+				String[] array = rawValue.split(",");
+				List<Object> list = new ArrayList<Object>(array.length);
+				for (String s : array) {
+					list.add(s);
+				}
+				return list;
 			}
 		}
 		return rawValue;
