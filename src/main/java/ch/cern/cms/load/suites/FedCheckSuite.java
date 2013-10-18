@@ -23,6 +23,7 @@ public class FedCheckSuite extends AbstractCheckSuite {
 
 	@Override
 	public void registerLogic() {
+		//epl("on " + Stream.levelZeroFM_dynamic + "(SID!=sid, FMURL like '%PublicGlobal%') as l set sid=l.SID");
 	}
 
 }
