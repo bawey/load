@@ -81,13 +81,9 @@ public class ExpertController {
 		attachViews();
 	}
 
-	private void consolePrint() {
-
-	}
-
 	private void openTaps() {
 		for (AbstractEventsTap et : taps) {
-			et.openStreams(ep);
+			et.openStreams();
 		}
 	}
 

@@ -24,8 +24,8 @@ public class OfflineFlashlistEventsTapTest {
 		expert = ExpertController.getInstance();
 		ep = ExpertController.getInstance().getEventProcessor();
 		tap = new OfflineFlashlistEventsTap(expert, "/home/bawey/Workspace/LOAD/dmp/offlineFL/");
-		tap.setUp(expert);
-		tap.registerEventTypes(ep);
+		tap.preRegistrationSetup();
+		tap.registerEventTypes();
 
 		ep.registerStatement("select * from thermometer", new UpdateListener() {
 			@Override
@@ -46,7 +46,7 @@ public class OfflineFlashlistEventsTapTest {
 
 	@Test
 	public void test() {
-		tap.openStreams(ep);
+		tap.openStreams();
 		Assert.assertTrue(thermometerCalled);
 		Assert.assertTrue(positionCalled);
 	}

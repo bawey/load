@@ -81,7 +81,6 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 				}
 			}
 		};
-
 	}
 
 	@Override

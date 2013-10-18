@@ -52,9 +52,9 @@ public class FlashlistTest {
 		ftr.setFieldType("vowels", Integer.class);
 		ftr.setFieldType("consonants", Double.class);
 		/** prepare a dummy FlashlistEventsTap **/
-		AbstractFlashlistEventsTap tap = new AbstractFlashlistEventsTap(ctl) {
+		AbstractFlashlistEventsTap tap = new AbstractFlashlistEventsTap(ctl, null) {
 			@Override
-			public void registerEventTypes(EventProcessor eps) {
+			public void registerEventTypes() {
 				Map<String, Object> def = new HashMap<String, Object>();
 				for (String f : fields) {
 					def.put(f, ExpertController.getInstance().getResolver().getFieldType(f, STREAM_NAME));
@@ -63,22 +63,14 @@ public class FlashlistTest {
 			}
 
 			@Override
-			public void openStreams(EventProcessor eps) {
+			public void preRegistrationSetup() {
 				// TODO Auto-generated method stub
 			}
 
-			@Override
-			public void setUp(ExpertController expert) {
-				// TODO Auto-generated method stub
-				
-			}
 		};
-		tap.setUp(ctl);
+		tap.preRegistrationSetup();
 
-		tap.registerEventTypes(ctl.getEventProcessor());
-		// empty anyway
-		tap.openStreams(ctl.getEventProcessor());
-
+		tap.registerEventTypes();
 		ctl.getEventProcessor().registerStatement("select * from " + STREAM_NAME + " where vowels>1", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
