@@ -1,7 +1,6 @@
 package ch.cern.cms.load.suites;
 
 import ch.cern.cms.load.EventProcessor;
-import ch.cern.cms.load.cep.streams.Stream;
 
 public class FedCheckSuite extends AbstractCheckSuite {
 
@@ -24,7 +23,7 @@ public class FedCheckSuite extends AbstractCheckSuite {
 
 	@Override
 	public void registerLogic() {
-		epl("on " + Stream.levelZeroFM_dynamic + "(SID!=sid, FMURL like '%PublicGlobal%') as l set sid=l.SID");
+		//epl("on " + Stream.levelZeroFM_dynamic + "(SID!=sid, FMURL like '%PublicGlobal%') as l set sid=l.SID");
 	}
 
 }

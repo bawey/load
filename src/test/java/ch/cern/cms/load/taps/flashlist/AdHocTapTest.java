@@ -24,7 +24,8 @@ public class AdHocTapTest extends SwingTest {
 
 	ExpertController ec;
 	EventProcessor ep;
-	EventsTap tap;
+	EventsTap tap41;
+	EventsTap tap42;
 	private double pace = 30;
 	HwInfo nn = HwInfo.getInstance();
 
@@ -54,14 +55,21 @@ public class AdHocTapTest extends SwingTest {
 			ep = ec.getEventProcessor();
 			ep.getConfiguration().addImport(HwInfo.class.getName());
 			FieldTypeResolver ftr = ec.getResolver();
-			tap = new OfflineFlashlistEventsTap(ec, "/home/bawey/Desktop/flashlists/41/");
-			((OfflineFlashlistEventsTap) tap).setPace(pace);
-			ec.registerTap(tap);
+			tap41 = new OfflineFlashlistEventsTap(ec, "/home/bawey/Desktop/flashlists/41/");
+			((OfflineFlashlistEventsTap) tap41).setPace(pace);
+			ec.registerTap(tap41);
+
+			tap42 = new OfflineFlashlistEventsTap(ec, "/home/bawey/Desktop/flashlists/42/");
+			((OfflineFlashlistEventsTap) tap42).setPace(pace);
+			ec.registerTap(tap42);
+
 			createConclusionStreams(ep);
 			task1(ep);
 			backpressure(ep);
 			deadtime(ep);
 			deadVsPressure(ep);
+			performers(ep);
+			bx(ep);
 			registerSillyDebugs(ep);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -165,8 +173,8 @@ public class AdHocTapTest extends SwingTest {
 				+ " insert into Backpressure select bf.*" + " output all");
 		/** cancel the associated alarm when bpFraction goes back down for a triplet **/
 		ep.createEPL("on BackpressureFilter(bpFraction=0) as bf delete from Backpressure b where bf.linkNumber = b.linkNumber and bf.slotNumber = b.slotNumber and bf.kontext=b.kontext");
-		ep.createEPL("on BackpressureFilter(bpFraction=0) as bf delete from Conclusions c where " +
-				"c.title.toString()='frl backpressure' and c.kontext.toString()=bf.kontext.toString() and c.slotNumber.toString()=bf.slotNumber.toString() and c.linkNumber.toString()=bf.linkNumber.toString()");
+		ep.createEPL("on BackpressureFilter(bpFraction=0) as bf delete from Conclusions c where "
+				+ "c.title.toString()='frl backpressure' and c.kontext.toString()=bf.kontext.toString() and c.slotNumber.toString()=bf.slotNumber.toString() and c.linkNumber.toString()=bf.linkNumber.toString()");
 
 		ep.registerStatement(
 				"select b.bpFraction as value, 'BP '||b.kontext||'L'||b.linkNumber.toString()||'S'||b.slotNumber.toString() as label from pattern[every b=Backpressure]",
@@ -203,10 +211,9 @@ public class AdHocTapTest extends SwingTest {
 
 		HwInfo.esperCheck();
 
-		
 		/** naively hold bp-guilty feds **/
-		ep.createEPL("on pattern[every c=BackpressureAlarm(title='frl backpressure')] insert into BpFeds(id) select HwInfo.getInstance().getFedId(c.kontext, c.slotNumber, c.linkNumber, CmsHw.FRL ) where " +
-				"HwInfo.getInstance().getFedId(c.kontext, c.slotNumber ,c.linkNumber ,CmsHw.FRL) is not null");
+		ep.createEPL("on pattern[every c=BackpressureAlarm(title='frl backpressure')] insert into BpFeds(id) select HwInfo.getInstance().getFedId(c.kontext, c.slotNumber, c.linkNumber, CmsHw.FRL ) where "
+				+ "HwInfo.getInstance().getFedId(c.kontext, c.slotNumber ,c.linkNumber ,CmsHw.FRL) is not null");
 		ep.registerStatement(
 				"on BackpressureFilter(bpFraction=0) as bf delete from BpFeds as bfeds where bfeds.id = HwInfo.getInstance().getFedId(bf.kontext, bf.slotNumber, bf.linkNumber, CmsHw.FRL )",
 				new UpdateListener() {
@@ -269,6 +276,56 @@ public class AdHocTapTest extends SwingTest {
 
 	}
 
+	public void performers(EventProcessor ep) {
+		/** create window holding only the most-recent info per context **/
+		ep.createEPL("create window Reads.std:unique(name) as (name String, yield long, units int)");
+		ep.createEPL("insert into Reads select context as name, nbProcessed as yield, epMicroStateInt.size() as units from EventProcessorStatus");
+
+		ep.createEPL("create window GroupStats.std:unique(units) as (units int, avrg double, sdev double)");
+
+		ep.registerStatement(
+				"on pattern[every timer:interval(1000 msec)] insert into GroupStats select r.units as units, avg(r.yield) as avrg, stddev(r.yield) as sdev from Reads as r group by r.units",
+				new UpdateListener() {
+					@Override
+					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+						System.out.println("groupstats updated: " + newEvents.length + ", old: "
+								+ (oldEvents != null ? oldEvents.length : "null"));
+					}
+				});
+
+		/** simply put, count all **/
+		ep.createEPL("create window Overperformers.std:unique(name) as (name String, units int, yield long)");
+		ep.registerStatement(
+				"on GroupStats as gs insert into Overperformers select r.* from Reads as r where r.units=gs.units and r.yield > gs.avrg+3*gs.sdev",
+				new UpdateListener() {
+					@Override
+					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+						System.out.println("adding overperformers(" + newEvents[0].get("units").getClass() + "): " + newEvents.length
+								+ ", under: " + newEvents[0].getUnderlying());
+					}
+				});
+
+		/** try doing something more elaborate for underachievers **/
+		ep.createEPL("create window Underperformers.std:unique(name) as (name String, units int, yield long)");
+		ep.registerStatement(
+				"on GroupStats as gs insert into Underperformers select r.* from Reads as r where r.units=gs.units and r.yield < gs.avrg-3*gs.sdev",
+				new UpdateListener() {
+					@Override
+					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+						System.out.println("adding underperformers: " + newEvents.length);
+					}
+				});
+		ep.createEPL("on GroupStats as gs delete from Underperformers u where gs.units = u.units and (select r.yield from Reads as r where r.name = u.name) > gs.avrg-3*gs.sdev");
+		ep.createEPL("on GroupStats as gs delete from Overperformers o where gs.units = o.units and (select r.yield from Reads as r where r.name = o.name) < gs.avrg+3*gs.sdev");
+
+		ep.registerStatement("select * from Underperformers, Overperformers", consoleLogger);
+
+	}
+
+	public void bx(EventProcessor ep) {
+
+	}
+
 	/**
 	 * sum the rate in EVM as deltaN/deltaT for given session id
 	 */
@@ -298,7 +355,7 @@ public class AdHocTapTest extends SwingTest {
 		/** and fill it periodically **/
 		ep.createEPL("on pattern[every timer:interval(" + (1000 / pace) + " msec)] insert into rates select sum(subrate) as rate from subrates");
 		ep.registerStatement("select prior(1,rate) as value, 'trigger rate' as label, lastEVMtimestamp as timestamp from rates", watchUpdater);
-		
+
 		/** avg rate needs to be updated only when there is sth to average **/
 		ep.createEPL("create window RatesLength.win:length(1) as (length long)");
 		ep.createEPL("on rates insert into RatesLength(length) select count(*) from rates");
@@ -328,14 +385,15 @@ public class AdHocTapTest extends SwingTest {
 
 	@Test
 	public void test() {
-		((OfflineFlashlistEventsTap) tap).openStreams(ep, 600000);
+		((OfflineFlashlistEventsTap) tap41).openStreams(ep, 600000);
+		((OfflineFlashlistEventsTap) tap42).openStreams(ep, 600000);
 	}
 
 	public static final void main(String[] args) {
 		try {
 			AdHocTapTest ahtt = new AdHocTapTest();
 			ahtt.setUp();
-			((OfflineFlashlistEventsTap) ahtt.tap).openStreams(ahtt.ep, 700000);
+			((OfflineFlashlistEventsTap) ahtt.tap41).openStreams(ahtt.ep, 700000);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
