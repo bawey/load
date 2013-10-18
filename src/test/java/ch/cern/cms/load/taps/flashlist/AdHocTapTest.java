@@ -392,15 +392,17 @@ public class AdHocTapTest extends SwingTest {
 
 	@Test
 	public void test() {
-		((OfflineFlashlistEventsTap) tap41).openStreams(ep, 600000);
-		((OfflineFlashlistEventsTap) tap42).openStreams(ep);
+		console("default", "starting");
+		((OfflineFlashlistEventsTap) tap41).openStreams(ep, 700000);
+		((OfflineFlashlistEventsTap) tap42).openStreams(ep, 700000);
 	}
 
 	public static final void main(String[] args) {
 		try {
 			AdHocTapTest ahtt = new AdHocTapTest();
 			ahtt.setUp();
-			((OfflineFlashlistEventsTap) ahtt.tap41).openStreams(ahtt.ep, 700000);
+			//((OfflineFlashlistEventsTap) ahtt.tap41).openStreams(ahtt.ep, 700000);
+			ahtt.test();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
