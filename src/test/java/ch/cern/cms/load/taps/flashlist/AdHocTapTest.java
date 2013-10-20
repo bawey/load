@@ -1,6 +1,7 @@
 package ch.cern.cms.load.taps.flashlist;
 
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,13 +14,13 @@ import org.junit.Test;
 
 import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.ExpertController;
-import ch.cern.cms.load.FieldTypeResolver;
 import ch.cern.cms.load.SwingTest;
 import ch.cern.cms.load.hwdb.HwInfo;
 import ch.cern.cms.load.taps.AbstractEventsTap;
 
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.UpdateListener;
+import com.espertech.esper.event.map.MapEventBean;
 
 public class AdHocTapTest extends SwingTest {
 
@@ -70,6 +71,8 @@ public class AdHocTapTest extends SwingTest {
 			ec.getResolver().setFieldType("io", Integer.class);
 			ec.getResolver().setFieldType("epMacroStateInt", List.class);
 			ec.getResolver().setFieldType("nbProcessed", Long.class);
+			ec.getResolver().setFieldType("bxNumber", Long.class);
+			ec.getResolver().setFieldType("triggerNumber", Long.class);
 			ep = ec.getEventProcessor();
 			ep.getConfiguration().addImport(HwInfo.class.getName());
 
@@ -110,7 +113,8 @@ public class AdHocTapTest extends SwingTest {
 		ep.registerStatement("select FED_INFO_STR as value, 'FED INFO MAP' as label from EVM as evm", watchUpdater);
 		ep.registerStatement("select count(*) as conclusions from Conclusions", watchUpdater);
 		ep.registerStatement("select count(*) as bpFeds from BpFeds", watchUpdater);
-		// ep.registerStatement("select rstream count(*) as ppFedsRemoved from BpFeds", watchUpdater);
+		// ep.registerStatement("select rstream count(*) as ppFedsRemoved from BpFeds",
+		// watchUpdater);
 
 		ep.registerStatement("select irstream * from BpFeds", new UpdateListener() {
 
@@ -187,12 +191,16 @@ public class AdHocTapTest extends SwingTest {
 		createConclusionStream(ep, "BackpressureAlarm", "(title String) copyfrom BackpressureFilter");
 
 		/**
-		 * split the BackpressureFilter and insert into BackpressureAlarms and/or Backpressure when necessary
+		 * split the BackpressureFilter and insert into BackpressureAlarms
+		 * and/or Backpressure when necessary
 		 **/
 		ep.createEPL("on BackpressureFilter(bpFraction>0) as bf "
 				+ "insert into BackpressureAlarm select 'frl backpressure' as title, bf.kontext as kontext, bf.linkNumber as linkNumber, bf.slotNumber as slotNumber where (select count(*) as cnt from Backpressure where kontext=bf.kontext and linkNumber=bf.linkNumber and slotNumber=bf.slotNumber)=0"
 				+ " insert into Backpressure select bf.*" + " output all");
-		/** cancel the associated alarm when bpFraction goes back down for a triplet **/
+		/**
+		 * cancel the associated alarm when bpFraction goes back down for a
+		 * triplet
+		 **/
 		ep.createEPL("on BackpressureFilter(bpFraction=0) as bf delete from Backpressure b where bf.linkNumber = b.linkNumber and bf.slotNumber = b.slotNumber and bf.kontext=b.kontext");
 		ep.createEPL("on BackpressureFilter(bpFraction=0) as bf delete from Conclusions c where "
 				+ "c.title.toString()='frl backpressure' and c.kontext.toString()=bf.kontext.toString() and c.slotNumber.toString()=bf.slotNumber.toString() and c.linkNumber.toString()=bf.linkNumber.toString()");
@@ -244,12 +252,16 @@ public class AdHocTapTest extends SwingTest {
 					}
 				});
 
-		/** seems really hard to retrieve the set of Ids and use them to instantiate events, so we'll go around **/
+		/**
+		 * seems really hard to retrieve the set of Ids and use them to
+		 * instantiate events, so we'll go around
+		 **/
 		ep.registerStatement("select c.* from pattern[every c=Conclusions(title='deadtime')] ", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 				Map<?, ?> attrs = (Map<?, ?>) newEvents[0].getUnderlying();
-				Collection<Integer> fedIds = HwInfo.getInstance().getDeadtimeRelevantFedIds(attrs.get("kontext"), attrs.get("geoslot"), attrs.get("io"));
+				Collection<Integer> fedIds = HwInfo.getInstance().getDeadtimeRelevantFedIds(attrs.get("kontext"),
+						attrs.get("geoslot"), attrs.get("io"));
 				console("e(x)", fedIds.toString());
 				for (Integer id : fedIds) {
 					Map<Object, Object> map = new HashMap<Object, Object>();
@@ -290,7 +302,8 @@ public class AdHocTapTest extends SwingTest {
 			}
 		});
 
-		ep.registerStatement("select count(*) as suspiciousFeds from BpFeds as bpf, DtFeds as dtf where bpf.id=dtf.id", watchUpdater);
+		ep.registerStatement("select count(*) as suspiciousFeds from BpFeds as bpf, DtFeds as dtf where bpf.id=dtf.id",
+				watchUpdater);
 
 		ep.registerStatement("select * from BpFeds", consoleLogger);
 		ep.registerStatement("select * from DtFeds", consoleLogger);
@@ -298,6 +311,8 @@ public class AdHocTapTest extends SwingTest {
 	}
 
 	public void performers(EventProcessor ep) {
+		ep.createEPL("create variable Double tolerance = 2.79");
+
 		/** create window holding only the most-recent info per context **/
 
 		ep.createEPL("create window Reads.std:unique(name) as (name String, yield long, units int)");
@@ -310,23 +325,24 @@ public class AdHocTapTest extends SwingTest {
 
 		/** simply put, count all **/
 		ep.createEPL("create window Overperformers.std:unique(name) as (name String, units int, yield long)");
-		ep.createEPL("on GroupStats as gs " + "insert into Overperformers select r.* from Reads as r where r.units=gs.units and r.yield > gs.avrg+2.79*gs.sdev");
+		ep.createEPL("on GroupStats as gs "
+				+ "insert into Overperformers select r.* from Reads as r where r.units=gs.units and r.yield > gs.avrg+tolerance*gs.sdev");
 
 		/** try doing something more elaborate for under-achievers **/
 		ep.createEPL("create window Underperformers.std:unique(name) as (name String, units int, yield long)");
 		ep.createEPL("on GroupStats as gs insert into Underperformers"
-				+ " select r.* from Reads as r where r.units=gs.units and r.yield < gs.avrg-2.79*gs.sdev");
+				+ " select r.* from Reads as r where r.units=gs.units and r.yield < gs.avrg-tolerance*gs.sdev");
 		ep.createEPL("on GroupStats as gs "
-				+ "delete from Underperformers u where gs.units = u.units and (select r.yield from Reads as r where r.name = u.name) > gs.avrg-2.79*gs.sdev");
+				+ "delete from Underperformers u where gs.units = u.units and (select r.yield from Reads as r where r.name = u.name) > gs.avrg-tolerance*gs.sdev");
 		ep.createEPL("on GroupStats as gs "
-				+ "delete from Overperformers o where gs.units = o.units and (select r.yield from Reads as r where r.name = o.name) < gs.avrg+2.79*gs.sdev");
+				+ "delete from Overperformers o where gs.units = o.units and (select r.yield from Reads as r where r.name = o.name) < gs.avrg+tolerance*gs.sdev");
 
 		ep.registerStatement("select * from GroupStats", consoleLogger);
 		ep.registerStatement(
-				"select 'under' as title, u.*, gs.avrg-2.79*gs.sdev as threshold from Underperformers as u, GroupStats as gs where u.units = gs.units",
+				"select 'under' as title, u.*, gs.avrg-tolerance*gs.sdev as threshold from Underperformers as u, GroupStats as gs where u.units = gs.units",
 				consoleLogger);
 		ep.registerStatement(
-				"select 'over' as title, o.*, gs.avrg+2.79*gs.sdev as threshold from Overperformers as o, GroupStats as gs where o.units = gs.units",
+				"select 'over' as title, o.*, gs.avrg+tolerance*gs.sdev as threshold from Overperformers as o, GroupStats as gs where o.units = gs.units",
 				consoleLogger);
 
 		ep.registerStatement("select count(*) as underperformers from Underperformers", watchUpdater);
@@ -337,12 +353,52 @@ public class AdHocTapTest extends SwingTest {
 	public void bx(EventProcessor ep) {
 		// measure how long the trigger rate has been 0
 
-		// if long enough, check bxNumber and triggerNumber of frlcontrollerLink + report on the ones standing out! (unless there is dynamic
+		// if long enough, check bxNumber and triggerNumber of frlcontrollerLink
+		// + report on the ones standing out! (unless there is dynamic
 		// backPressureDyn on them)
 
-		ep.registerStatement("select 'rate stuck at 0 for 3 sec' as msg from pattern[every timer:interval(3 sec) and not rates(rate>0)]", consoleLogger);
-		
-		ep.registerStatement("on pattern[every timer:interval(3 sec) and not rates(rate>0)] select count(*) as bxNumbers from frlcontrollerLink.win:time(2 sec) group by bxNumber", consoleLogger);
+		ep.createEPL("create variable int stuckTime = 2");
+		ep.registerStatement(
+				"select 'rate stuck at 0 for ' || stuckTime.toString() ||' sec' as msg from pattern[every timer:interval(stuckTime sec) and not rates(rate>0)]",
+				consoleLogger);
+
+		ep.createEPL("create window frlBxConsistency.std:unique(bxNumber).win:time(stuckTime sec) as (bxNumber Long, cnt Long)");
+		ep.createEPL("create window frlTrgConsistency.std:unique(trgNumber).win:time(stuckTime sec) as (trgNumber Long, cnt Long)");
+
+		ep.createEPL("insert into frlBxConsistency select bxNumber, count(*) as cnt "
+				+ "from frlcontrollerLink.win:time(stuckTime sec) group by bxNumber");
+		ep.createEPL("insert into frlTrgConsistency select triggerNumber as trgNumber, count(*) as cnt "
+				+ "from frlcontrollerLink.win:time(stuckTime sec) group by triggerNumber");
+
+		// ep.createEPL("on frlcontrollerLink ");
+
+		ep.registerStatement("select count(*) as bxNumbers from frlBxConsistency", watchUpdater);
+		ep.registerStatement("select count(*) as trgNumbers from  frlTrgConsistency", watchUpdater);
+		// ep.registerStatement("select ", watchUpdater);
+
+		ep.registerStatement("select * from frlBxConsistency", new UpdateListener() {
+
+			@Override
+			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+				console("insertedBx", newEvents[0].getUnderlying().toString() + " at: " + new Date().toString());
+			}
+		});
+
+		ep.registerStatement("on frlBxConsistency select * from frlBxConsistency", new UpdateListener() {
+			@Override
+			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+				StringBuilder sb = new StringBuilder();
+				sb.append("new frame: \n");
+				for (EventBean b : newEvents) {
+					sb.append(((MapEventBean) b).get("stream_1").toString()).append("\n");
+				}
+				console("frlBxConsistency", sb.toString());
+			}
+		});
+
+		// ep.registerStatement("on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] "
+		// + "select count(*) as bxNumbers from frlcontrollerLink",
+		// consoleLogger);
 
 	}
 
@@ -352,19 +408,23 @@ public class AdHocTapTest extends SwingTest {
 
 	public void rateJumps(final EventProcessor ep) {
 		/**
-		 * creates a variable holding the SID associated with current PublicGlobal session
+		 * creates a variable holding the SID associated with current
+		 * PublicGlobal session
 		 **/
 		ep.createEPL("create variable String sid = ''");
 		ep.createEPL("on levelZeroFM_dynamic(SID!=sid, FMURL like '%PublicGlobal%') as l set sid=l.SID");
 
 		/**
-		 * create for EVM data. Keep only the most recent record per context-lid pair. Also, discard events older than 30 seconds
+		 * create for EVM data. Keep only the most recent record per context-lid
+		 * pair. Also, discard events older than 30 seconds
 		 **/
-		ep.createEPL("create window subrates.std:unique(url,lid).win:time(" + 30000 / pace + " msec) as (subrate double, url String, lid String)");
+		ep.createEPL("create window subrates.std:unique(url,lid).win:time(" + 30000 / pace
+				+ " msec) as (subrate double, url String, lid String)");
 
 		ep.createEPL("insert into subrates select deltaN/deltaT as subrate, context as url, lid from EVM where sessionid=sid and deltaT>0");
 		/**
-		 * keep the last relevant subrate timestamp in a variable TODO: might arrive out-of-order!
+		 * keep the last relevant subrate timestamp in a variable TODO: might
+		 * arrive out-of-order!
 		 **/
 		ep.createEPL("create variable String lastEVMtimestamp = ''");
 		ep.createEPL("on EVM(sessionid=sid) as evm set lastEVMtimestamp=evm.timestamp");
@@ -373,21 +433,26 @@ public class AdHocTapTest extends SwingTest {
 		/** create a window to contain observed rates **/
 		ep.createEPL("create window rates.win:time(" + 60000 / pace + " sec) as (rate double)");
 		/** and fill it periodically **/
-		ep.createEPL("on pattern[every timer:interval(" + (1000 / pace) + " msec)] insert into rates select sum(subrate) as rate from subrates");
-		ep.registerStatement("select prior(1,rate) as value, 'trigger rate' as label, lastEVMtimestamp as timestamp from rates", watchUpdater);
+		ep.createEPL("on pattern[every timer:interval(" + (1000 / pace)
+				+ " msec)] insert into rates select sum(subrate) as rate from subrates");
+		ep.registerStatement("select prior(1,rate) as value, 'trigger rate' as label, lastEVMtimestamp as timestamp from rates",
+				watchUpdater);
 
 		/** avg rate needs to be updated only when there is sth to average **/
 		ep.createEPL("create window RatesLength.win:length(1) as (length long)");
 		ep.createEPL("on rates insert into RatesLength(length) select count(*) from rates");
 		/**
-		 * create variable for rate reference level (avg rate observed over last minute)
+		 * create variable for rate reference level (avg rate observed over last
+		 * minute)
 		 **/
 		ep.createEPL("create variable double avgRate=0");
 		ep.createEPL("on RatesLength(length>0) set avgRate = (select Math.round(avg(rate)) from rates)");
 
-		ep.registerStatement("select avgRate as value, lastEVMtimestamp as timestamp, 'avg rate' as label from rates", watchUpdater);
+		ep.registerStatement("select avgRate as value, lastEVMtimestamp as timestamp, 'avg rate' as label from rates",
+				watchUpdater);
 
-		ep.registerStatement("select avgRate, a.rate, lastEVMtimestamp as timestamp from pattern[every a=rates(rate>(avgRate*1.3) or rate < (avgRate*0.7))]",
+		ep.registerStatement(
+				"select avgRate, a.rate, lastEVMtimestamp as timestamp from pattern[every a=rates(rate>(avgRate*1.3) or rate < (avgRate*0.7))]",
 				new UpdateListener() {
 					@Override
 					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
