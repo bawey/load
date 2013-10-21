@@ -1,6 +1,7 @@
 package ch.cern.cms.load;
 
 import java.util.HashSet;
+import java.util.Properties;
 import java.util.Set;
 
 import ch.cern.cms.load.guis.DefaultGui;
@@ -92,6 +93,17 @@ public class ExpertController {
 	 */
 	public void registerTap(AbstractEventsTap tap) {
 		taps.add(tap);
+	}
+	
+	private void setUpSOCKSProxy() {
+		System.out.println("Setting up SOCKS proxy ...");
+
+		Properties sysProperties = System.getProperties();
+
+		// Specify proxy settings
+		sysProperties.put("socksProxyHost", "127.0.0.1");
+		sysProperties.put("socksProxyPort", "1080");
+		sysProperties.put("proxySet", "true");
 	}
 
 }
