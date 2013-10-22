@@ -20,6 +20,8 @@ import ch.cern.cms.load.ExpertController;
 
 public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
+	public static final String SETTINGS_KEY_FLASHLIST_DIR = "offlineFlashlistDir";
+	
 	private File rootFolder;
 	private double pace = 100;
 	private long fastForward = 0;
@@ -108,18 +110,16 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 		}
 	}
 
-	/** a method specific for this type of tap, hence not a part of super class **/
-	public void openStreams(EventProcessor ep, long skipFrames) {
-		this.fastForward = skipFrames;
-		openStreams();
-	}
-
 	public synchronized double getPace() {
 		return pace;
 	}
 
 	public synchronized void setPace(double pace) {
 		this.pace = pace;
+	}
+	
+	public synchronized void setPosition(long position){
+		this.fastForward = position;
 	}
 
 	@Override
@@ -130,5 +130,5 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 			throw new RuntimeException("Path issue", e);
 		}
 	}
-
+	
 }

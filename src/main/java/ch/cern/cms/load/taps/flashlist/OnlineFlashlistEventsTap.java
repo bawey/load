@@ -51,6 +51,8 @@ import ch.cern.cms.load.tools.HttpTools;
 
 public class OnlineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
+	public static final String SETTINGS_KEY_FLASHLIST_ROOT = "onlineFlashlistRoot";
+	
 	public static final String CATALOG_SUFFIX = "retrieveCatalog?fmt=plain";
 	public static final String LIST_SUFFIX = "retrieveCollection?fmt=plain&flash=";
 
@@ -70,6 +72,7 @@ public class OnlineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 						String flashlistPath = OnlineFlashlistEventsTap.this.path + LIST_SUFFIX + flashlist;
 						try {
 							flashlistUrl = new URL(flashlistPath);
+							logger.info("creating flashlist from: " + flashlistUrl.toString());
 							Flashlist fl = new Flashlist(flashlistUrl, extractFlashlistEventName(flashlist));
 							fl.emit(OnlineFlashlistEventsTap.this.ep);
 						} catch (MalformedURLException e) {
@@ -94,10 +97,13 @@ public class OnlineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 		logger.info("catalog: \n" + catalog);
 		this.flashlists = new LinkedList<String>();
 		for (String tkn : catalog.split("\n")) {
-			flashlists.add(tkn);
+			if (tkn.contains(":")) {
+				logger.info("adding token: " + tkn);
+				flashlists.add(tkn);
+			}
 		}
 		BufferedReader br = null;
-		for (int i = 1; i < flashlists.size(); ++i) {
+		for (int i = 0; i < flashlists.size(); ++i) {
 			String flashlistContent = HttpTools.getHTML(path + LIST_SUFFIX + flashlists.get(i));
 			String eventName = extractFlashlistEventName(flashlists.get(i));
 			Map<String, Object> types = new HashMap<String, Object>();

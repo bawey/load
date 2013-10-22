@@ -1,5 +1,6 @@
 package ch.cern.cms.load;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
@@ -93,7 +94,11 @@ public class ExpertController {
 	public void registerTap(AbstractEventsTap tap) {
 		taps.add(tap);
 	}
-	
+
+	public Collection<AbstractEventsTap> getTaps() {
+		return this.taps;
+	}
+
 	private void setUpSOCKSProxy() {
 		System.out.println("Setting up SOCKS proxy ...");
 

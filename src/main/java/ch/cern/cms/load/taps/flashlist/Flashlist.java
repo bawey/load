@@ -11,12 +11,15 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.log4j.Logger;
+
 import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.ExpertController;
 
 public class Flashlist extends LinkedList<Map<String, Object>> {
 
 	private static final long serialVersionUID = 1L;
+	private static final Logger logger = Logger.getLogger(Flashlist.class);
 	private String streamName;
 
 	public Flashlist(URL url, String listName) {
