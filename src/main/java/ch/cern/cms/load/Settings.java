@@ -32,6 +32,7 @@ public class Settings extends Properties {
 	private String idForNotification = "http://pcbawejdesktop.cern.ch:10000/urn:rcms-fm:fullpath=/bawey/test/testLEVELZERO,group=levelZeroFM,owner=bawey";
 	private int maxValueLengthInTree = 20;
 	public final String flashlistDumpName = "flashlistDump_2013-09-04-11-50-01.ascii";
+	private String flashlistsRoot = "http://srv-c2d04-19.cms:9941/urn:xdaq-application:lid=400/";
 
 	// negative value indicates no playback. positive one speeds up (>1) or
 	// slows down the rate of data delivery
@@ -98,4 +99,11 @@ public class Settings extends Properties {
 		this.maxValueLengthInTree = maxValueLengthInTree;
 	}
 
+	public String getFlashlistsRoot() {
+		return flashlistsRoot;
+	}
+
+	public void setFlashlistsRoot(String flashlistsRoot) {
+		this.flashlistsRoot = flashlistsRoot;
+	}
 }

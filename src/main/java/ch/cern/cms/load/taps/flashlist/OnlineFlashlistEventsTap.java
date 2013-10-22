@@ -1,20 +1,20 @@
 package ch.cern.cms.load.taps.flashlist;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
+import java.io.StringReader;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
 
 import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.tools.HttpTools;
 
 /**
  * urn:xdaq-flashlist:FMMInput
@@ -51,87 +51,75 @@ import ch.cern.cms.load.ExpertController;
 
 public class OnlineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
-	public static final String FLASHLISTS_ROOT = "http://srv-c2d04-19.cms:9941/urn:xdaq-application:lid=400/";
 	public static final String CATALOG_SUFFIX = "retrieveCatalog?fmt=plain";
 	public static final String LIST_SUFFIX = "retrieveCollection?fmt=plain&flash=";
 
-	private static String getHTML(String urlToRead) {
-		System.out.println("url: " + urlToRead);
-		URL url;
-		HttpURLConnection conn;
-		BufferedReader rd;
-		String line;
-		String result = "";
-		try {
-			url = new URL(urlToRead);
-			conn = (HttpURLConnection) url.openConnection();
-			conn.setRequestMethod("GET");
-			rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-			while ((line = rd.readLine()) != null) {
-				result += (line + "\n");
-			}
-			rd.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		System.out.println(result);
-		return result;
-	}
+	private static Logger logger = Logger.getLogger(OnlineFlashlistEventsTap.class);
 
-	Logger logger = Logger.getLogger(OnlineFlashlistEventsTap.class);
+	private Map<String, Map<String, Object>> eventDefinitions;
+	private List<String> flashlists;
 
-	private OnlineFlashlistEventsTap(ExpertController expert, String path) {
+	public OnlineFlashlistEventsTap(ExpertController expert, String path) {
 		super(expert, path);
 		job = new Runnable() {
 			@Override
 			public void run() {
-				while (true) {
-					String catalog = getHTML(FLASHLISTS_ROOT + CATALOG_SUFFIX);
-					String[] lists = catalog.split("\n");
-
-					Map<String, String> lastVersion = new HashMap<String, String>();
-					BufferedWriter bw = null;
-
-					for (int i = 1; i < lists.length; ++i) {
-						String list = getHTML(FLASHLISTS_ROOT + LIST_SUFFIX + lists[i]);
-						if (!list.equals(lastVersion.get(lists[i]))) {
-							lastVersion.put(lists[i], list);
-							File dir = new File(lists[i].substring(lists[i].lastIndexOf(':') + 1));
-							if (!dir.exists()) {
-								dir.mkdir();
-							}
-							if (dir.exists() && dir.isDirectory()) {
-								try {
-									bw = new BufferedWriter(new FileWriter(new File(dir.getName() + "/" + (new Date().getTime()))));
-									bw.write(list);
-									bw.close();
-								} catch (IOException e) {
-									throw new RuntimeException(e);
-								}
-							} else {
-								throw new RuntimeException("What was to be a dir is a file... " + dir.getName());
-							}
+				while (new Date().getTime() > 0) {
+					for (String flashlist : flashlists) {
+						URL flashlistUrl;
+						String flashlistPath = OnlineFlashlistEventsTap.this.path + LIST_SUFFIX + flashlist;
+						try {
+							flashlistUrl = new URL(flashlistPath);
+							Flashlist fl = new Flashlist(flashlistUrl, extractFlashlistEventName(flashlist));
+							fl.emit(OnlineFlashlistEventsTap.this.ep);
+						} catch (MalformedURLException e) {
+							logger.error("Failed to retrieve a flashlist for: " + flashlistPath);
 						}
 					}
 					try {
 						Thread.sleep(1000);
 					} catch (InterruptedException e) {
-						System.err.println("No sleep!");
+						e.printStackTrace();
 					}
 				}
 			}
 		};
 	}
 
-	/** need to connect to server, bla bla bla **/
+	/** gather the information about event types **/
 	@Override
 	public void preRegistrationSetup() {
+		eventDefinitions = new HashMap<String, Map<String, Object>>();
+		String catalog = HttpTools.getHTML(path + CATALOG_SUFFIX);
+		logger.info("catalog: \n" + catalog);
+		this.flashlists = new LinkedList<String>();
+		for (String tkn : catalog.split("\n")) {
+			flashlists.add(tkn);
+		}
+		BufferedReader br = null;
+		for (int i = 1; i < flashlists.size(); ++i) {
+			String flashlistContent = HttpTools.getHTML(path + LIST_SUFFIX + flashlists.get(i));
+			String eventName = extractFlashlistEventName(flashlists.get(i));
+			Map<String, Object> types = new HashMap<String, Object>();
 
+			br = new BufferedReader(new StringReader(flashlistContent));
+			try {
+				for (String field : br.readLine().split(",")) {
+					types.put(field, ExpertController.getInstance().getResolver().getFieldType(field, flashlists.get(i)));
+					logger.info("event: " + eventName + ", field: " + field);
+				}
+				eventDefinitions.put(eventName, types);
+			} catch (IOException e) {
+				logger.error("Error reading from String, event definition: " + eventName + " skipped", e);
+			}
+		}
 	}
 
 	@Override
 	public void registerEventTypes() {
-		// TODO Auto-generated method stub
+		for (String eventName : eventDefinitions.keySet()) {
+			logger.info("registering event type: " + eventName);
+			ep.getAdministrator().getConfiguration().addEventType(eventName, eventDefinitions.get(eventName));
+		}
 	}
-
 }

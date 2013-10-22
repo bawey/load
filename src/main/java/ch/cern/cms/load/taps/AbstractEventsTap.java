@@ -11,9 +11,9 @@ public abstract class AbstractEventsTap {
 			throw new RuntimeException("EventsTap: " + this.getClass().getSimpleName() + " doesn't provide a valid job Runnable!");
 		}
 	};
-	protected EventProcessor ep;
-	protected ExpertController controller;
-	protected String path;
+	protected final EventProcessor ep;
+	protected final ExpertController controller;
+	protected final String path;
 
 	protected AbstractEventsTap(ExpertController expert, String path) {
 		this.ep = expert.getEventProcessor();

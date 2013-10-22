@@ -14,4 +14,11 @@ public abstract class AbstractFlashlistEventsTap extends AbstractEventsTap {
 		super(expert, path);
 	}
 
+	/**
+	 * Discards the prefixes used when listing the flashlists online
+	 */
+	protected String extractFlashlistEventName(String str) {
+		return str.substring(str.lastIndexOf(':') + 1);
+	}
+
 }

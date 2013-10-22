@@ -6,8 +6,6 @@ import java.util.Set;
 
 import ch.cern.cms.load.guis.DefaultGui;
 import ch.cern.cms.load.guis.ExpertGui;
-import ch.cern.cms.load.suites.AbstractCheckSuite;
-import ch.cern.cms.load.suites.FedCheckSuite;
 import ch.cern.cms.load.taps.AbstractEventsTap;
 import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;
 
@@ -36,7 +34,7 @@ public class ExpertController {
 	 */
 	public static void main(String[] args) {
 		instance = getInstance();
-		instance.doDefaultSetup();
+		instance.doProductionSetup();
 
 	}
 
@@ -52,6 +50,7 @@ public class ExpertController {
 
 	private ExpertController() {
 		settings.put(Settings.KEY_RESOLVER, resolver);
+		setUpSOCKSProxy();
 	}
 
 	public EventProcessor getEventProcessor() {
@@ -76,13 +75,13 @@ public class ExpertController {
 	/**
 	 * Initializes the default application structure.
 	 */
-	private void doDefaultSetup() {
+	private void doProductionSetup() {
 		registerTap(new OfflineFlashlistEventsTap(this, "/home/bawey/Workspace/load/dmp/offlineFL/"));
 		openTaps();
 		attachViews();
 	}
 
-	private void openTaps() {
+	public void openTaps() {
 		for (AbstractEventsTap et : taps) {
 			et.openStreams();
 		}
