@@ -6,6 +6,7 @@ import java.util.Map;
 import com.espertech.esper.client.EPStatement;
 
 import ch.cern.cms.load.EventProcessor;
+import ch.cern.cms.load.cep.streams.Stream;
 import ch.cern.cms.load.eventData.FrlControllerLink;
 
 public class FrlBackpressureSuite extends EplSuite {
@@ -35,7 +36,7 @@ public class FrlBackpressureSuite extends EplSuite {
 	public void run() {
 
 		epl(createWindow(FRL_BACKPRESSURE, BACKPRESSURE_COLUMNS, RetentionPolicy.unique(KONTEXT, SLOT, LINK)));
-		epl("on pattern[every a={0}]", new Object[] {frlcontrollerLink});
+		epl("on pattern[every a={0}({1}>0)->b={0}({1}>0)]", new Object[] {Stream.frlcontrollerLink, fifoAlmostFullCnt});
 
 		/** create BackpressureFilter window **/
 		ep.createEPL("create window BackpressureFilter.std:unique(kontext, slotNumber, linkNumber) as (bpFraction double, kontext String, slotNumber Integer, linkNumber Integer, timestamp String)");

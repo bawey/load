@@ -37,7 +37,7 @@ public class AdHocTapTest extends SwingTest {
 	/**
 	 * SETUP FOR OUTPERFORMERS
 	 */
-	private double pace = 1;
+	private double pace = 10;
 	private long advance = 700000; // 700000R
 	HwInfo hwInfo = null;// HwInfo.getInstance();
 
@@ -72,7 +72,7 @@ public class AdHocTapTest extends SwingTest {
 			ep.getConfiguration().addImport(HwInfo.class.getName());
 
 			AbstractEventsTap.registerKnownOfflineTaps();
-			
+
 			AbstractEventsTap.setOfflineTapsPace(pace);
 			AbstractEventsTap.setOfflineTapsPosition(advance);
 
@@ -86,10 +86,56 @@ public class AdHocTapTest extends SwingTest {
 				deadVsPressure(ep);
 				registerSillyDebugs(ep);
 			}
+			//scriptTest(ep);
 
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+
+	private void scriptTest(EventProcessor ep) {
+
+		StringBuilder script2 = new StringBuilder();
+		script2.append("create expression print(n) [");
+		script2.append("importClass(java.lang.System);");
+		script2.append("System.out.println(123);");
+		script2.append("0.12");
+		script2.append("]");
+
+		ep.createEPL(script2);
+		ep.createEPL("select print(bxNumber) as reMagic from frlcontrollerLink", watchUpdater);
+
+		StringBuilder script = new StringBuilder();
+		script.append("create expression double getNumber(n) [");
+		script.append("importClass(java.lang.System);");
+		script.append("System.out.println(n);");
+		script.append("0.12");
+		script.append("]");
+
+		ep.createEPL(script.toString());
+		ep.createEPL("select getNumber(bxNumber) as magic from frlcontrollerLink", watchUpdater);
+
+		StringBuilder fib = new StringBuilder();
+		fib.append("create expression double js:fib(num) [ ");
+		fib.append("importClass(java.lang.System);");
+		fib.append("System.out.println(\"calling JS fib(\"+num+\") method\");");
+		fib.append("fib(num);");
+		fib.append("System.out.println(\"defining fib method\");");
+		fib.append("function fib(n){");
+		fib.append("System.out.println(\"running fib(\"+n+\")\");");
+		fib.append("	if(n<=1){ return n;}");
+		fib.append("	else {return (fib(n-1)+fib(n-2));}");
+		fib.append("}");
+		fib.append("System.out.println(\"defined fib method\");");
+		fib.append("]");
+		ep.createEPL(fib);
+		ep.createEPL("select fib(1) as fibBx from frlcontrollerLink", new UpdateListener() {
+			@Override
+			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+				System.out.println("FIBONUMBER: " + newEvents[0].getUnderlying().toString());
+			}
+		});
+
 	}
 
 	private void registerSillyDebugs(EventProcessor ep) {
@@ -418,14 +464,32 @@ public class AdHocTapTest extends SwingTest {
 		ep.createEPL("on pattern[every timer:interval(" + (1000 / pace) + " msec)] insert into rates select sum(subrate) as rate from subrates");
 		ep.registerStatement("select prior(1,rate) as value, 'trigger rate' as label, lastEVMtimestamp as timestamp from rates", watchUpdater);
 
-		/** avg rate needs to be updated only when there is sth to average **/
-		ep.createEPL("create window RatesLength.win:length(1) as (length long)");
-		ep.createEPL("on rates insert into RatesLength(length) select count(*) from rates");
 		/**
-		 * create variable for rate reference level (avg rate observed over last minute)
+		 * create variable for rate reference level (avg rate observed over last minute). need an expression not to get NPE in logs
 		 **/
+		ep.createEPL("create expression double safeRound(n)[" +
+				"importClass(java.lang.System);" +
+				//"importClass(java.lang.Math);" +
+				//"System.out.println(\"rounding: \"+n);" +
+				"n]");
+		
+		StringBuilder script = new StringBuilder();
+		script.append("create expression double getNumber(n) [");
+		script.append("importClass(java.lang.System);");
+		script.append("System.out.println(typeof(n));");
+		script.append("System.out.println(\"hey hey\"+n);");
+		script.append("if(n!==null){ System.out.println(n);");
+		script.append("n}else{-8}");
+		script.append("]");
+		
+		ep.createEPL(script);
+
+		ep.createEPL("create window IndirectAvgTrgRate.win:length(2) as (value double)");
+		ep.createEPL("insert into IndirectAvgTrgRate select avg(rate) as value from rates");
+		
 		ep.createEPL("create variable double avgRate=0");
-		ep.createEPL("on RatesLength(length>0) set avgRate = (select Math.round(avg(rate)) from rates)");
+		ep.createEPL("on IndirectAvgTrgRate as iatr set avgRate = getNumber(iatr.value)");
+		//ep.createEPL("on rates as r set avgRate = getNumber(r.rate)");
 
 		ep.registerStatement("select avgRate as value, lastEVMtimestamp as timestamp, 'avg rate' as label from rates", watchUpdater);
 

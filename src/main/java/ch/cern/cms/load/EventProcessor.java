@@ -46,8 +46,12 @@ public class EventProcessor {
 	private EPRuntime epRT;
 	private EPAdministrator epAdmin;
 
-	public EPStatement createEPL(String eplStatement) {
-		EPStatement result = getAdministrator().createEPL(eplStatement);
+	public EPStatement createEPL(CharSequence epl, UpdateListener listener) {
+		return registerStatement(epl.toString()		, listener);
+	}
+
+	public EPStatement createEPL(CharSequence eplStatement) {
+		EPStatement result = getAdministrator().createEPL(eplStatement.toString());
 		logger.info("Statement created: " + result.getName() + " as: " + eplStatement);
 		return result;
 	}
@@ -73,9 +77,10 @@ public class EventProcessor {
 		getConfiguration().addEventType(eventObjectClass.getSimpleName(), eventObjectClass.getName());
 	}
 
-	public void registerStatement(String statement, UpdateListener listener) {
+	public EPStatement registerStatement(String statement, UpdateListener listener) {
 		EPStatement cepStatement = epAdmin.createEPL(statement);
 		cepStatement.addListener(listener);
+		return cepStatement;
 	}
 
 	public EPStatement registerStatement(String statement, Object subscriber) {
