@@ -27,14 +27,14 @@ public class OfflineFlashlistEventsTapTest {
 		tap.preRegistrationSetup();
 		tap.registerEventTypes();
 
-		ep.registerStatement("select * from thermometer", new UpdateListener() {
+		ep.epl("select * from thermometer", new UpdateListener() {
 			@Override
 			public void update(EventBean[] arg0, EventBean[] arg1) {
 				thermometerCalled = true;
 			}
 		});
 
-		ep.registerStatement("select * from position", new UpdateListener() {
+		ep.epl("select * from position", new UpdateListener() {
 
 			@Override
 			public void update(EventBean[] arg0, EventBean[] arg1) {

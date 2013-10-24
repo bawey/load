@@ -23,11 +23,11 @@ public class EplSuite extends SwingTest implements CommonColumnNamesDictionary, 
 	}
 
 	protected EPStatement epl(String epl) {
-		return ep.createEPL(epl);
+		return ep.epl(epl);
 	}
 
 	protected EPStatement epl(String format, Object[] args) {
-		return ep.createEPL(new MessageFormat(format).format(args));
+		return ep.epl(new MessageFormat(format).format(args));
 	}
 
 	protected void createConclusionStream(EventProcessor ep, String name, String body) {
@@ -36,18 +36,18 @@ public class EplSuite extends SwingTest implements CommonColumnNamesDictionary, 
 	}
 
 	protected void createConclusionStreams(EventProcessor ep) {
-		ep.createEPL("create variant schema " + CONCLUSIONS_STREAM + " as *");
-		ep.createEPL("create window Conclusions.win:keepall() as select * from ConclusionsStream");
-		ep.createEPL("insert into Conclusions select * from ConclusionsStream");
+		ep.epl("create variant schema " + CONCLUSIONS_STREAM + " as *");
+		ep.epl("create window Conclusions.win:keepall() as select * from ConclusionsStream");
+		ep.epl("insert into Conclusions select * from ConclusionsStream");
 
-		ep.registerStatement("select c.* from pattern[every c=Conclusions]", new UpdateListener() {
+		ep.epl("select c.* from pattern[every c=Conclusions]", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 				EplSuite.this.raiseAlarm(newEvents[0].getUnderlying().toString());
 			}
 		});
 
-		ep.registerStatement("select rstream * from Conclusions", new UpdateListener() {
+		ep.epl("select rstream * from Conclusions", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 				for (EventBean bean : newEvents) {
@@ -56,7 +56,7 @@ public class EplSuite extends SwingTest implements CommonColumnNamesDictionary, 
 			}
 		});
 
-		ep.registerStatement("select * from Conclusions", new UpdateListener() {
+		ep.epl("select * from Conclusions", new UpdateListener() {
 
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {

@@ -29,7 +29,7 @@ public class OfflineFlashlistEventsTapTestRealData {
 
 	@Test
 	public void test() {
-		ep.registerStatement("select * from hostInfo", new UpdateListener() {
+		ep.epl("select * from hostInfo", new UpdateListener() {
 
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {

@@ -71,7 +71,7 @@ public class FlashlistTest {
 		tap.preRegistrationSetup();
 
 		tap.registerEventTypes();
-		ctl.getEventProcessor().registerStatement("select * from " + STREAM_NAME + " where vowels>1", new UpdateListener() {
+		ctl.getEventProcessor().epl("select * from " + STREAM_NAME + " where vowels>1", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 				System.out.println("UpdateListener called for " + newEvents[0].getUnderlying());

@@ -44,7 +44,7 @@ public class MockTest {
 	public void test() {
 		EventProcessor ep = ExpertController.getInstance().getEventProcessor();
 		ep.getConfiguration().addEventType(Mock.class);
-		ep.registerStatement("select * from " + MOCK, new UpdateListener() {
+		ep.epl("select * from " + MOCK, new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 				System.out.println(newEvents[0].getUnderlying());
@@ -54,12 +54,12 @@ public class MockTest {
 		//ep.createEPL("create window Stats.std:unique(cores) as (cores int, throughput double)");
 		
 		/** one way of doing it, so-so **/
-		ep.registerStatement("select status, count(*) as qty from " + MOCK
+		ep.epl("select status, count(*) as qty from " + MOCK
 				+ ".win:time(5 sec) group by status having status!='error' and count(*)=0", fiveSecError);
 		/** as in patterns **/
-		ep.registerStatement("select * from pattern [ every (timer:interval(5 sec) and not "+MOCK+"(fractionBusy <= 0.001)) ]", busyFraction);
+		ep.epl("select * from pattern [ every (timer:interval(5 sec) and not "+MOCK+"(fractionBusy <= 0.001)) ]", busyFraction);
 		/** trigger jump **/
-		ep.registerStatement("select * from pattern [every a="+MOCK+" -> b="+MOCK+"(rate>a.rate*1.15 or rate<a.rate*0.85)]", triggerJump);
+		ep.epl("select * from pattern [every a="+MOCK+" -> b="+MOCK+"(rate>a.rate*1.15 or rate<a.rate*0.85)]", triggerJump);
 
 		Mock.playEvents(ep, 1000);
 

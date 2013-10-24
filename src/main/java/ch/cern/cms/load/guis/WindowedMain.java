@@ -79,7 +79,7 @@ public class WindowedMain implements ModelListener, TreeSelectionListener, Updat
 		frame.setVisible(true);
 
 		// register a sample statement
-		ExpertController.getInstance().getEventProcessor().registerStatement(
+		ExpertController.getInstance().getEventProcessor().epl(
 				"select * from " + SubsystemCrossCheckerEvent.class.getSimpleName() + "(subsys='DAQ') having subsys='DAQ'", instance);
 
 	}

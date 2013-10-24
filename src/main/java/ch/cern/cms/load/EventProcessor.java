@@ -47,10 +47,10 @@ public class EventProcessor {
 	private EPAdministrator epAdmin;
 
 	public EPStatement createEPL(CharSequence epl, UpdateListener listener) {
-		return registerStatement(epl.toString()		, listener);
+		return epl(epl.toString()		, listener);
 	}
 
-	public EPStatement createEPL(CharSequence eplStatement) {
+	public EPStatement epl(CharSequence eplStatement) {
 		EPStatement result = getAdministrator().createEPL(eplStatement.toString());
 		logger.info("Statement created: " + result.getName() + " as: " + eplStatement);
 		return result;
@@ -77,7 +77,7 @@ public class EventProcessor {
 		getConfiguration().addEventType(eventObjectClass.getSimpleName(), eventObjectClass.getName());
 	}
 
-	public EPStatement registerStatement(String statement, UpdateListener listener) {
+	public EPStatement epl(String statement, UpdateListener listener) {
 		EPStatement cepStatement = epAdmin.createEPL(statement);
 		cepStatement.addListener(listener);
 		return cepStatement;

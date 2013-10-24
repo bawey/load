@@ -30,14 +30,14 @@ public class AdHocTapTest extends SwingTest {
 	/**
 	 * SETUP FOR DEADTIME AND DB AND BACKPRESSURE - FULL
 	 */
-	// private double pace = 3;
+	// private double pace = 1;
 	// private long advance = 700000;
 	// HwInfo hwInfo = HwInfo.getInstance();
 
 	/**
 	 * SETUP FOR OUTPERFORMERS
 	 */
-	private double pace = 10;
+	private double pace = 1;
 	private long advance = 700000; // 700000R
 	HwInfo hwInfo = null;// HwInfo.getInstance();
 
@@ -86,7 +86,7 @@ public class AdHocTapTest extends SwingTest {
 				deadVsPressure(ep);
 				registerSillyDebugs(ep);
 			}
-			//scriptTest(ep);
+			// scriptTest(ep);
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -102,7 +102,7 @@ public class AdHocTapTest extends SwingTest {
 		script2.append("0.12");
 		script2.append("]");
 
-		ep.createEPL(script2);
+		ep.epl(script2);
 		ep.createEPL("select print(bxNumber) as reMagic from frlcontrollerLink", watchUpdater);
 
 		StringBuilder script = new StringBuilder();
@@ -112,7 +112,7 @@ public class AdHocTapTest extends SwingTest {
 		script.append("0.12");
 		script.append("]");
 
-		ep.createEPL(script.toString());
+		ep.epl(script.toString());
 		ep.createEPL("select getNumber(bxNumber) as magic from frlcontrollerLink", watchUpdater);
 
 		StringBuilder fib = new StringBuilder();
@@ -128,7 +128,7 @@ public class AdHocTapTest extends SwingTest {
 		fib.append("}");
 		fib.append("System.out.println(\"defined fib method\");");
 		fib.append("]");
-		ep.createEPL(fib);
+		ep.epl(fib);
 		ep.createEPL("select fib(1) as fibBx from frlcontrollerLink", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
@@ -139,22 +139,21 @@ public class AdHocTapTest extends SwingTest {
 	}
 
 	private void registerSillyDebugs(EventProcessor ep) {
-		ep.registerStatement(
-				"on pattern[every bf=BackpressureFilter] select count(*) as value, 'BP 4 current 3plet' as label from Backpressure where kontext=bf.kontext and linkNumber=bf.linkNumber and slotNumber=bf.slotNumber",
+		ep.epl("on pattern[every bf=BackpressureFilter] select count(*) as value, 'BP 4 current 3plet' as label from Backpressure where kontext=bf.kontext and linkNumber=bf.linkNumber and slotNumber=bf.slotNumber",
 				watchUpdater);
-		ep.registerStatement("select count(*) as value, 'BP3lets' as label from Backpressure", watchUpdater);
-		ep.registerStatement("select HWCFG_KEY as value, 'HWCFG_KEY' as label from levelZeroFM_static", watchUpdater);
-		ep.registerStatement("select GLOBAL_CONF_KEY as value, 'GLOBAL_CONF_KEY' as label from levelZeroFM_static", watchUpdater);
+		ep.epl("select count(*) as value, 'BP3lets' as label from Backpressure", watchUpdater);
+		ep.epl("select HWCFG_KEY as value, 'HWCFG_KEY' as label from levelZeroFM_static", watchUpdater);
+		ep.epl("select GLOBAL_CONF_KEY as value, 'GLOBAL_CONF_KEY' as label from levelZeroFM_static", watchUpdater);
 
-		ep.createEPL("create variable String FED_INFO_STR = ''");
-		ep.createEPL("on levelZeroFM_static(FED_INFO_MAP!=FED_INFO_STR) as s set FED_INFO_STR=s.FED_INFO_MAP");
-		ep.registerStatement("select FED_INFO_STR as value, 'FED INFO MAP' as label from EVM as evm", watchUpdater);
-		ep.registerStatement("select count(*) as conclusions from Conclusions", watchUpdater);
-		ep.registerStatement("select count(*) as bpFeds from BpFeds", watchUpdater);
+		ep.epl("create variable String FED_INFO_STR = ''");
+		ep.epl("on levelZeroFM_static(FED_INFO_MAP!=FED_INFO_STR) as s set FED_INFO_STR=s.FED_INFO_MAP");
+		ep.epl("select FED_INFO_STR as value, 'FED INFO MAP' as label from EVM as evm", watchUpdater);
+		ep.epl("select count(*) as conclusions from Conclusions", watchUpdater);
+		ep.epl("select count(*) as bpFeds from BpFeds", watchUpdater);
 		// ep.registerStatement("select rstream count(*) as ppFedsRemoved from BpFeds",
 		// watchUpdater);
 
-		ep.registerStatement("select irstream * from BpFeds", new UpdateListener() {
+		ep.epl("select irstream * from BpFeds", new UpdateListener() {
 
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
@@ -175,26 +174,26 @@ public class AdHocTapTest extends SwingTest {
 	}
 
 	private void createConclusionStream(EventProcessor ep, String name, String body) {
-		ep.createEPL("create schema " + name + " " + body);
+		ep.epl("create schema " + name + " " + body);
 		// forward conclusions to the general conclusion stream
-		ep.createEPL("insert into ConclusionsStream select * from " + name);
+		ep.epl("insert into ConclusionsStream select * from " + name);
 
 	}
 
 	private void createConclusionStreams(EventProcessor ep) {
-		ep.createEPL("create variant schema ConclusionsStream as *");
+		ep.epl("create variant schema ConclusionsStream as *");
 
-		ep.createEPL("create window Conclusions.win:keepall() as select * from ConclusionsStream");
-		ep.createEPL("insert into Conclusions select * from ConclusionsStream");
+		ep.epl("create window Conclusions.win:keepall() as select * from ConclusionsStream");
+		ep.epl("insert into Conclusions select * from ConclusionsStream");
 
-		ep.registerStatement("select c.* from pattern[every c=Conclusions]", new UpdateListener() {
+		ep.epl("select c.* from pattern[every c=Conclusions]", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 				AdHocTapTest.this.raiseAlarm(newEvents[0].getUnderlying().toString());
 			}
 		});
 
-		ep.registerStatement("select rstream * from Conclusions", new UpdateListener() {
+		ep.epl("select rstream * from Conclusions", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 				for (EventBean bean : newEvents) {
@@ -203,7 +202,7 @@ public class AdHocTapTest extends SwingTest {
 			}
 		});
 
-		ep.registerStatement("select * from Conclusions", new UpdateListener() {
+		ep.epl("select * from Conclusions", new UpdateListener() {
 
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
@@ -218,52 +217,49 @@ public class AdHocTapTest extends SwingTest {
 
 	public void backpressure(EventProcessor ep) {
 		/** create BackpressureFilter window **/
-		ep.createEPL("create window BackpressureFilter.std:unique(kontext, slotNumber, linkNumber) as (bpFraction double, kontext String, slotNumber Integer, linkNumber Integer, timestamp String)");
+		ep.epl("create window BackpressureFilter.std:unique(kontext, slotNumber, linkNumber) as (bpFraction double, kontext String, slotNumber Integer, linkNumber Integer, timestamp String)");
 		/** connect BackpressureFilter with data sources **/
-		ep.createEPL("on pattern[every a=frlcontrollerLink(fifoAlmostFullCnt>0)->b=frlcontrollerLink(fifoAlmostFullCnt>0,context=a.context,slotNumber=a.slotNumber,sessionid=a.sessionid,clockCount>a.clockCount)]"
+		ep.epl("on pattern[every a=frlcontrollerLink(fifoAlmostFullCnt>0)->b=frlcontrollerLink(fifoAlmostFullCnt>0,context=a.context,slotNumber=a.slotNumber,sessionid=a.sessionid,clockCount>a.clockCount)]"
 				+ " insert into BackpressureFilter select (b.fifoAlmostFullCnt-a.fifoAlmostFullCnt)/(b.clockCount-a.clockCount) as bpFraction, b.slotNumber as slotNumber, b.linkNumber as linkNumber, b.timestamp as timestamp, b.context as kontext");
 
 		/** create Backpressure window to hold most recent values for triplets **/
-		ep.createEPL("create window Backpressure.std:unique(kontext, linkNumber, slotNumber) as select * from BackpressureFilter");
+		ep.epl("create window Backpressure.std:unique(kontext, linkNumber, slotNumber) as select * from BackpressureFilter");
 		/** create stream for BackpressureAlarms **/
 		createConclusionStream(ep, "BackpressureAlarm", "(title String) copyfrom BackpressureFilter");
 
 		/**
 		 * split the BackpressureFilter and insert into BackpressureAlarms and/or Backpressure when necessary
 		 **/
-		ep.createEPL("on BackpressureFilter(bpFraction>0) as bf "
+		ep.epl("on BackpressureFilter(bpFraction>0) as bf "
 				+ "insert into BackpressureAlarm select 'frl backpressure' as title, bf.kontext as kontext, bf.linkNumber as linkNumber, bf.slotNumber as slotNumber where (select count(*) as cnt from Backpressure where kontext=bf.kontext and linkNumber=bf.linkNumber and slotNumber=bf.slotNumber)=0"
 				+ " insert into Backpressure select bf.*" + " output all");
 		/**
 		 * cancel the associated alarm when bpFraction goes back down for a triplet
 		 **/
-		ep.createEPL("on BackpressureFilter(bpFraction=0) as bf delete from Backpressure b where bf.linkNumber = b.linkNumber and bf.slotNumber = b.slotNumber and bf.kontext=b.kontext");
-		ep.createEPL("on BackpressureFilter(bpFraction=0) as bf delete from Conclusions c where "
+		ep.epl("on BackpressureFilter(bpFraction=0) as bf delete from Backpressure b where bf.linkNumber = b.linkNumber and bf.slotNumber = b.slotNumber and bf.kontext=b.kontext");
+		ep.epl("on BackpressureFilter(bpFraction=0) as bf delete from Conclusions c where "
 				+ "c.title.toString()='frl backpressure' and c.kontext.toString()=bf.kontext.toString() and c.slotNumber.toString()=bf.slotNumber.toString() and c.linkNumber.toString()=bf.linkNumber.toString()");
 
-		ep.registerStatement(
-				"select b.bpFraction as value, 'BP '||b.kontext||'L'||b.linkNumber.toString()||'S'||b.slotNumber.toString() as label from pattern[every b=Backpressure]",
+		ep.epl("select b.bpFraction as value, 'BP '||b.kontext||'L'||b.linkNumber.toString()||'S'||b.slotNumber.toString() as label from pattern[every b=Backpressure]",
 				watchUpdater);
 
 	}
 
 	public void deadtime(EventProcessor ep) {
-		ep.registerStatement(
-				"select 'frBsy: '||context||'G'||geoslot.toString()||'IO'||io.toString() as label, timestamp, fractionBusy as value from FMMInput where fractionBusy > 0",
+		ep.epl("select 'frBsy: '||context||'G'||geoslot.toString()||'IO'||io.toString() as label, timestamp, fractionBusy as value from FMMInput where fractionBusy > 0",
 				watchUpdater);
-		ep.registerStatement(
-				"select 'frWrn: '||context||'G'||geoslot.toString()||'IO'||io.toString() as label, timestamp, fractionWarning as value from FMMInput where fractionWarning > 0",
+		ep.epl("select 'frWrn: '||context||'G'||geoslot.toString()||'IO'||io.toString() as label, timestamp, fractionWarning as value from FMMInput where fractionWarning > 0",
 				watchUpdater);
 
 		/** want to copy datatypes, hence the stream will be created from window **/
-		ep.createEPL("create window DeadtimeTmp.win:keepall() as select context as kontext, geoslot, io from FMMInput");
+		ep.epl("create window DeadtimeTmp.win:keepall() as select context as kontext, geoslot, io from FMMInput");
 		createConclusionStream(ep, "DeadtimeAlarm", "(title String) copyfrom DeadtimeTmp ");
 
-		ep.createEPL("on FMMInput(fractionWarning>0 or fractionBusy>0) as fmi insert into DeadtimeAlarm select "
+		ep.epl("on FMMInput(fractionWarning>0 or fractionBusy>0) as fmi insert into DeadtimeAlarm select "
 				+ "'fmm deadtime' as title, fmi.context as kontext, fmi.geoslot as geoslot, fmi.io as io where "
 				+ "(select count(*) from DeadtimeAlarm.win:keepall() where kontext=fmi.context and geoslot=fmi.geoslot and io = fmi.io)=0");
 
-		ep.createEPL("on FMMInput(fractionWarning=0, fractionBusy=0) as fmi delete from Conclusions as c where"
+		ep.epl("on FMMInput(fractionWarning=0, fractionBusy=0) as fmi delete from Conclusions as c where"
 				+ " c.title.toString()='fmm deadtime' and c.kontext.toString() = fmi.context and c.io.toString() = fmi.io.toString() and c.geoslot.toString() = fmi.geoslot.toString()");
 
 	}
@@ -271,16 +267,15 @@ public class AdHocTapTest extends SwingTest {
 	/** KeepItSimple, for now **/
 	public void deadVsPressure(final EventProcessor ep) {
 
-		ep.createEPL("create window BpFeds.win:keepall() as (id Integer)");
-		ep.createEPL("create window DtFeds.win:keepall() as (id Integer, kontext String, geoslot Integer, io Integer)");
+		ep.epl("create window BpFeds.win:keepall() as (id Integer)");
+		ep.epl("create window DtFeds.win:keepall() as (id Integer, kontext String, geoslot Integer, io Integer)");
 
 		HwInfo.esperCheck();
 
 		/** naively hold bp-guilty feds **/
-		ep.createEPL("on pattern[every c=BackpressureAlarm(title='frl backpressure')] insert into BpFeds(id) select HwInfo.getInstance().getFedId(c.kontext, c.slotNumber, c.linkNumber, CmsHw.FRL ) where "
+		ep.epl("on pattern[every c=BackpressureAlarm(title='frl backpressure')] insert into BpFeds(id) select HwInfo.getInstance().getFedId(c.kontext, c.slotNumber, c.linkNumber, CmsHw.FRL ) where "
 				+ "HwInfo.getInstance().getFedId(c.kontext, c.slotNumber ,c.linkNumber ,CmsHw.FRL) is not null");
-		ep.registerStatement(
-				"on BackpressureFilter(bpFraction=0) as bf delete from BpFeds as bfeds where bfeds.id = HwInfo.getInstance().getFedId(bf.kontext, bf.slotNumber, bf.linkNumber, CmsHw.FRL )",
+		ep.epl("on BackpressureFilter(bpFraction=0) as bf delete from BpFeds as bfeds where bfeds.id = HwInfo.getInstance().getFedId(bf.kontext, bf.slotNumber, bf.linkNumber, CmsHw.FRL )",
 				new UpdateListener() {
 					@Override
 					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
@@ -291,7 +286,7 @@ public class AdHocTapTest extends SwingTest {
 		/**
 		 * seems really hard to retrieve the set of Ids and use them to instantiate events, so we'll go around
 		 **/
-		ep.registerStatement("select c.* from pattern[every c=Conclusions(title='deadtime')] ", new UpdateListener() {
+		ep.epl("select c.* from pattern[every c=Conclusions(title='deadtime')] ", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 				Map<?, ?> attrs = (Map<?, ?>) newEvents[0].getUnderlying();
@@ -305,28 +300,28 @@ public class AdHocTapTest extends SwingTest {
 				}
 			}
 		});
-		ep.createEPL("on FMMInput(fractionWarning=0, fractionBusy=0) as fmi delete from DtFeds as dtf where"
+		ep.epl("on FMMInput(fractionWarning=0, fractionBusy=0) as fmi delete from DtFeds as dtf where"
 				+ " kontext=fmi.context and dtf.geoslot=fmi.geoslot and dtf.io=fmi.io");
 
-		ep.registerStatement("select count(*) as dtFeds from DtFeds", watchUpdater);
+		ep.epl("select count(*) as dtFeds from DtFeds", watchUpdater);
 
-		ep.registerStatement("select id as dtFedId, kontext, geoslot, io from DtFeds", consoleLogger);
+		ep.epl("select id as dtFedId, kontext, geoslot, io from DtFeds", consoleLogger);
 
 		createConclusionStream(ep, "misFEDs", "(title String, fedId int)");
-		ep.createEPL("on pattern[ every bfed=BpFeds or dfed=DtFeds ] "
+		ep.epl("on pattern[ every bfed=BpFeds or dfed=DtFeds ] "
 				+ "insert into misFEDs select 'backpressure and deadtime' as title, bfed.id as fedId where bfed is not null and bfed.id in (select id from DtFeds) "
 				+ "insert into misFEDs select 'backpressure and deadtime' as title, dfed.id as fedId where dfed is not null and dfed.id in (select id from BpFeds) "
 				+ "insert into misFEDs select 'backpressure' as title, bfed.id as fedId where bfed is not null and bfed.id is not null "
 				+ "insert into misFEDs select 'deadime' as title, dfed.id as fedId where dfed is not null and dfed.id is not null");
 
 		// the best would be just to detect deletions :-( like "on rstream Sth"
-		ep.createEPL("on pattern[every timer:interval(1 msec)] delete from Conclusions as c where c.title.toString().contains('backpressure') and "
+		ep.epl("on pattern[every timer:interval(1 msec)] delete from Conclusions as c where c.title.toString().contains('backpressure') and "
 				+ "c.fedId is not null and c.fedId.toString() not in (select id.toString() from BpFeds)");
 
-		ep.createEPL("on pattern[every timer:interval(1 msec)] delete from Conclusions as c where c.title.toString().contains('deadtime') and "
+		ep.epl("on pattern[every timer:interval(1 msec)] delete from Conclusions as c where c.title.toString().contains('deadtime') and "
 				+ "c.fedId is not null and c.fedId.toString() not in (select id.toString() from DtFeds)");
 
-		ep.registerStatement("select id.toString() as id from DtFeds", new UpdateListener() {
+		ep.epl("select id.toString() as id from DtFeds", new UpdateListener() {
 
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
@@ -336,50 +331,46 @@ public class AdHocTapTest extends SwingTest {
 			}
 		});
 
-		ep.registerStatement("select count(*) as suspiciousFeds from BpFeds as bpf, DtFeds as dtf where bpf.id=dtf.id", watchUpdater);
+		ep.epl("select count(*) as suspiciousFeds from BpFeds as bpf, DtFeds as dtf where bpf.id=dtf.id", watchUpdater);
 
-		ep.registerStatement("select * from BpFeds", consoleLogger);
-		ep.registerStatement("select * from DtFeds", consoleLogger);
+		ep.epl("select * from BpFeds", consoleLogger);
+		ep.epl("select * from DtFeds", consoleLogger);
 
 	}
 
 	public void performers(EventProcessor ep) {
-		ep.createEPL("create variable Double tolerance = 2.79");
+		ep.epl("create variable Double tolerance = 2.79");
 
 		/** create window holding only the most-recent info per context **/
 
-		ep.createEPL("create window Reads.std:unique(name) as (name String, yield long, units int)");
-		ep.createEPL("insert into Reads select context as name, nbProcessed as yield, epMacroStateInt.size() as units from EventProcessorStatus");
+		ep.epl("create window Reads.std:unique(name) as (name String, yield long, units int)");
+		ep.epl("insert into Reads select context as name, nbProcessed as yield, epMacroStateInt.size() as units from EventProcessorStatus");
 
-		ep.createEPL("create window GroupStats.std:unique(units) as (units int, avrg double, sdev double)");
+		ep.epl("create window GroupStats.std:unique(units) as (units int, avrg double, sdev double)");
 
-		ep.createEPL("on pattern[every timer:interval(1000 msec)] "
+		ep.epl("on pattern[every timer:interval(1000 msec)] "
 				+ "insert into GroupStats select r.units as units, avg(r.yield) as avrg, stddev(r.yield) as sdev from Reads as r group by r.units");
 
 		/** simply put, count all **/
-		ep.createEPL("create window Overperformers.std:unique(name) as (name String, units int, yield long)");
-		ep.createEPL("on GroupStats as gs "
-				+ "insert into Overperformers select r.* from Reads as r where r.units=gs.units and r.yield > gs.avrg+tolerance*gs.sdev");
+		ep.epl("create window Overperformers.std:unique(name) as (name String, units int, yield long)");
+		ep.epl("on GroupStats as gs " + "insert into Overperformers select r.* from Reads as r where r.units=gs.units and r.yield > gs.avrg+tolerance*gs.sdev");
 
 		/** try doing something more elaborate for under-achievers **/
-		ep.createEPL("create window Underperformers.std:unique(name) as (name String, units int, yield long)");
-		ep.createEPL("on GroupStats as gs insert into Underperformers"
-				+ " select r.* from Reads as r where r.units=gs.units and r.yield < gs.avrg-tolerance*gs.sdev");
-		ep.createEPL("on GroupStats as gs "
+		ep.epl("create window Underperformers.std:unique(name) as (name String, units int, yield long)");
+		ep.epl("on GroupStats as gs insert into Underperformers" + " select r.* from Reads as r where r.units=gs.units and r.yield < gs.avrg-tolerance*gs.sdev");
+		ep.epl("on GroupStats as gs "
 				+ "delete from Underperformers u where gs.units = u.units and (select r.yield from Reads as r where r.name = u.name) > gs.avrg-tolerance*gs.sdev");
-		ep.createEPL("on GroupStats as gs "
+		ep.epl("on GroupStats as gs "
 				+ "delete from Overperformers o where gs.units = o.units and (select r.yield from Reads as r where r.name = o.name) < gs.avrg+tolerance*gs.sdev");
 
-		ep.registerStatement("select * from GroupStats", consoleLogger);
-		ep.registerStatement(
-				"select 'under' as title, u.*, gs.avrg-tolerance*gs.sdev as threshold from Underperformers as u, GroupStats as gs where u.units = gs.units",
+		ep.epl("select * from GroupStats", consoleLogger);
+		ep.epl("select 'under' as title, u.*, gs.avrg-tolerance*gs.sdev as threshold from Underperformers as u, GroupStats as gs where u.units = gs.units",
 				consoleLogger);
-		ep.registerStatement(
-				"select 'over' as title, o.*, gs.avrg+tolerance*gs.sdev as threshold from Overperformers as o, GroupStats as gs where o.units = gs.units",
+		ep.epl("select 'over' as title, o.*, gs.avrg+tolerance*gs.sdev as threshold from Overperformers as o, GroupStats as gs where o.units = gs.units",
 				consoleLogger);
 
-		ep.registerStatement("select count(*) as underperformers from Underperformers", watchUpdater);
-		ep.registerStatement("select count(*) as overperformers from Overperformers", watchUpdater);
+		ep.epl("select count(*) as underperformers from Underperformers", watchUpdater);
+		ep.epl("select count(*) as overperformers from Overperformers", watchUpdater);
 
 	}
 
@@ -390,25 +381,25 @@ public class AdHocTapTest extends SwingTest {
 		// + report on the ones standing out! (unless there is dynamic
 		// backPressureDyn on them)
 
-		ep.createEPL("create variable int stuckTime = 2");
-		ep.registerStatement(
-				"select 'rate stuck at 0 for ' || stuckTime.toString() ||' sec' as msg from pattern[every timer:interval(stuckTime sec) and not rates(rate>0)]",
-				consoleLogger);
+		ep.epl("create variable int stuckTime = 2");
 
-		ep.createEPL("create window frlBxConsistency.std:unique(bxNumber).win:time(stuckTime sec) as (bxNumber Long, cnt Long)");
-		ep.createEPL("create window frlTrgConsistency.std:unique(trgNumber).win:time(stuckTime sec) as (trgNumber Long, cnt Long)");
+		ep.epl("create window frlBxConsistency.std:unique(bxNumber).win:time(stuckTime sec) as (bxNumber Long, cnt Long)");
+		ep.epl("create window frlTrgConsistency.std:unique(trgNumber).win:time(stuckTime sec) as (trgNumber Long, cnt Long)");
 
-		ep.createEPL("insert into frlBxConsistency select bxNumber, count(*) as cnt " + "from frlcontrollerLink.win:time(stuckTime sec) group by bxNumber");
-		ep.createEPL("insert into frlTrgConsistency select triggerNumber as trgNumber, count(*) as cnt "
-				+ "from frlcontrollerLink.win:time(stuckTime sec) group by triggerNumber");
+		ep.epl("create window frlBuffer.std:unique(slotNumber, context, linkNumber) as select * from frlcontrollerLink");
+		ep.epl("on frlcontrollerLink fcl insert into frlBuffer select fcl.*", consoleLogger);
 
-		// ep.createEPL("on frlcontrollerLink ");
+		ep.epl("on pattern[every timer:interval(500 msec)] " + "insert into frlBxConsistency select bxNumber as bxNumber, count(*) as cnt "
+				+ "from frlBuffer group by bxNumber");
+		ep.epl("on pattern[every timer:interval(500 msec)] delete from frlBxConsistency as fbc where fbc.bxNumber not in (select bxNumber from frlBuffer)");
 
-		ep.registerStatement("select count(*) as bxNumbers from frlBxConsistency", watchUpdater);
-		ep.registerStatement("select count(*) as trgNumbers from  frlTrgConsistency", watchUpdater);
-		// ep.registerStatement("select ", watchUpdater);
+		ep.epl("select count(*) as frlCL from frlcontrollerLink", watchUpdater);
+		ep.epl("select count(*) as frlBuffer from frlBuffer", watchUpdater);
 
-		ep.registerStatement("select * from frlBxConsistency", new UpdateListener() {
+		ep.epl("select count(*) as bxNumbers from frlBxConsistency", watchUpdater);
+		ep.epl("select count(*) as trgNumbers from  frlTrgConsistency", watchUpdater);
+
+		ep.epl("select * from frlBxConsistency", new UpdateListener() {
 
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
@@ -416,21 +407,24 @@ public class AdHocTapTest extends SwingTest {
 			}
 		});
 
-		ep.registerStatement("on frlBxConsistency select * from frlBxConsistency", new UpdateListener() {
+		ep.epl("on frlBxConsistency select * from frlBxConsistency", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 				StringBuilder sb = new StringBuilder();
 				sb.append("new frame: \n");
 				for (EventBean b : newEvents) {
-					sb.append(((MapEventBean) b).get("stream_1").toString()).append("\n");
+					sb.append(((MapEventBean) b).get("stream_0").toString()).append("\n");
 				}
 				console("frlBxConsistency", sb.toString());
 			}
 		});
 
-		// ep.registerStatement("on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] "
-		// + "select count(*) as bxNumbers from frlcontrollerLink",
-		// consoleLogger);
+		ep.epl("on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] "
+				+ "select 'rates stuck, bxNumbers inconsistent' as problem, count(*) as bxNumbers from frlBxConsistency where "
+				+ "(select count(*) from frlBxConsistency)>1", consoleLogger);
+
+		ep.epl("select 'rate stuck at 0 for ' || stuckTime.toString() ||' sec' as msg from pattern[every timer:interval(stuckTime sec) and not rates(rate>0) "
+				+ "]", consoleLogger);
 
 	}
 
@@ -442,58 +436,57 @@ public class AdHocTapTest extends SwingTest {
 		/**
 		 * creates a variable holding the SID associated with current PublicGlobal session
 		 **/
-		ep.createEPL("create variable String sid = ''");
-		ep.createEPL("on levelZeroFM_dynamic(SID!=sid, FMURL like '%PublicGlobal%') as l set sid=l.SID");
+		ep.epl("create variable String sid = ''");
+		ep.epl("on levelZeroFM_dynamic(SID!=sid, FMURL like '%PublicGlobal%') as l set sid=l.SID");
 
 		/**
 		 * create for EVM data. Keep only the most recent record per context-lid pair. Also, discard events older than 30 seconds
 		 **/
-		ep.createEPL("create window subrates.std:unique(url,lid).win:time(" + 30000 / pace + " msec) as (subrate double, url String, lid String)");
+		ep.epl("create window subrates.std:unique(url,lid).win:time(" + 30000 / pace + " msec) as (subrate double, url String, lid String)");
 
-		ep.createEPL("insert into subrates select deltaN/deltaT as subrate, context as url, lid from EVM where sessionid=sid and deltaT>0");
+		ep.epl("insert into subrates select deltaN/deltaT as subrate, context as url, lid from EVM where sessionid=sid and deltaT>0");
 		/**
 		 * keep the last relevant subrate timestamp in a variable TODO: might arrive out-of-order!
 		 **/
-		ep.createEPL("create variable String lastEVMtimestamp = ''");
-		ep.createEPL("on EVM(sessionid=sid) as evm set lastEVMtimestamp=evm.timestamp");
-		ep.registerStatement("select lastEVMtimestamp as value, 'lastEVM time' as label from EVM", watchUpdater);
+		ep.epl("create variable String lastEVMtimestamp = ''");
+		ep.epl("on EVM(sessionid=sid) as evm set lastEVMtimestamp=evm.timestamp");
+		ep.epl("select lastEVMtimestamp as value, 'lastEVM time' as label from EVM", watchUpdater);
 
 		/** create a window to contain observed rates **/
-		ep.createEPL("create window rates.win:time(" + 60000 / pace + " sec) as (rate double)");
+		ep.epl("create window rates.win:time(" + 60000 / pace + " msec) as (rate double)");
 		/** and fill it periodically **/
-		ep.createEPL("on pattern[every timer:interval(" + (1000 / pace) + " msec)] insert into rates select sum(subrate) as rate from subrates");
-		ep.registerStatement("select prior(1,rate) as value, 'trigger rate' as label, lastEVMtimestamp as timestamp from rates", watchUpdater);
+		ep.epl("on pattern[every timer:interval(" + (1000 / pace) + " msec)] insert into rates select sum(subrate) as rate from subrates");
+		ep.epl("select prior(1,rate) as value, 'trigger rate' as label, lastEVMtimestamp as timestamp from rates", watchUpdater);
 
 		/**
 		 * create variable for rate reference level (avg rate observed over last minute). need an expression not to get NPE in logs
 		 **/
-		ep.createEPL("create expression double safeRound(n)[" +
-				"importClass(java.lang.System);" +
-				//"importClass(java.lang.Math);" +
-				//"System.out.println(\"rounding: \"+n);" +
+		ep.epl("create expression double safeRound(n)[" + "importClass(java.lang.System);" +
+		// "importClass(java.lang.Math);" +
+		// "System.out.println(\"rounding: \"+n);" +
 				"n]");
-		
+
 		StringBuilder script = new StringBuilder();
-		script.append("create expression double getNumber(n) [");
+		script.append("create expression double js:getNumber(n) [");
 		script.append("importClass(java.lang.System);");
-		script.append("System.out.println(typeof(n));");
-		script.append("System.out.println(\"hey hey\"+n);");
+		// script.append("System.out.println(\"received value: \"+n+\" of type: \"+typeof(n));");
 		script.append("if(n!==null){ System.out.println(n);");
 		script.append("n}else{-8}");
 		script.append("]");
-		
-		ep.createEPL(script);
 
-		ep.createEPL("create window IndirectAvgTrgRate.win:length(2) as (value double)");
-		ep.createEPL("insert into IndirectAvgTrgRate select avg(rate) as value from rates");
-		
-		ep.createEPL("create variable double avgRate=0");
-		ep.createEPL("on IndirectAvgTrgRate as iatr set avgRate = getNumber(iatr.value)");
-		//ep.createEPL("on rates as r set avgRate = getNumber(r.rate)");
+		ep.epl(script);
 
-		ep.registerStatement("select avgRate as value, lastEVMtimestamp as timestamp, 'avg rate' as label from rates", watchUpdater);
+		ep.epl("create window IndirectAvgTrgRate.win:length(1) as (value double)");
+		ep.epl("on pattern[every rates] insert into IndirectAvgTrgRate select avg(r.rate) as value from rates as r");
 
-		ep.registerStatement("select avgRate, a.rate, lastEVMtimestamp as timestamp from pattern[every a=rates(rate>(avgRate*1.3) or rate < (avgRate*0.7))]",
+		ep.epl("create variable double avgRate=0");
+		// ep.createEPL("on IndirectAvgTrgRate as iatr set avgRate = (iatr.value)");
+		ep.epl("on IndirectAvgTrgRate as iatr set avgRate = getNumber(iatr.value)");
+		// ep.createEPL("on rates as r set avgRate = getNumber(r.rate)");
+
+		ep.epl("select avgRate as value, lastEVMtimestamp as timestamp, 'avg rate' as label from rates", watchUpdater);
+
+		ep.epl("select avgRate, a.rate, lastEVMtimestamp as timestamp from pattern[every a=rates(rate>(avgRate*1.3) or rate < (avgRate*0.7))]",
 				new UpdateListener() {
 					@Override
 					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
@@ -502,7 +495,7 @@ public class AdHocTapTest extends SwingTest {
 					}
 				});
 
-		ep.registerStatement("select count(*) as value, 'totalEVM' as label from EVM", watchUpdater);
+		ep.epl("select count(*) as value, 'totalEVM' as label from EVM", watchUpdater);
 	}
 
 	@After

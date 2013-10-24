@@ -36,7 +36,7 @@ public class EventProcessorTest {
 	@Test
 	public void test() {
 		EventProcessor ep = ExpertController.getInstance().getEventProcessor();
-		ep.registerStatement("select * from " + SubsystemCrossCheckerEvent.class.getSimpleName(), new UpdateListener() {
+		ep.epl("select * from " + SubsystemCrossCheckerEvent.class.getSimpleName(), new UpdateListener() {
 
 			@Override
 			public void update(EventBean[] arg0, EventBean[] arg1) {

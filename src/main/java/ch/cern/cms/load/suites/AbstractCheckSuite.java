@@ -19,11 +19,11 @@ public abstract class AbstractCheckSuite {
 	public abstract void registerViews();
 
 	protected EPStatement epl(String epl) {
-		return ep.createEPL(epl);
+		return ep.epl(epl);
 	}
 
 	protected void epl(String epl, UpdateListener listener) {
-		ep.registerStatement(epl, listener);
+		ep.epl(epl, listener);
 	}
 
 }

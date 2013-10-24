@@ -127,7 +127,7 @@ public class FlaslistLoadTest {
 	public void testWithNamedWindowsAndOnDemandQueries() throws IOException {
 		final EventProcessor ep = ExpertController.getInstance().getEventProcessor();
 		/** stuff for some debug, irrelevant **/
-		ep.registerStatement("select * from " + EPS, new UpdateListener() {
+		ep.epl("select * from " + EPS, new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 				FlaslistLoadTest.this.simpleCount++;
@@ -203,12 +203,12 @@ public class FlaslistLoadTest {
 		final EventProcessor ep = ExpertController.getInstance().getEventProcessor();
 
 		/** create window holding only the most-recent info per context **/
-		ep.createEPL("create window Reads.std:unique(name) as (name String, yield long, units int)");
-		ep.createEPL("insert into Reads select context as name, nbProcessed as yield, epMicroStateInt.size() as units from " + EPS);
+		ep.epl("create window Reads.std:unique(name) as (name String, yield long, units int)");
+		ep.epl("insert into Reads select context as name, nbProcessed as yield, epMicroStateInt.size() as units from " + EPS);
 
-		ep.createEPL("create window GroupStats.std:unique(units) as (units int, avrg double, sdev double)");
+		ep.epl("create window GroupStats.std:unique(units) as (units int, avrg double, sdev double)");
 
-		ep.registerStatement(
+		ep.epl(
 				"on pattern[every timer:interval(1000 msec)] insert into GroupStats select r.units as units, avg(r.yield) as avrg, stddev(r.yield) as sdev from Reads as r group by r.units",
 				new UpdateListener() {
 					@Override
@@ -219,8 +219,8 @@ public class FlaslistLoadTest {
 				});
 
 		/** simply put, count all **/
-		ep.createEPL("create window Overperformers.std:unique(name) as (name String, units int, yield long)");
-		ep.registerStatement(
+		ep.epl("create window Overperformers.std:unique(name) as (name String, units int, yield long)");
+		ep.epl(
 				"on GroupStats as gs insert into Overperformers select r.* from Reads as r where r.units=gs.units and r.yield > gs.avrg+3*gs.sdev",
 				new UpdateListener() {
 					@Override
@@ -231,8 +231,8 @@ public class FlaslistLoadTest {
 				});
 
 		/** try doing something more elaborate for underachievers **/
-		ep.createEPL("create window Underperformers.std:unique(name) as (name String, units int, yield long)");
-		ep.registerStatement(
+		ep.epl("create window Underperformers.std:unique(name) as (name String, units int, yield long)");
+		ep.epl(
 				"on GroupStats as gs insert into Underperformers select r.* from Reads as r where r.units=gs.units and r.yield < gs.avrg-3*gs.sdev",
 				new UpdateListener() {
 					@Override
@@ -240,10 +240,10 @@ public class FlaslistLoadTest {
 						System.out.println("adding underperformers: " + newEvents.length);
 					}
 				});
-		ep.createEPL("on GroupStats as gs delete from Underperformers u where gs.units = u.units and (select r.yield from Reads as r where r.name = u.name) > gs.avrg-3*gs.sdev");
-		ep.createEPL("on GroupStats as gs delete from Overperformers o where gs.units = o.units and (select r.yield from Reads as r where r.name = o.name) < gs.avrg+3*gs.sdev");
+		ep.epl("on GroupStats as gs delete from Underperformers u where gs.units = u.units and (select r.yield from Reads as r where r.name = u.name) > gs.avrg-3*gs.sdev");
+		ep.epl("on GroupStats as gs delete from Overperformers o where gs.units = o.units and (select r.yield from Reads as r where r.name = o.name) < gs.avrg+3*gs.sdev");
 
-		ep.registerStatement("select count(*) from Underperformers, Overperformers", new UpdateListener() {
+		ep.epl("select count(*) from Underperformers, Overperformers", new UpdateListener() {
 			private int i = 0;
 
 			@Override
@@ -267,7 +267,7 @@ public class FlaslistLoadTest {
 	public void test() throws IOException {
 
 		EventProcessor ep = ExpertController.getInstance().getEventProcessor();
-		ep.registerStatement("select irstream * from " + EventProcessorStatus.class.getSimpleName(), new UpdateListener() {
+		ep.epl("select irstream * from " + EventProcessorStatus.class.getSimpleName(), new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 			}
