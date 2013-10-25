@@ -273,4 +273,12 @@ public class SwingTest {
 
 	};
 
+	protected UpdateListener errorLogger = new UpdateListener() {
+
+		@Override
+		public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+			SwingTest.this.console("errors", newEvents[0].getUnderlying().toString());
+		}
+	};
+
 }

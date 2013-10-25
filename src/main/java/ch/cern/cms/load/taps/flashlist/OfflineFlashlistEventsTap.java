@@ -14,6 +14,8 @@ import java.util.TreeMap;
 import org.apache.log4j.Logger;
 
 import com.espertech.esper.client.EPAdministrator;
+import com.espertech.esper.client.time.CurrentTimeEvent;
+import com.espertech.esper.client.time.TimerEvent;
 
 import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.ExpertController;
@@ -21,7 +23,7 @@ import ch.cern.cms.load.ExpertController;
 public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
 	public static final String SETTINGS_KEY_FLASHLIST_DIR = "offlineFlashlistDir";
-	
+
 	private File rootFolder;
 	private double pace = 100;
 	private long fastForward = 0;
@@ -69,6 +71,7 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 								System.err.println("can't sleep");
 							}
 						}
+						//ep.getProvider().getEPRuntime().sendEvent(new CurrentTimeEvent(time));
 						for (File f : dumpFiles.get(time)) {
 							Flashlist fl = new Flashlist(new URL("file://" + f.getAbsolutePath()), f.getParentFile().getName());
 							logger.info("Sending event: " + f.getParentFile().getName());
@@ -117,8 +120,8 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	public synchronized void setPace(double pace) {
 		this.pace = pace;
 	}
-	
-	public synchronized void setPosition(long position){
+
+	public synchronized void setPosition(long position) {
 		this.fastForward = position;
 	}
 
@@ -130,5 +133,5 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 			throw new RuntimeException("Path issue", e);
 		}
 	}
-	
+
 }

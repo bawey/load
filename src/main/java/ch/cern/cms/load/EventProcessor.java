@@ -34,6 +34,7 @@ public class EventProcessor {
 
 	protected EventProcessor() {
 		Configuration c = new Configuration();
+		//c.getEngineDefaults().getThreading().setInternalTimerEnabled(false);
 		c.addImport(HwInfo.class);
 		c.addImport(CmsHw.class);
 

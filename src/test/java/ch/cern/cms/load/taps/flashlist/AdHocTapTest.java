@@ -15,6 +15,7 @@ import org.junit.Test;
 import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.ExpertController;
 import ch.cern.cms.load.SwingTest;
+import ch.cern.cms.load.hwdb.CmsHw;
 import ch.cern.cms.load.hwdb.HwInfo;
 import ch.cern.cms.load.taps.AbstractEventsTap;
 
@@ -30,16 +31,16 @@ public class AdHocTapTest extends SwingTest {
 	/**
 	 * SETUP FOR DEADTIME AND DB AND BACKPRESSURE - FULL
 	 */
-	// private double pace = 1;
-	// private long advance = 700000;
-	// HwInfo hwInfo = HwInfo.getInstance();
+	private double pace = 1;
+	private long advance = 700000;
+	HwInfo hwInfo = HwInfo.getInstance();
 
 	/**
 	 * SETUP FOR OUTPERFORMERS
 	 */
-	private double pace = 1;
-	private long advance = 700000; // 700000R
-	HwInfo hwInfo = null;// HwInfo.getInstance();
+	// private double pace = 3;
+	// private long advance = 700000; // 700000R
+	// HwInfo hwInfo = null;// HwInfo.getInstance();
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -68,6 +69,7 @@ public class AdHocTapTest extends SwingTest {
 			ec.getResolver().setFieldType("nbProcessed", Long.class);
 			ec.getResolver().setFieldType("bxNumber", Long.class);
 			ec.getResolver().setFieldType("triggerNumber", Long.class);
+			ec.getResolver().setFieldType("FEDSourceId", Integer.class);
 			ep = ec.getEventProcessor();
 			ep.getConfiguration().addImport(HwInfo.class.getName());
 
@@ -85,12 +87,29 @@ public class AdHocTapTest extends SwingTest {
 				deadtime(ep);
 				deadVsPressure(ep);
 				registerSillyDebugs(ep);
+				fedIds(ep);
 			}
 			// scriptTest(ep);
 
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+
+	private void fedIds(EventProcessor ep) {
+		// detect any pair of frlcontrollerLink events with the same FEDSourceId and differing (link, slot, context) triplet
+		ep.epl("select 'duplicate SourceFedId' as problem, a.context, a.linkNumber, a.FEDSourceId, a.slotNumber, b.context, b.slotNumber, b.linkNumber from "
+				+ "pattern[every a=frlcontrollerLink -> "
+				+ "b=frlcontrollerLink(FEDSourceId=a.FEDSourceId and (linkNumber!=a.linkNumber or context!=a.context or slotNumber!=a.slotNumber))]",
+				errorLogger);
+		// make sure that given triplet resolves to the same FEDSrcId
+		ep.epl("create window ConfirmedFeds.win:keepall() as select FEDSourceId as fedId from frlcontrollerLink");
+		ep.epl("create window DeniedFeds.win:keepall() as select * from ConfirmedFeds");
+		ep.epl("on frlcontrollerLink as a insert into ConfirmedFeds select a.FEDSourceId as fedId where a.FEDSourceId not in (select fedId from ConfirmedFeds) "
+				+ "and a.FEDSourceId = HwInfo.getInstance().getFedId(a.context, a.slotNumber, a.linkNumber, CmsHw.FRL)");
+
+		ep.epl("select count(*) as confirmedFeds from ConfirmedFeds", watchUpdater);
+
 	}
 
 	private void scriptTest(EventProcessor ep) {
@@ -383,48 +402,77 @@ public class AdHocTapTest extends SwingTest {
 
 		ep.epl("create variable int stuckTime = 2");
 
-		ep.epl("create window frlBxConsistency.std:unique(bxNumber).win:time(stuckTime sec) as (bxNumber Long, cnt Long)");
-		ep.epl("create window frlTrgConsistency.std:unique(trgNumber).win:time(stuckTime sec) as (trgNumber Long, cnt Long)");
+		ep.epl("create window frlBxValues.std:unique(bxNumber).win:time(stuckTime sec) as (bxNumber Long, cnt Long)");
+		ep.epl("create window frlTrgValues.std:unique(trgNumber).win:time(stuckTime sec) as (trgNumber Long, cnt Long)");
 
 		ep.epl("create window frlBuffer.std:unique(slotNumber, context, linkNumber) as select * from frlcontrollerLink");
 		ep.epl("on frlcontrollerLink fcl insert into frlBuffer select fcl.*", consoleLogger);
 
-		ep.epl("on pattern[every timer:interval(500 msec)] " + "insert into frlBxConsistency select bxNumber as bxNumber, count(*) as cnt "
-				+ "from frlBuffer group by bxNumber");
-		ep.epl("on pattern[every timer:interval(500 msec)] delete from frlBxConsistency as fbc where fbc.bxNumber not in (select bxNumber from frlBuffer)");
+		ep.epl("on pattern[every timer:interval(500 msec)] "
+				+ "insert into frlBxValues select bxNumber as bxNumber, count(*) as cnt from frlBuffer group by bxNumber ");
+		ep.epl("on pattern[every timer:interval(500 msec)] "
+				+ " insert into frlTrgValues select triggerNumber as trgNumber, count(*) as cnt from frlBuffer group by triggerNumber");
+
+		ep.epl("on pattern[every timer:interval(500 msec)] delete from frlBxValues as fbc where fbc.bxNumber not in (select bxNumber from frlBuffer)");
+		ep.epl("on pattern[every timer:interval(500 msec)] delete from frlTrgValues as ftv where ftv.trgNumber not in (select triggerNumber from frlBuffer)");
 
 		ep.epl("select count(*) as frlCL from frlcontrollerLink", watchUpdater);
 		ep.epl("select count(*) as frlBuffer from frlBuffer", watchUpdater);
 
-		ep.epl("select count(*) as bxNumbers from frlBxConsistency", watchUpdater);
-		ep.epl("select count(*) as trgNumbers from  frlTrgConsistency", watchUpdater);
+		ep.epl("select count(*) as bxNumbers from frlBxValues", watchUpdater);
+		ep.epl("select count(*) as trgNumbers from  frlTrgValues", watchUpdater);
 
-		ep.epl("select * from frlBxConsistency", new UpdateListener() {
+		/** these three should be linked into sth more of a hierarchy **/
+		ep.epl("on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] "
+				+ "select 'rates stuck, bxNumbers inconsistent' as problem, count(*) as bxNumbers from frlBxValues where "
+				+ "(select count(*) from frlBxValues)>1", errorLogger);
 
+		ep.epl("on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] "
+				+ "select 'rates stuck, triggerNumbers inconsistent' as problem, count(*) as trgNumbers from frlTrgValues where "
+				+ "(select count(*) from frlTrgValues)>1", errorLogger);
+
+		ep.epl("select 'rate stuck at 0 for ' || stuckTime.toString() ||' sec' as msg from pattern[every timer:interval(stuckTime sec) and not rates(rate>0) "
+				+ "]", consoleLogger);
+
+		/************************** just dummy debugs *****************************/
+
+		ep.epl("on pattern[every timer:interval(1 sec)] select * from frlBxValues", new UpdateListener() {
+			@Override
+			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+				StringBuilder sb = new StringBuilder();
+				sb.append("current frlBxValues: \n");
+				for (EventBean b : newEvents) {
+					sb.append(((MapEventBean) b).get("stream_0").toString()).append("\n");
+				}
+				console("frlBxValues", sb.toString());
+			}
+		});
+
+		ep.epl("on pattern[every timer:interval(1 sec)] select * from frlTrgValues", new UpdateListener() {
+			@Override
+			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+				StringBuilder sb = new StringBuilder();
+				sb.append("current frlTrgValues: \n");
+				for (EventBean b : newEvents) {
+					sb.append(((MapEventBean) b).get("stream_0").toString()).append("\n");
+				}
+				console("frlTrgValues", sb.toString());
+			}
+		});
+
+		ep.epl("select * from frlBxValues", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 				console("insertedBx", newEvents[0].getUnderlying().toString() + " at: " + new Date().toString());
 			}
 		});
 
-		ep.epl("on frlBxConsistency select * from frlBxConsistency", new UpdateListener() {
+		ep.epl("select * from frlTrgValues", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-				StringBuilder sb = new StringBuilder();
-				sb.append("new frame: \n");
-				for (EventBean b : newEvents) {
-					sb.append(((MapEventBean) b).get("stream_0").toString()).append("\n");
-				}
-				console("frlBxConsistency", sb.toString());
+				console("insertedTrg", newEvents[0].getUnderlying().toString() + " at: " + new Date().toString());
 			}
 		});
-
-		ep.epl("on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] "
-				+ "select 'rates stuck, bxNumbers inconsistent' as problem, count(*) as bxNumbers from frlBxConsistency where "
-				+ "(select count(*) from frlBxConsistency)>1", consoleLogger);
-
-		ep.epl("select 'rate stuck at 0 for ' || stuckTime.toString() ||' sec' as msg from pattern[every timer:interval(stuckTime sec) and not rates(rate>0) "
-				+ "]", consoleLogger);
 
 	}
 
@@ -458,35 +506,27 @@ public class AdHocTapTest extends SwingTest {
 		ep.epl("on pattern[every timer:interval(" + (1000 / pace) + " msec)] insert into rates select sum(subrate) as rate from subrates");
 		ep.epl("select prior(1,rate) as value, 'trigger rate' as label, lastEVMtimestamp as timestamp from rates", watchUpdater);
 
-		/**
-		 * create variable for rate reference level (avg rate observed over last minute). need an expression not to get NPE in logs
-		 **/
-		ep.epl("create expression double safeRound(n)[" + "importClass(java.lang.System);" +
-		// "importClass(java.lang.Math);" +
-		// "System.out.println(\"rounding: \"+n);" +
-				"n]");
-
 		StringBuilder script = new StringBuilder();
-		script.append("create expression double js:getNumber(n) [");
-		script.append("importClass(java.lang.System);");
-		// script.append("System.out.println(\"received value: \"+n+\" of type: \"+typeof(n));");
-		script.append("if(n!==null){ System.out.println(n);");
-		script.append("n}else{-8}");
-		script.append("]");
 
+		script.append("create expression double js:averageTriggerRate(n, m) [");
+		script.append("importClass(java.lang.System);");
+		script.append("System.out.println(\"received value n: \"+n+\" of type: \"+typeof(n));");
+		script.append("System.out.println(\"received value m: \"+m+\" of type: \"+typeof(m));");
+		script.append("if(n!=null){ n; }");
+		script.append("else if(m!=null){ m; }");
+		script.append("else { 0; }");
+		script.append("]");
 		ep.epl(script);
 
-		ep.epl("create window IndirectAvgTrgRate.win:length(1) as (value double)");
-		ep.epl("on pattern[every rates] insert into IndirectAvgTrgRate select avg(r.rate) as value from rates as r");
+		ep.epl("create variable Double avgTrgRate=null");
+		ep.epl("create variable Double indirectAvgTrgRate = null");
+		ep.epl("create variable Double lastEverRate=null");
+		ep.epl("on pattern[every r=rates] set " + "lastEverRate = r.rate," + "indirectAvgTrgRate = (select avg(rate) as rate from rates).rate,"
+				+ "avgTrgRate = Math.round(averageTriggerRate(indirectAvgTrgRate,lastEverRate))");
 
-		ep.epl("create variable double avgRate=0");
-		// ep.createEPL("on IndirectAvgTrgRate as iatr set avgRate = (iatr.value)");
-		ep.epl("on IndirectAvgTrgRate as iatr set avgRate = getNumber(iatr.value)");
-		// ep.createEPL("on rates as r set avgRate = getNumber(r.rate)");
+		ep.epl("select avgTrgRate as value, lastEVMtimestamp as timestamp, 'avg rate' as label from rates", watchUpdater);
 
-		ep.epl("select avgRate as value, lastEVMtimestamp as timestamp, 'avg rate' as label from rates", watchUpdater);
-
-		ep.epl("select avgRate, a.rate, lastEVMtimestamp as timestamp from pattern[every a=rates(rate>(avgRate*1.3) or rate < (avgRate*0.7))]",
+		ep.epl("select avgTrgRate, a.rate, lastEVMtimestamp as timestamp from pattern[every a=rates(rate>(avgTrgRate*1.3) or rate < (avgTrgRate*0.7))]",
 				new UpdateListener() {
 					@Override
 					public void update(EventBean[] newEvents, EventBean[] oldEvents) {
