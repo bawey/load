@@ -35,6 +35,7 @@ public class EventProcessor {
 	protected EventProcessor() {
 		Configuration c = new Configuration();
 		//c.getEngineDefaults().getThreading().setInternalTimerEnabled(false);
+		c.getEngineDefaults().getThreading().setListenerDispatchPreserveOrder(true);
 		c.addImport(HwInfo.class);
 		c.addImport(CmsHw.class);
 
@@ -47,8 +48,8 @@ public class EventProcessor {
 	private EPRuntime epRT;
 	private EPAdministrator epAdmin;
 
-	public EPStatement createEPL(CharSequence epl, UpdateListener listener) {
-		return epl(epl.toString()		, listener);
+	public EPStatement epl(CharSequence epl, UpdateListener listener) {
+		return epl(epl.toString(), listener);
 	}
 
 	public EPStatement epl(CharSequence eplStatement) {

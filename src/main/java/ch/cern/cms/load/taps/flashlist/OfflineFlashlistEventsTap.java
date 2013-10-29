@@ -14,6 +14,7 @@ import java.util.TreeMap;
 import org.apache.log4j.Logger;
 
 import com.espertech.esper.client.EPAdministrator;
+import com.espertech.esper.client.EPOnDemandQueryResult;
 import com.espertech.esper.client.time.CurrentTimeEvent;
 import com.espertech.esper.client.time.TimerEvent;
 
@@ -28,10 +29,19 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	private double pace = 100;
 	private long fastForward = 0;
 	private static final Logger logger = Logger.getLogger(OfflineFlashlistEventsTap.class);
+	private static long startPoint = Long.MAX_VALUE;
+	private static int totalInstances = 0;
+	private static int readyInstances = 0;
+
+	private static synchronized void submitLocalStartPoint(long sp) {
+		startPoint = Math.min(sp, startPoint);
+	}
 
 	public OfflineFlashlistEventsTap(ExpertController expert, String path) {
 		super(expert, path);
-
+		synchronized (OfflineFlashlistEventsTap.class) {
+			++totalInstances;
+		}
 		job = new Runnable() {
 			@Override
 			public void run() {
@@ -56,6 +66,24 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 					Long lastTime = null;
 					long lastSkipped = 0;
 					logger.info("This tap is ready to start sending the events: " + rootFolder.getAbsolutePath());
+					// sleep to align the starting point with other offline taps
+					long ownStart = dumpFiles.keySet().iterator().next();
+					submitLocalStartPoint(ownStart);
+
+					synchronized (OfflineFlashlistEventsTap.class) {
+						++readyInstances;
+					}
+
+					while (readyInstances != totalInstances) {
+						logger.info(this.hashCode() + " waiting for all instances to be ready");
+						Thread.sleep(100);
+					}
+
+					logger.info("ready instances: " + readyInstances);
+
+					if (ownStart > startPoint) {
+						Thread.sleep(ownStart - startPoint);
+					}
 					for (Long time : dumpFiles.keySet()) {
 						if (fastForward > 0) {
 							if (lastSkipped != 0) {
@@ -71,6 +99,7 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 								System.err.println("can't sleep");
 							}
 						}
+
 						//ep.getProvider().getEPRuntime().sendEvent(new CurrentTimeEvent(time));
 						for (File f : dumpFiles.get(time)) {
 							Flashlist fl = new Flashlist(new URL("file://" + f.getAbsolutePath()), f.getParentFile().getName());

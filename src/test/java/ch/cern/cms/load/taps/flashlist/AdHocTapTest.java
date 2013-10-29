@@ -15,7 +15,6 @@ import org.junit.Test;
 import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.ExpertController;
 import ch.cern.cms.load.SwingTest;
-import ch.cern.cms.load.hwdb.CmsHw;
 import ch.cern.cms.load.hwdb.HwInfo;
 import ch.cern.cms.load.taps.AbstractEventsTap;
 
@@ -75,13 +74,14 @@ public class AdHocTapTest extends SwingTest {
 
 			AbstractEventsTap.registerKnownOfflineTaps();
 
-			AbstractEventsTap.setOfflineTapsPace(pace);
+			AbstractEventsTap.setOfflineTapsPace(pace);	
 			AbstractEventsTap.setOfflineTapsPosition(advance);
 
 			createConclusionStreams(ep);
 			rateJumps(ep);
 			performers(ep);
 			bx(ep);
+			timeTest(ep);
 			if (hwInfo != null) {
 				backpressure(ep);
 				deadtime(ep);
@@ -112,6 +112,17 @@ public class AdHocTapTest extends SwingTest {
 
 	}
 
+	private void timeTest(EventProcessor ep) {
+		ep.epl("select current_timestamp() as timestamp from frlcontrollerLink", new UpdateListener() {
+			@Override
+			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+				Map<?, ?> map = (Map<?, ?>) newEvents[0].getUnderlying();
+				Long timestamp = Long.parseLong(map.get("timestamp").toString());
+				console("timer", "Date: " + new Date(timestamp).toString() + " >> " + timestamp);
+			}
+		});
+	}
+
 	private void scriptTest(EventProcessor ep) {
 
 		StringBuilder script2 = new StringBuilder();
@@ -122,7 +133,7 @@ public class AdHocTapTest extends SwingTest {
 		script2.append("]");
 
 		ep.epl(script2);
-		ep.createEPL("select print(bxNumber) as reMagic from frlcontrollerLink", watchUpdater);
+		ep.epl("select print(bxNumber) as reMagic from frlcontrollerLink", watchUpdater);
 
 		StringBuilder script = new StringBuilder();
 		script.append("create expression double getNumber(n) [");
@@ -132,7 +143,7 @@ public class AdHocTapTest extends SwingTest {
 		script.append("]");
 
 		ep.epl(script.toString());
-		ep.createEPL("select getNumber(bxNumber) as magic from frlcontrollerLink", watchUpdater);
+		ep.epl("select getNumber(bxNumber) as magic from frlcontrollerLink", watchUpdater);
 
 		StringBuilder fib = new StringBuilder();
 		fib.append("create expression double js:fib(num) [ ");
@@ -148,7 +159,7 @@ public class AdHocTapTest extends SwingTest {
 		fib.append("System.out.println(\"defined fib method\");");
 		fib.append("]");
 		ep.epl(fib);
-		ep.createEPL("select fib(1) as fibBx from frlcontrollerLink", new UpdateListener() {
+		ep.epl("select fib(1) as fibBx from frlcontrollerLink", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 				System.out.println("FIBONUMBER: " + newEvents[0].getUnderlying().toString());
@@ -419,8 +430,10 @@ public class AdHocTapTest extends SwingTest {
 		ep.epl("select count(*) as frlCL from frlcontrollerLink", watchUpdater);
 		ep.epl("select count(*) as frlBuffer from frlBuffer", watchUpdater);
 
-		ep.epl("select count(*) as bxNumbers from frlBxValues", watchUpdater);
-		ep.epl("select count(*) as trgNumbers from  frlTrgValues", watchUpdater);
+		ep.epl("on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] " +
+				"select count(*) as bxNumbers from frlBxValues", watchUpdater);
+		ep.epl("on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] " +
+				"select count(*) as trgNumbers from  frlTrgValues", watchUpdater);
 
 		/** these three should be linked into sth more of a hierarchy **/
 		ep.epl("on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] "
@@ -436,7 +449,7 @@ public class AdHocTapTest extends SwingTest {
 
 		/************************** just dummy debugs *****************************/
 
-		ep.epl("on pattern[every timer:interval(1 sec)] select * from frlBxValues", new UpdateListener() {
+		ep.epl("on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] select * from frlBxValues", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 				StringBuilder sb = new StringBuilder();
@@ -448,7 +461,7 @@ public class AdHocTapTest extends SwingTest {
 			}
 		});
 
-		ep.epl("on pattern[every timer:interval(1 sec)] select * from frlTrgValues", new UpdateListener() {
+		ep.epl("on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] select * from frlTrgValues", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 				StringBuilder sb = new StringBuilder();

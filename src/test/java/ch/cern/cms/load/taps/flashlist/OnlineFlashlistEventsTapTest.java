@@ -31,20 +31,20 @@ public class OnlineFlashlistEventsTapTest {
 
 	@Test
 	public void test() throws InterruptedException {
-		ExpertController ec = ExpertController.getInstance();
-		for (String flRoot : ec.getSettings().getFlashlistsRoots())
-			ec.registerTap(new OnlineFlashlistEventsTap(ec, flRoot));
-
-		ec.getEventProcessor().getRuntime().setUnmatchedListener(new UnmatchedListener() {
-			@Override
-			public void update(EventBean theEvent) {
-				System.out.println(theEvent.getUnderlying().toString());
-			}
-		});
-
-		ec.openTaps();
-
-		Thread.sleep(10000);
+		// ExpertController ec = ExpertController.getInstance();
+		// for (String flRoot : ec.getSettings().getFlashlistsRoots())
+		// ec.registerTap(new OnlineFlashlistEventsTap(ec, flRoot));
+		//
+		// ec.getEventProcessor().getRuntime().setUnmatchedListener(new UnmatchedListener() {
+		// @Override
+		// public void update(EventBean theEvent) {
+		// System.out.println(theEvent.getUnderlying().toString());
+		// }
+		// });
+		//
+		// ec.openTaps();
+		//
+		// Thread.sleep(10000);
 	}
 
 }
