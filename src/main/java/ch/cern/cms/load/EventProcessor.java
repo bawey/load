@@ -1,10 +1,11 @@
 package ch.cern.cms.load;
 
+import java.lang.annotation.Annotation;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
 
-import ch.cern.cms.hooks.Parrot;
+import ch.cern.cms.esper.annotations.Verbose;
 import ch.cern.cms.load.hwdb.CmsHw;
 import ch.cern.cms.load.hwdb.HwInfo;
 
@@ -15,6 +16,8 @@ import com.espertech.esper.client.EPRuntime;
 import com.espertech.esper.client.EPServiceProvider;
 import com.espertech.esper.client.EPServiceProviderManager;
 import com.espertech.esper.client.EPStatement;
+import com.espertech.esper.client.EPStatementStateListener;
+import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.UpdateListener;
 
 /**
@@ -39,11 +42,46 @@ public class EventProcessor {
 		c.getEngineDefaults().getThreading().setListenerDispatchPreserveOrder(true);
 		c.addImport(HwInfo.class);
 		c.addImport(CmsHw.class);
-		c.addImport(Parrot.class);
+		c.addImport(Verbose.class);
 
 		epProvider = EPServiceProviderManager.getProvider("myCEPEngine", c);
 		epRT = epProvider.getEPRuntime();
 		epAdmin = epProvider.getEPAdministrator();
+
+		epl("create variant schema SysOut as *");
+		epl("select * from SysOut", new UpdateListener() {
+			@Override
+			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+				System.out.println(newEvents[0].getUnderlying().toString());
+			}
+		});
+
+		epProvider.addStatementStateListener(new EPStatementStateListener() {
+
+			@Override
+			public void onStatementStateChange(EPServiceProvider serviceProvider, EPStatement statement) {
+				// TODO Auto-generated method stub
+
+			}
+
+			@Override
+			public void onStatementCreate(EPServiceProvider serviceProvider, EPStatement statement) {
+				System.out.println("registered statement: " + statement.getText());
+				for (Annotation a : statement.getAnnotations()) {
+					System.out.println(a.annotationType());
+					if (a.annotationType().equals(Verbose.class)) {
+						System.out.println("GOOD!");
+						statement.addListener(new UpdateListener() {
+							@Override
+							public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+								System.out.println(newEvents[0].getUnderlying().toString());
+							}
+						});
+					}
+				}
+			}
+		});
+
 	}
 
 	private EPServiceProvider epProvider = null;

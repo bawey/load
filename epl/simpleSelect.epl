@@ -1,2 +1,4 @@
-@Name('all FMMInput')
-on pattern[a=frlcontrollerLink] select Parrot(a) from frlcontrollerLink;
+create schema Msg as (msg String);
+@Name('new')
+@Verbose
+select * from frlcontrollerLink;
