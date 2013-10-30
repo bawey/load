@@ -1,6 +1,6 @@
 package ch.cern.cms.load.taps.flashlist;
 
-import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Load;
 import ch.cern.cms.load.taps.AbstractEventsTap;
 
 /**
@@ -10,7 +10,7 @@ import ch.cern.cms.load.taps.AbstractEventsTap;
 public abstract class AbstractFlashlistEventsTap extends AbstractEventsTap {
 	public static final String PKEY_FIELD_TYPE = "PROPERTY_KEY_FIELD_NAME_TO_TYPE_MAP";
 
-	protected AbstractFlashlistEventsTap(ExpertController expert, String path) {
+	protected AbstractFlashlistEventsTap(Load expert, String path) {
 		super(expert, path);
 	}
 

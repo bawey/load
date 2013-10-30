@@ -4,11 +4,11 @@ import java.awt.Dimension;
 
 import javax.swing.JFrame;
 
-import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Load;
 
 public class DefaultGui extends JFrame implements ExpertGui {
 	private static final long serialVersionUID = 1L;
-	private ExpertController expert;
+	private Load expert;
 
 	public DefaultGui() {
 		this.setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -16,7 +16,7 @@ public class DefaultGui extends JFrame implements ExpertGui {
 		this.setSize(new Dimension(800, 600));
 	}
 
-	public ExpertGui attach(ExpertController expert) {
+	public ExpertGui attach(Load expert) {
 		this.expert = expert;
 		this.setVisible(true);
 		return this;

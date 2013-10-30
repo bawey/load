@@ -23,7 +23,7 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreeSelectionModel;
 
 import ch.cern.cms.load.EventProcessor;
-import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Load;
 import ch.cern.cms.load.Settings;
 import ch.cern.cms.load.Settings.Runmode;
 import ch.cern.cms.load.eventProcessing.events.SubsystemCrossCheckerEvent;
@@ -39,7 +39,7 @@ public class WindowedMain implements ModelListener, TreeSelectionListener, Updat
 	private JFrame frame = null;
 	private Model model;
 	private JScrollPane leftScrollPane = null;
-	private Settings settings = ExpertController.getInstance().getSettings();
+	private Settings settings = Load.getInstance().getSettings();
 
 	private JPanel rightPanel = new JPanel(new GridLayout(1, 1));
 	private JScrollPane rightScrollPane = new JScrollPane(rightPanel);
@@ -61,9 +61,9 @@ public class WindowedMain implements ModelListener, TreeSelectionListener, Updat
 	}
 
 	private static void switchToOfflineMode() {
-		ExpertController.getInstance().getSettings().setRunmode(Runmode.OFFLINE);
-		ExpertController.getInstance().getSettings().setPlaybackRate(10d);
-		ExpertController.getInstance().getSettings().setDataSource(new File("dmp/data.bt"));
+		Load.getInstance().getSettings().setRunmode(Runmode.OFFLINE);
+		Load.getInstance().getSettings().setPlaybackRate(10d);
+		Load.getInstance().getSettings().setDataSource(new File("dmp/data.bt"));
 	}
 
 	public static final void main(String[] args) {
@@ -79,7 +79,7 @@ public class WindowedMain implements ModelListener, TreeSelectionListener, Updat
 		frame.setVisible(true);
 
 		// register a sample statement
-		ExpertController.getInstance().getEventProcessor().epl(
+		Load.getInstance().getEventProcessor().epl(
 				"select * from " + SubsystemCrossCheckerEvent.class.getSimpleName() + "(subsys='DAQ') having subsys='DAQ'", instance);
 
 	}

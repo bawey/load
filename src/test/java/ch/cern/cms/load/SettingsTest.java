@@ -30,7 +30,7 @@ public class SettingsTest {
 
 	@Test
 	public void test() {
-		ExpertController e = ExpertController.getInstance();
+		Load e = Load.getInstance();
 		for (String s : e.getSettings().getMany(OfflineFlashlistEventsTap.SETTINGS_KEY_FLASHLIST_DIR)) {
 			System.out.println(s);
 		}

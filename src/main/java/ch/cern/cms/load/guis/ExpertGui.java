@@ -1,7 +1,7 @@
 package ch.cern.cms.load.guis;
 
-import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Load;
 
 public interface ExpertGui {
-	public ExpertGui attach(ExpertController expert);
+	public ExpertGui attach(Load expert);
 }

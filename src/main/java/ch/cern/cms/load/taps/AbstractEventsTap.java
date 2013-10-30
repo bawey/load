@@ -1,7 +1,7 @@
 package ch.cern.cms.load.taps;
 
 import ch.cern.cms.load.EventProcessor;
-import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Load;
 import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;
 import ch.cern.cms.load.taps.flashlist.OnlineFlashlistEventsTap;
 
@@ -14,10 +14,10 @@ public abstract class AbstractEventsTap {
 		}
 	};
 	protected final EventProcessor ep;
-	protected final ExpertController controller;
+	protected final Load controller;
 	protected final String path;
 
-	protected AbstractEventsTap(ExpertController expert, String path) {
+	protected AbstractEventsTap(Load expert, String path) {
 		this.ep = expert.getEventProcessor();
 		this.controller = expert;
 		this.path = path;
@@ -27,11 +27,11 @@ public abstract class AbstractEventsTap {
 
 	/**
 	 * allows setting things up before performing the full registration with expert
-	 * {@link AbstractEventsTap#initWithExpert(ExpertController)}
+	 * {@link AbstractEventsTap#initWithExpert(Load)}
 	 **/
 	public abstract void preRegistrationSetup();
 
-	/** adds event definitions to configuration obtained via {@link ExpertController} **/
+	/** adds event definitions to configuration obtained via {@link Load} **/
 	public abstract void registerEventTypes();
 
 	/** launches the Tap-specific job in a separate thread **/
@@ -39,21 +39,24 @@ public abstract class AbstractEventsTap {
 		new Thread(job).start();
 	}
 
+	@Deprecated
 	public static void registerKnownOfflineTaps() {
-		ExpertController ec = ExpertController.getInstance();
+		Load ec = Load.getInstance();
 		for (String dir : ec.getSettings().getMany(OfflineFlashlistEventsTap.SETTINGS_KEY_FLASHLIST_DIR)) {
 			ec.registerTap(new OfflineFlashlistEventsTap(ec, dir));
 		}
 	}
 
+	@Deprecated
 	public static void registerKnownOnlineTaps() {
-		ExpertController ec = ExpertController.getInstance();
+		Load ec = Load.getInstance();
 		for (String flRoot : ec.getSettings().getMany(OnlineFlashlistEventsTap.SETTINGS_KEY_FLASHLIST_ROOT))
 			ec.registerTap(new OnlineFlashlistEventsTap(ec, flRoot));
 	}
 
+	@Deprecated
 	public static void setOfflineTapsPace(double pace) {
-		for (AbstractEventsTap tap : ExpertController.getInstance().getTaps()) {
+		for (AbstractEventsTap tap : Load.getInstance().getTaps()) {
 			if (tap instanceof OfflineFlashlistEventsTap) {
 				((OfflineFlashlistEventsTap) tap).setPace(pace);
 			}
@@ -61,7 +64,7 @@ public abstract class AbstractEventsTap {
 	}
 
 	public static void setOfflineTapsPosition(long position) {
-		for (AbstractEventsTap tap : ExpertController.getInstance().getTaps()) {
+		for (AbstractEventsTap tap : Load.getInstance().getTaps()) {
 			if (tap instanceof OfflineFlashlistEventsTap) {
 				((OfflineFlashlistEventsTap) tap).setPosition(position);
 			}

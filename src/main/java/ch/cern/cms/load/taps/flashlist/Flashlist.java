@@ -14,7 +14,7 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 
 import ch.cern.cms.load.EventProcessor;
-import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Load;
 
 public class Flashlist extends LinkedList<Map<String, Object>> {
 
@@ -40,7 +40,7 @@ public class Flashlist extends LinkedList<Map<String, Object>> {
 						throw new RuntimeException("tokens and keys lengths differ for: " + url);
 					}
 					for (int i = 0; i < tokens.length; ++i) {
-						map.put(keys[i], ExpertController.getInstance().getResolver().convert(tokens[i], keys[i], listName));
+						map.put(keys[i], Load.getInstance().getResolver().convert(tokens[i], keys[i], listName));
 					}
 					this.add(map);
 				}

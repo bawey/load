@@ -19,7 +19,7 @@ import com.espertech.esper.client.time.CurrentTimeEvent;
 import com.espertech.esper.client.time.TimerEvent;
 
 import ch.cern.cms.load.EventProcessor;
-import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Load;
 
 public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
@@ -37,7 +37,7 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 		startPoint = Math.min(sp, startPoint);
 	}
 
-	public OfflineFlashlistEventsTap(ExpertController expert, String path) {
+	public OfflineFlashlistEventsTap(Load expert, String path) {
 		super(expert, path);
 		synchronized (OfflineFlashlistEventsTap.class) {
 			++totalInstances;
@@ -127,7 +127,7 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 						Map<String, Object> types = new HashMap<String, Object>();
 						br = new BufferedReader(new FileReader(f));
 						for (String field : br.readLine().split(",")) {
-							types.put(field, ExpertController.getInstance().getResolver().getFieldType(field, d.getName()));
+							types.put(field, Load.getInstance().getResolver().getFieldType(field, d.getName()));
 							logger.info("event: " + d.getName() + ", field: " + field);
 						}
 						logger.info("registering event type: " + d.getName());

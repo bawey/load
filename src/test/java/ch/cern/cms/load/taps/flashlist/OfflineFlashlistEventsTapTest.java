@@ -8,11 +8,11 @@ import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.UpdateListener;
 
 import ch.cern.cms.load.EventProcessor;
-import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Load;
 
 public class OfflineFlashlistEventsTapTest {
 
-	private ExpertController expert;
+	private Load expert;
 	private OfflineFlashlistEventsTap tap;
 	private EventProcessor ep;
 
@@ -21,8 +21,8 @@ public class OfflineFlashlistEventsTapTest {
 
 	@Before
 	public void setUp() {
-		expert = ExpertController.getInstance();
-		ep = ExpertController.getInstance().getEventProcessor();
+		expert = Load.getInstance();
+		ep = Load.getInstance().getEventProcessor();
 		tap = new OfflineFlashlistEventsTap(expert, "/home/bawey/Workspace/LOAD/dmp/offlineFL/");
 		tap.preRegistrationSetup();
 		tap.registerEventTypes();

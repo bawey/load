@@ -15,7 +15,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import ch.cern.cms.load.EventProcessor;
-import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Load;
 import ch.cern.cms.load.FieldTypeResolver;
 
 import com.espertech.esper.client.EventBean;
@@ -32,7 +32,7 @@ public class FlashlistTest {
 	public static final String STREAM_NAME = "Word";
 	private static boolean callbackCalled = false;
 
-	private ExpertController ctl;
+	private Load ctl;
 	private EventProcessor ep;
 
 	@BeforeClass
@@ -46,8 +46,8 @@ public class FlashlistTest {
 	@Before
 	public void setUp() throws Exception {
 		/** simulate a running environment **/
-		ctl = ExpertController.getInstance();
-		FieldTypeResolver ftr = ExpertController.getInstance().getResolver();
+		ctl = Load.getInstance();
+		FieldTypeResolver ftr = Load.getInstance().getResolver();
 		ftr.setFieldType("length", Long.class);
 		ftr.setFieldType("vowels", Integer.class);
 		ftr.setFieldType("consonants", Double.class);
@@ -57,7 +57,7 @@ public class FlashlistTest {
 			public void registerEventTypes() {
 				Map<String, Object> def = new HashMap<String, Object>();
 				for (String f : fields) {
-					def.put(f, ExpertController.getInstance().getResolver().getFieldType(f, STREAM_NAME));
+					def.put(f, Load.getInstance().getResolver().getFieldType(f, STREAM_NAME));
 				}
 				ctl.getEventProcessor().getConfiguration().addEventType(STREAM_NAME, def);
 			}
@@ -92,7 +92,7 @@ public class FlashlistTest {
 		Flashlist fl = new Flashlist(url, STREAM_NAME);
 		assertEquals(3, fl.size());
 		assertEquals(Integer.class, fl.get(1).get("vowels").getClass());
-		fl.emit(ExpertController.getInstance().getEventProcessor());
+		fl.emit(Load.getInstance().getEventProcessor());
 		Thread.sleep(waitTime);
 		Assert.assertTrue(callbackCalled);
 	}
@@ -104,7 +104,7 @@ public class FlashlistTest {
 		Flashlist fl = new Flashlist(url, STREAM_NAME);
 		assertEquals(3, fl.size());
 		assertEquals(Double.class, fl.get(1).get("consonants").getClass());
-		fl.emit(ExpertController.getInstance().getEventProcessor());
+		fl.emit(Load.getInstance().getEventProcessor());
 		Thread.sleep(waitTime);
 		Assert.assertTrue(callbackCalled);
 	}

@@ -9,7 +9,7 @@ import org.junit.Test;
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.UnmatchedListener;
 
-import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Load;
 
 public class OnlineFlashlistEventsTapTest {
 

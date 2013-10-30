@@ -1,0 +1,2 @@
+@Name('all FMMInput')
+on pattern[a=frlcontrollerLink] select Parrot(a) from frlcontrollerLink;

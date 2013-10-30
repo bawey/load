@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
 
+import ch.cern.cms.load.eplProviders.FileBasedEplProvider;
 import ch.cern.cms.load.guis.DefaultGui;
 import ch.cern.cms.load.guis.ExpertGui;
 import ch.cern.cms.load.taps.AbstractEventsTap;
@@ -15,15 +16,17 @@ import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;
  * configuration-specific actions to enable unit-testing and reconfigurations.
  */
 
-public class ExpertController {
+// try this for loading properties: inputFile = this.getClass().getClassLoader().getResourceAsStream("etc/trivia.epl")
 
-	private static ExpertController instance;
+public class Load {
 
-	public static ExpertController getInstance() {
+	private static Load instance;
+
+	public static Load getInstance() {
 		if (instance == null) {
-			synchronized (ExpertController.class) {
+			synchronized (Load.class) {
 				if (instance == null) {
-					instance = new ExpertController();
+					instance = new Load();
 				}
 			}
 		}
@@ -35,8 +38,8 @@ public class ExpertController {
 	 */
 	public static void main(String[] args) {
 		instance = getInstance();
-		instance.doProductionSetup();
-
+		instance.defaultSetup();
+		instance.attachViews();
 	}
 
 	private final EventProcessor ep = new EventProcessor();
@@ -49,7 +52,7 @@ public class ExpertController {
 
 	private final FieldTypeResolver resolver = new FieldTypeResolver();
 
-	private ExpertController() {
+	private Load() {
 		settings.put(Settings.KEY_RESOLVER, resolver);
 		setUpSOCKSProxy();
 	}
@@ -76,10 +79,17 @@ public class ExpertController {
 	/**
 	 * Initializes the default application structure.
 	 */
-	private void doProductionSetup() {
-		registerTap(new OfflineFlashlistEventsTap(this, "/home/bawey/Workspace/load/dmp/offlineFL/"));
+	private void defaultSetup() {
+		// looks stupid - calls every known component to perform its setup depending on the config file's contents
+		// place for dependency injection??
+
+		// register taps
+		AbstractEventsTap.registerKnownOfflineTaps();
+		AbstractEventsTap.registerKnownOnlineTaps();
+		// register the statements from file
+		new FileBasedEplProvider().registerStatements(ep);
+
 		openTaps();
-		attachViews();
 	}
 
 	public void openTaps() {
@@ -100,14 +110,9 @@ public class ExpertController {
 	}
 
 	private void setUpSOCKSProxy() {
-		System.out.println("Setting up SOCKS proxy ...");
-
-		Properties sysProperties = System.getProperties();
-
-		// Specify proxy settings
-		sysProperties.put("socksProxyHost", "127.0.0.1");
-		sysProperties.put("socksProxyPort", "1080");
-		sysProperties.put("proxySet", "true");
+		for (String key : new String[] { "socksProxyHost", "proxySet", "socksProxyPort" }) {
+			System.getProperties().put(key, settings.get(key));
+		}
 	}
 
 }

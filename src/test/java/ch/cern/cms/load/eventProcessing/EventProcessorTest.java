@@ -12,7 +12,7 @@ import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.UpdateListener;
 
 import ch.cern.cms.load.EventProcessor;
-import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Load;
 import ch.cern.cms.load.eventProcessing.events.SubsystemCrossCheckerEvent;
 
 public class EventProcessorTest {
@@ -35,7 +35,7 @@ public class EventProcessorTest {
 
 	@Test
 	public void test() {
-		EventProcessor ep = ExpertController.getInstance().getEventProcessor();
+		EventProcessor ep = Load.getInstance().getEventProcessor();
 		ep.epl("select * from " + SubsystemCrossCheckerEvent.class.getSimpleName(), new UpdateListener() {
 
 			@Override

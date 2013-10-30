@@ -1,7 +1,7 @@
 package ch.cern.cms.load.cep.suites;
 
 import ch.cern.cms.load.EventProcessor;
-import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Load;
 import ch.cern.cms.load.FieldTypeResolver;
 import ch.cern.cms.load.hwdb.HwInfo;
 import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;

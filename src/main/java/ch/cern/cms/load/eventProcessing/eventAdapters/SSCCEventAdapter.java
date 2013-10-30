@@ -3,7 +3,7 @@ package ch.cern.cms.load.eventProcessing.eventAdapters;
 import java.util.Map;
 
 import ch.cern.cms.load.EventProcessor;
-import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Load;
 import ch.cern.cms.load.eventProcessing.EventFactory;
 import ch.cern.cms.load.eventProcessing.events.SubsystemCrossCheckerEvent;
 
@@ -36,7 +36,7 @@ public class SSCCEventAdapter implements EventAdapter {
 			SubsystemCrossCheckerEvent event = new SubsystemCrossCheckerEvent(subsys, clockChanged, confTime, fedsChanged);
 			System.out.println("event created!");
 			// now the event should be sent to CEP
-			ExpertController.getInstance().getEventProcessor().sendEvent(event);
+			Load.getInstance().getEventProcessor().sendEvent(event);
 			
 			return true;
 		}

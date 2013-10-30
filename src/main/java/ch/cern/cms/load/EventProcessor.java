@@ -4,6 +4,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
+import ch.cern.cms.hooks.Parrot;
 import ch.cern.cms.load.hwdb.CmsHw;
 import ch.cern.cms.load.hwdb.HwInfo;
 
@@ -34,10 +35,11 @@ public class EventProcessor {
 
 	protected EventProcessor() {
 		Configuration c = new Configuration();
-		//c.getEngineDefaults().getThreading().setInternalTimerEnabled(false);
+		// c.getEngineDefaults().getThreading().setInternalTimerEnabled(false);
 		c.getEngineDefaults().getThreading().setListenerDispatchPreserveOrder(true);
 		c.addImport(HwInfo.class);
 		c.addImport(CmsHw.class);
+		c.addImport(Parrot.class);
 
 		epProvider = EPServiceProviderManager.getProvider("myCEPEngine", c);
 		epRT = epProvider.getEPRuntime();

@@ -13,7 +13,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import ch.cern.cms.load.EventProcessor;
-import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Load;
 import ch.cern.cms.load.SwingTest;
 import ch.cern.cms.load.hwdb.HwInfo;
 import ch.cern.cms.load.taps.AbstractEventsTap;
@@ -24,7 +24,7 @@ import com.espertech.esper.event.map.MapEventBean;
 
 public class AdHocTapTest extends SwingTest {
 
-	ExpertController ec;
+	Load ec;
 	EventProcessor ep;
 
 	/**
@@ -53,7 +53,7 @@ public class AdHocTapTest extends SwingTest {
 	public void setUp() {
 		super.setUp();
 		try {
-			ec = ExpertController.getInstance();
+			ec = Load.getInstance();
 			ec.getResolver().setFieldType("deltaT", Double.class);
 			ec.getResolver().setFieldType("deltaN", Double.class);
 			ec.getResolver().setFieldType("fifoAlmostFullCnt", Long.class);

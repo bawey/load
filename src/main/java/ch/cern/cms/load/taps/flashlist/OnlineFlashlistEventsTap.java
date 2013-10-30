@@ -13,7 +13,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
-import ch.cern.cms.load.ExpertController;
+import ch.cern.cms.load.Load;
 import ch.cern.cms.load.tools.HttpTools;
 
 /**
@@ -61,7 +61,7 @@ public class OnlineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	private Map<String, Map<String, Object>> eventDefinitions;
 	private List<String> flashlists;
 
-	public OnlineFlashlistEventsTap(ExpertController expert, String path) {
+	public OnlineFlashlistEventsTap(Load expert, String path) {
 		super(expert, path);
 		job = new Runnable() {
 			@Override
@@ -111,7 +111,7 @@ public class OnlineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 			br = new BufferedReader(new StringReader(flashlistContent));
 			try {
 				for (String field : br.readLine().split(",")) {
-					types.put(field, ExpertController.getInstance().getResolver().getFieldType(field, flashlists.get(i)));
+					types.put(field, Load.getInstance().getResolver().getFieldType(field, flashlists.get(i)));
 					logger.info("event: " + eventName + ", field: " + field);
 				}
 				eventDefinitions.put(eventName, types);
