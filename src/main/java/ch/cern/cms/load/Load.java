@@ -2,14 +2,14 @@ package ch.cern.cms.load;
 
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Properties;
 import java.util.Set;
+
+import org.apache.log4j.Logger;
 
 import ch.cern.cms.load.eplProviders.FileBasedEplProvider;
 import ch.cern.cms.load.guis.DefaultGui;
 import ch.cern.cms.load.guis.ExpertGui;
 import ch.cern.cms.load.taps.AbstractEventsTap;
-import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;
 
 /**
  * Core components, singletons etc. should be initialized here. However, the setup of initial structure should be well separated from the
@@ -20,6 +20,7 @@ import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;
 
 public class Load {
 
+	private static final Logger logger = Logger.getLogger(Load.class);
 	private static Load instance;
 
 	public static Load getInstance() {
@@ -39,7 +40,6 @@ public class Load {
 	public static final void main(String[] args) {
 		instance = getInstance();
 		instance.defaultSetup();
-		instance.attachViews();
 	}
 
 	private final EventProcessor ep = new EventProcessor();
@@ -51,6 +51,8 @@ public class Load {
 	private final Set<AbstractEventsTap> taps = new HashSet<AbstractEventsTap>();
 
 	private final FieldTypeResolver resolver = new FieldTypeResolver();
+
+	private final Set<LoadView> views = new HashSet<LoadView>();
 
 	private Load() {
 		settings.put(Settings.KEY_RESOLVER, resolver);
@@ -69,11 +71,8 @@ public class Load {
 		return resolver;
 	}
 
-	/**
-	 * this should allow to attach swing / net gui
-	 */
-	private void attachViews() {
-		guis.add(new DefaultGui().attach(this));
+	public Set<LoadView> getViews() {
+		return views;
 	}
 
 	/**
@@ -82,6 +81,9 @@ public class Load {
 	private void defaultSetup() {
 		// looks stupid - calls every known component to perform its setup depending on the config file's contents
 		// place for dependency injection??
+
+		// register the views
+		this.setUpViews();
 
 		// register taps
 		AbstractEventsTap.registerKnownOfflineTaps();
@@ -115,4 +117,18 @@ public class Load {
 		}
 	}
 
+	private void setUpViews() {
+		for (String viewName : settings.getMany("view")) {
+			System.out.println("wow, a view: " + viewName);
+			ClassLoader ldr = this.getClass().getClassLoader();
+			try {
+				String interfaceName = LoadView.class.getCanonicalName();
+				LoadView newView = (LoadView) ldr.loadClass(interfaceName.substring(0, interfaceName.lastIndexOf('.') + 1) + "views." + viewName).newInstance();
+				views.add(newView);
+
+			} catch (Exception e) {
+				logger.error("Failed to register the view: " + viewName, e);
+			}
+		}
+	}
 }

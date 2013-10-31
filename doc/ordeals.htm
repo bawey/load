@@ -1,0 +1,103 @@
+<html>
+    <head>
+        <title>Esperiences</title>
+        <style type="text/css">
+            code {
+                font-size: 1.1em;
+                color: navy;
+                padding: 4px;
+                line-height: 1.7em;
+            }
+            code.error{
+                color: red;
+            }
+        </style>
+    </head>
+    <body>
+        <ul>
+            <li><h3>Scripts: passing values to expressions</h3><p>
+                    It doesn't seem possible to directly bind expressions to <i>select</i> statements like:
+                    <br /><code>on Something callMe(select field as alias from SomeStream)</code><br />
+                    Instead you need to pass a column like: 
+                    <br /><code>on SomeStream as s set someVar = someFun(s.anyField)</code><br />
+                    <code>
+                        StringBuilder script = new StringBuilder(); <br />
+                        script.append("create expression double js:getNumber(n) ["); <br />
+                        script.append("importClass(java.lang.System);"); <br />
+                        script.append("System.out.println(\"received value: \"+n+\" of type: \"+typeof(n));"); <br />
+                        script.append("if(n!==null){ System.out.println(n);"); <br />
+                        script.append("n}else{-8}"); <br />
+                        script.append("]"); <br />
+                        <br />
+                        ep.createEPL(script);<br />
+                        <br />
+                        ep.createEPL("create window IndirectAvgTrgRate.win:length(2) as (value double)"); <br />
+                        ep.createEPL("insert into IndirectAvgTrgRate select avg(r.rate) as value from rates as r"); <br />
+                        <br />
+                        ep.createEPL("create variable double avgRate=0");   <br />
+                    </code><br />
+                    this always results in null received by getNumber() <br />
+                    <code>ep.createEPL("on IndirectAvgTrgRate as iatr set avgRate = getNumber(iatr.value)");  </code><br />
+                    this however sets the average fine, without passing it through getNumber() <br />
+                    <code>ep.createEPL("on IndirectAvgTrgRate as iatr set avgRate = (iatr.value)"); </code><br />
+                    this however works fine, the value is sent through the getNumber and average is set equal to last observed value <br />
+                    <code>ep.createEPL("on rates as r set avgRate = getNumber(r.rate)"); </code><br />
+                </p></li>
+            <li>
+                <h3>Triggered selection</h3>
+                <p>
+                    When doing: <br />
+                    <code>on SomeEvent select * from SomeStream</code><br />
+                    the listener receives not a <code>MapEventBean</code> where the selection results are under <code>"stream_0"</code>
+                    and the triggering event under <code>"stream_1"</code> </br>
+                    Same goes for patterns, but there is no <code>"stream_1"</code>, like:
+                    <code>on pattern[every SomeEvent] select * from SomeStream</code><br />
+                </p>
+            </li>
+            <li>
+                <h3>(uncertain) Stream splitting and 'output all'</h3>
+                It seems impossible to do: <br />
+                <code>
+                    on pattern[every timer:interval(1 sec)] <br/>
+                    insert into SomeStream1 select * from ... <br />
+                    insert into SomeStream2 select * from ... <br />
+                    output all <br />
+                </code>
+                But it's fine to do so with: <code> on SomeEvent ... </code> and no subqueries as they are not allowed when splitting streams.
+            </li>
+            <li>
+                <h3>Stream-splitting syntax + select</h3>
+                This works: <br />
+                <code>
+                    on pattern[every timer:interval(500 msec)] select lastever(rate) from rates <br/>
+                </code>
+                This does not: <br />
+                <code>
+                    on pattern[every timer:interval(500 msec)] select avgRate
+                </code><br />
+                due to:
+                <code class="error">
+                    Required insert-into clause is not provided, the clause is required for split-stream syntax [on pattern[every timer:interval(500 msec)] select avgRate]
+                </code><br />
+                where <code>avgRate</code> is a variable. <br />
+                However, <code>on pattern[...] select avgRate from rates</code> solves the problem.
+            </li>
+            <li>
+                <h3>Reference fields from sub-queries</h3>
+                <p>Have not seen it in documentation (doesn't mean it's not there), but such construct is allowed and useful: <br />
+                    <code>create variable Double avgTrgRate=null <br />
+                        create variable Double indirectAvgTrgRate = null <br />
+                        create variable Double lastEverRate=null <br />
+                        on pattern[every r=rates] set lastEverRate = r.rate, 
+                        indirectAvgTrgRate = (select avg(rate) as rate from rates).rate, 
+                        avgTrgRate = Math.round(averageTriggerRate(indirectAvgTrgRate,lastEverRate))</code> <br/>
+                    It should also fix the "statement returned multiple rows" error.
+                </p>
+            </li>
+            <li>
+                <h3>Dealing with nulls (coz ya ain't know what ya select)</h3><p></p>
+            </li>
+        </ul>
+
+    </body>
+</html>

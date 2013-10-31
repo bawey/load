@@ -6,6 +6,7 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 
 import ch.cern.cms.esper.annotations.Verbose;
+import ch.cern.cms.esper.annotations.Watched;
 import ch.cern.cms.load.hwdb.CmsHw;
 import ch.cern.cms.load.hwdb.HwInfo;
 
@@ -17,7 +18,6 @@ import com.espertech.esper.client.EPServiceProvider;
 import com.espertech.esper.client.EPServiceProviderManager;
 import com.espertech.esper.client.EPStatement;
 import com.espertech.esper.client.EPStatementStateListener;
-import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.UpdateListener;
 
 /**
@@ -42,19 +42,11 @@ public class EventProcessor {
 		c.getEngineDefaults().getThreading().setListenerDispatchPreserveOrder(true);
 		c.addImport(HwInfo.class);
 		c.addImport(CmsHw.class);
-		c.addImport(Verbose.class);
+		c.addImport("ch.cern.cms.esper.annotations.*");
 
 		epProvider = EPServiceProviderManager.getProvider("myCEPEngine", c);
 		epRT = epProvider.getEPRuntime();
 		epAdmin = epProvider.getEPAdministrator();
-
-		epl("create variant schema SysOut as *");
-		epl("select * from SysOut", new UpdateListener() {
-			@Override
-			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-				System.out.println(newEvents[0].getUnderlying().toString());
-			}
-		});
 
 		epProvider.addStatementStateListener(new EPStatementStateListener() {
 
@@ -68,15 +60,14 @@ public class EventProcessor {
 			public void onStatementCreate(EPServiceProvider serviceProvider, EPStatement statement) {
 				System.out.println("registered statement: " + statement.getText());
 				for (Annotation a : statement.getAnnotations()) {
-					System.out.println(a.annotationType());
 					if (a.annotationType().equals(Verbose.class)) {
-						System.out.println("GOOD!");
-						statement.addListener(new UpdateListener() {
-							@Override
-							public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-								System.out.println(newEvents[0].getUnderlying().toString());
-							}
-						});
+						for (LoadView view : Load.getInstance().getViews()) {
+							statement.addListener(view.getVerboseStatementListener());
+						}
+					} else if (a.annotationType().equals(Watched.class)) {
+						for (LoadView view : Load.getInstance().getViews()) {
+							statement.addListener(view.getWatchedStatementListener());
+						}
 					}
 				}
 			}
