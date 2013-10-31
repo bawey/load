@@ -1,0 +1,27 @@
+		/** connect BackpressureFilter with data sources **/
+on pattern[every a=frlcontrollerLink(fifoAlmostFullCnt>0)->b=frlcontrollerLink(fifoAlmostFullCnt>0,context=a.context,slotNumber=a.slotNumber,sessionid=a.sessionid,clockCount>a.clockCount)]"
+				+ " insert into BackpressureFilter select (b.fifoAlmostFullCnt-a.fifoAlmostFullCnt)/(b.clockCount-a.clockCount) as bpFraction, b.slotNumber as slotNumber, b.linkNumber as linkNumber, b.timestamp as timestamp, b.context as kontext;
+
+		/** create Backpressure window to hold most recent values for triplets **/
+create window Backpressure.std:unique(kontext, linkNumber, slotNumber) as select * from BackpressureFilter;
+		/** create stream for BackpressureAlarms **/
+		createConclusionStream(ep, "BackpressureAlarm", "(title String) copyfrom BackpressureFilter;
+
+		/**
+		 * split the BackpressureFilter and insert into BackpressureAlarms and/or Backpressure when necessary
+		 **/
+on BackpressureFilter(bpFraction>0) as bf "
+				+ "insert into BackpressureAlarm select 'frl backpressure' as title, bf.kontext as kontext, bf.linkNumber as linkNumber, bf.slotNumber as slotNumber where (select count(*) as cnt from Backpressure where kontext=bf.kontext and linkNumber=bf.linkNumber and slotNumber=bf.slotNumber)=0"
+				+ " insert into Backpressure select bf.*" + " output all;
+		/**
+		 * cancel the associated alarm when bpFraction goes back down for a triplet
+		 **/
+on BackpressureFilter(bpFraction=0) as bf delete from Backpressure b where bf.linkNumber = b.linkNumber and bf.slotNumber = b.slotNumber and bf.kontext=b.kontext;
+on BackpressureFilter(bpFraction=0) as bf delete from Conclusions c where "
+				+ "c.title.toString()='frl backpressure' and c.kontext.toString()=bf.kontext.toString() and c.slotNumber.toString()=bf.slotNumber.toString() and c.linkNumber.toString()=bf.linkNumber.toString();
+
+select b.bpFraction as value, 'BP '||b.kontext||'L'||b.linkNumber.toString()||'S'||b.slotNumber.toString() as label from pattern[every b=Backpressure]",
+				watchUpdater);
+
+
+

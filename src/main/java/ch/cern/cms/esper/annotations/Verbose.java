@@ -23,4 +23,9 @@ public @interface Verbose {
 	 * Setting to false should make the interactive views overwrite the output with statement results.
 	 */
 	boolean append() default true;
+	
+	/**
+	 * In case of joins it might be necessary to dig down to the desired stream
+	 */
+	String[] streamPath() default {};
 }

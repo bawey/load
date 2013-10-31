@@ -4,7 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.lang.annotation.Annotation;
-import java.util.Date;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -22,8 +22,9 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
-import org.junit.Test;
+import org.apache.log4j.Logger;
 
+import ch.cern.cms.esper.annotations.Verbose;
 import ch.cern.cms.esper.annotations.Watched;
 import ch.cern.cms.load.LoadView;
 
@@ -33,8 +34,11 @@ import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.StatementAwareUpdateListener;
 import com.espertech.esper.event.WrapperEventBean;
 import com.espertech.esper.event.map.MapEventBean;
+import com.espertech.esper.event.map.MapEventType;
 
 public class SwingGui implements LoadView {
+
+	private static final Logger logger = Logger.getLogger(SwingGui.class);
 
 	@Override
 	public StatementAwareUpdateListener getVerboseStatementListener() {
@@ -148,6 +152,12 @@ public class SwingGui implements LoadView {
 		consoles.get(title).setText(message + "\n" + consoles.get(title).getText());
 	}
 
+	protected void clearConsole(String title) {
+		if (consoles.containsKey(title)) {
+			consoles.get(title).setText("");
+		}
+	}
+
 	protected synchronized void watch(String title, String message) {
 		if (!watchVals.containsKey(title)) {
 			watchVals.put(title, new JTextField(message, 20));
@@ -246,7 +256,69 @@ public class SwingGui implements LoadView {
 	protected StatementAwareUpdateListener consoleLogger = new StatementAwareUpdateListener() {
 		@Override
 		public void update(EventBean[] newEvents, EventBean[] oldEvents, EPStatement statement, EPServiceProvider epServiceProvider) {
-			SwingGui.this.console("default", newEvents[0].getUnderlying().toString());
+			String label = "default";
+			String[] fields = {};
+			String xtrMsg = null;
+			String[] streamPath = {};
+			boolean append = true;
+			for (Annotation ann : statement.getAnnotations()) {
+				if (ann.annotationType().equals(Verbose.class)) {
+					label = ((Verbose) ann).label();
+					fields = ((Verbose) ann).fields();
+					xtrMsg = ((Verbose) ann).extraNfo();
+					append = ((Verbose) ann).append();
+					streamPath = ((Verbose) ann).streamPath();
+					break;
+				}
+			}
+			if (!append) {
+				clearConsole(label);
+			}
+			StringBuilder sb = new StringBuilder();
+			for (EventBean eventBean : newEvents) {
+				if (sb.length() > 0) {
+					sb.append("\n");
+				}
+				if (xtrMsg.length() > 0) {
+					sb.append(xtrMsg).append(" | ");
+				}
+				Object bundled = eventBean.getUnderlying();
+				for (String pathElement : streamPath) {
+					try {
+						Method m = bundled.getClass().getMethod("get", Object.class);
+						bundled = m.invoke(bundled, pathElement);
+						// logger.info("descended into " + pathElement + " and fot " + bundled.getClass());
+						if (bundled instanceof EventBean) {
+							// logger.info("excavating further");
+							bundled = ((EventBean) bundled).getUnderlying();
+						}
+
+					} catch (Exception e) {
+						logger.error("Failed to unbundle the stream for path: " + streamPath);
+					}
+				}
+				if (fields != null && fields.length > 0) {
+					for (String field : fields) {
+						for (Class<?> ptype : new Class[] { Object.class, String.class }) {
+							try {
+								Method m = bundled.getClass().getMethod("get", Object.class);
+								Object desired = m.invoke(bundled, field);
+								sb.append(field).append(": ");
+								sb.append(desired.toString());
+								if (!field.equals(fields[fields.length - 1])) {
+									sb.append(", ");
+								}
+								break;
+							} catch (Exception e) {
+								logger.error("Ah, failed to invoke the get method using " + ptype + " as parameter type for statement: " + statement.getText());
+							}
+						}
+					}
+				} else {
+					sb.append(bundled.toString());
+				}
+			}
+			SwingGui.this.console(label, sb.toString());
 		}
 	};
 }

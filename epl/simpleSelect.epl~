@@ -1,9 +1,0 @@
-create schema Msg as (msg String);
-@Name('new')
-@Verbose
-select * from frlcontrollerLink;
-
-@Name('lame')
-@Watched(label='Total FRL ctl link')
-select count(*) as frlCtlLinkFrames from frlcontrollerLink;
-

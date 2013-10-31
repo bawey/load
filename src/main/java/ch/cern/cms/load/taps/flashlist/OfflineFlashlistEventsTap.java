@@ -26,7 +26,7 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	public static final String SETTINGS_KEY_FLASHLIST_DIR = "offlineFlashlistDir";
 
 	private File rootFolder;
-	private double pace = 100;
+	private double pace = 1;
 	private long fastForward = 0;
 	private static final Logger logger = Logger.getLogger(OfflineFlashlistEventsTap.class);
 	private static long startPoint = Long.MAX_VALUE;

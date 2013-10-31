@@ -49,6 +49,10 @@ public class EventProcessor {
 		epRT = epProvider.getEPRuntime();
 		epAdmin = epProvider.getEPAdministrator();
 
+		epl("create variant schema ConclusionsStream as * ");
+		epl("create window Conclusions.win_keepall() as select * from ConclusionsStream");
+		
+		
 		epProvider.addStatementStateListener(new EPStatementStateListener() {
 
 			@Override
@@ -59,7 +63,6 @@ public class EventProcessor {
 
 			@Override
 			public void onStatementCreate(EPServiceProvider serviceProvider, EPStatement statement) {
-				System.out.println("registered statement: " + statement.getText());
 				for (Annotation a : statement.getAnnotations()) {
 					if (a.annotationType().equals(Verbose.class)) {
 						for (LoadView view : Load.getInstance().getViews()) {
@@ -107,7 +110,6 @@ public class EventProcessor {
 	}
 
 	private void addEventType(Class<?> eventObjectClass) {
-		System.out.println("adding event type: " + eventObjectClass.getSimpleName() + " [" + eventObjectClass.getName() + "]");
 		getConfiguration().addEventType(eventObjectClass.getSimpleName(), eventObjectClass.getName());
 	}
 

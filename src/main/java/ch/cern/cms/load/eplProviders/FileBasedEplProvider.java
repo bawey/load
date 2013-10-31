@@ -48,6 +48,7 @@ public class FileBasedEplProvider implements EplProvider {
 			try {
 				InputStream inputFile = new FileInputStream(f);
 				Load.getInstance().getEventProcessor().getAdministrator().getDeploymentAdmin().readDeploy(inputFile, null, null, null);
+				logger.info("successfully deployed a module from  " + f.getPath());
 			} catch (Exception e) {
 				logger.error("Failed to read EPL file: " + f.getAbsolutePath(), e);
 			}

@@ -1,0 +1,14 @@
+@Description('detect any pair of frlcontrollerLink events with the same FEDSourceId and differing (link, slot, context) triplet')
+
+@Verbose(label='error', fields={}, extraNfo='Duplicate FEDSourceId!')
+select a.context, a.linkNumber, a.FEDSourceId, a.slotNumber, b.context, b.slotNumber, b.linkNumber 
+	from pattern[every a=frlcontrollerLink -> b=frlcontrollerLink(FEDSourceId=a.FEDSourceId and (linkNumber!=a.linkNumber or context!=a.context or slotNumber!=a.slotNumber))];
+
+@Description('make sure that given triplet resolves to the same FEDSrcId')
+create window ConfirmedFeds.win:keepall() as select FEDSourceId as fedId from frlcontrollerLink;
+create window DeniedFeds.win:keepall() as select * from ConfirmedFeds;
+on frlcontrollerLink as a insert into ConfirmedFeds select a.FEDSourceId as fedId 
+	where a.FEDSourceId not in (select fedId from ConfirmedFeds) and a.FEDSourceId = HwInfo.getInstance().getFedId(a.context, a.slotNumber, a.linkNumber, CmsHw.FRL);
+@Watched(label='Verified FED IDs')
+select count(*) from ConfirmedFeds;
+
