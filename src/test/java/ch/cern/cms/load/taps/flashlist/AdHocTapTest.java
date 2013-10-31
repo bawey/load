@@ -70,7 +70,6 @@ public class AdHocTapTest extends SwingTest {
 			ec.getResolver().setFieldType("triggerNumber", Long.class);
 			ec.getResolver().setFieldType("FEDSourceId", Integer.class);
 			ep = ec.getEventProcessor();
-			ep.getConfiguration().addImport(HwInfo.class.getName());
 
 			AbstractEventsTap.registerKnownOfflineTaps();
 

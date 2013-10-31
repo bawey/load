@@ -1,4 +1,0 @@
-create schema Msg as (msg String);
-@Name('new')
-@Verbose
-select * from frlcontrollerLink;

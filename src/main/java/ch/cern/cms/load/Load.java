@@ -2,6 +2,7 @@ package ch.cern.cms.load;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
@@ -82,6 +83,8 @@ public class Load {
 		// looks stupid - calls every known component to perform its setup depending on the config file's contents
 		// place for dependency injection??
 
+		temporaryMethodToSetUpResolverTypes();
+		
 		// register the views
 		this.setUpViews();
 
@@ -130,5 +133,23 @@ public class Load {
 				logger.error("Failed to register the view: " + viewName, e);
 			}
 		}
+	}
+
+	private void temporaryMethodToSetUpResolverTypes() {
+		getResolver().setFieldType("deltaT", Double.class);
+		getResolver().setFieldType("deltaN", Double.class);
+		getResolver().setFieldType("fifoAlmostFullCnt", Long.class);
+		getResolver().setFieldType("fractionBusy", Double.class);
+		getResolver().setFieldType("fractionWarning", Double.class);
+		getResolver().setFieldType("clockCount", Double.class);
+		getResolver().setFieldType("linkNumber", Integer.class);
+		getResolver().setFieldType("slotNumber", Integer.class);
+		getResolver().setFieldType("geoslot", Integer.class);
+		getResolver().setFieldType("io", Integer.class);
+		getResolver().setFieldType("epMacroStateInt", List.class);
+		getResolver().setFieldType("nbProcessed", Long.class);
+		getResolver().setFieldType("bxNumber", Long.class);
+		getResolver().setFieldType("triggerNumber", Long.class);
+		getResolver().setFieldType("FEDSourceId", Integer.class);
 	}
 }

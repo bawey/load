@@ -38,6 +38,7 @@ public class EventProcessor {
 
 	protected EventProcessor() {
 		Configuration c = new Configuration();
+		c.getEngineDefaults().getExecution().setPrioritized(true);
 		// c.getEngineDefaults().getThreading().setInternalTimerEnabled(false);
 		c.getEngineDefaults().getThreading().setListenerDispatchPreserveOrder(true);
 		c.addImport(HwInfo.class);
