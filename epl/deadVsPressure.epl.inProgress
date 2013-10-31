@@ -1,10 +1,10 @@
 create window BpFeds.win:keepall() as (id Integer);
 create window DtFeds.win:keepall() as (id Integer, kontext String, geoslot Integer, io Integer);
 
-
 @Description('/** naively hold bp-guilty feds **/')
-on pattern[every c=BackpressureAlarm(title='frl backpressure')] insert into BpFeds(id) select HwInfo.getInstance().getFedId(c.kontext, c.slotNumber, c.linkNumber, CmsHw.FRL) 
+on pattern[every c=BackpressureAlarm(title='frl backpressure')] insert into BpFeds(id) select HwInfo.getInstance().getFedId(c.kontext, c.slotNumber, c.linkNumber, CmsHw.FRL)
 	where HwInfo.getInstance().getFedId(c.kontext, c.slotNumber ,c.linkNumber ,CmsHw.FRL) is not null;
+
 @Verbose(label='BpFeds', extraNfo='sth deleted!')
 on BackpressureFilter(bpFraction=0) as bf delete from BpFeds as bfeds where bfeds.id = HwInfo.getInstance().getFedId(bf.kontext, bf.slotNumber, bf.linkNumber, CmsHw.FRL);
 

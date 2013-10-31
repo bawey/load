@@ -210,10 +210,11 @@ public class AdHocTapTest extends SwingTest {
 	}
 
 	private void createConclusionStreams(EventProcessor ep) {
-		ep.epl("create variant schema ConclusionsStream as *");
-
 		ep.epl("create window Conclusions.win:keepall() as select * from ConclusionsStream");
 		ep.epl("insert into Conclusions select * from ConclusionsStream");
+		
+		System.out.println();
+		//ep.epl();
 
 		ep.epl("select c.* from pattern[every c=Conclusions]", new UpdateListener() {
 			@Override

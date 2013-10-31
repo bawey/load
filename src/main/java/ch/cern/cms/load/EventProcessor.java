@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
+import ch.cern.cms.esper.annotations.Conclusion;
 import ch.cern.cms.esper.annotations.Verbose;
 import ch.cern.cms.esper.annotations.Watched;
 import ch.cern.cms.load.hwdb.CmsHw;
@@ -49,10 +50,30 @@ public class EventProcessor {
 		epRT = epProvider.getEPRuntime();
 		epAdmin = epProvider.getEPAdministrator();
 
-		epl("create variant schema ConclusionsStream as * ");
-		epl("create window Conclusions.win_keepall() as select * from ConclusionsStream");
-		
-		
+		epl("create schema AbstractConclusion as (type String, title String, details String)");
+		epl("create variant schema ConclusionsStream as AbstractConclusion");
+		epl("create window Conclusions.win:keepall() as select * from ConclusionsStream");
+		epl("insert into Conclusions select * from ConclusionsStream");
+
+		// proof of concept
+		// epl("create schema TestConclusion(number Double) inherits AbstractConclusion");
+		//
+		// epl("create variable int nr = 666");
+		// epl("on pattern[every timer:interval(1 msec)] set nr = nr+2");
+		//
+		// epl("on pattern[every timer:interval(1 msec)] "
+		// +
+		// "insert into TestConclusion select 'error' as type, 'sadas' as title, 'ddd' as details, nr as number");
+		//
+		// epl("insert into ConclusionsStream select * from TestConclusion");
+		//
+		// epl("select * from Conclusions", new UpdateListener() {
+		// @Override
+		// public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+		// System.out.println(newEvents[0].getUnderlying());
+		// }
+		// });
+
 		epProvider.addStatementStateListener(new EPStatementStateListener() {
 
 			@Override
@@ -72,6 +93,8 @@ public class EventProcessor {
 						for (LoadView view : Load.getInstance().getViews()) {
 							statement.addListener(view.getWatchedStatementListener());
 						}
+					} else if (a.annotationType().equals(Conclusion.class)) {
+						epl("insert into ConclusionsStream select * from " + ((Conclusion) a).streamName());
 					}
 				}
 			}
