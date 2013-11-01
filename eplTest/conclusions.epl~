@@ -1,0 +1,27 @@
+/**
+	PROOF (SPOOF?) OF CONCEPT:
+
+	
+	Only the Conclusions window is possible to delete from! all the rest are streams!
+
+**/	
+@Description(	'This is how to create a conclusion stream. It inherits the AbstractConclusion and is annotated as Conclusion.
+				Expert code adds a statement forwarding each Event to the generic ConclusionsStream with Conclusions window on top of it.')
+
+@Conclusion(streamName='TestConclusion')
+create schema TestConclusion(number Double) inherits AbstractConclusion;
+
+@Description('Our primitive data generator')
+create variable int nr = 0;
+on pattern[every timer:interval(1 msec)] set nr = nr+1;
+
+@Description('Creating a new conclusion of type TestConclusion')
+on pattern[every timer:interval(100 msec)] insert into TestConclusion select 'info' as type, 'the number' as title, 'Newest observed value of the number' as details, nr as number;
+
+
+@Verbose(label='testConclusions', append=false, fields={'number','title'})
+on pattern[every timer:interval(400 msec)] select c.* from Conclusions as c;
+
+@Description('Deleting a TestConclusion event from the generic Concusions window (Invalidating sounds better?)')
+on pattern[every timer:interval(300 msec)] delete from Conclusions as c where (Trx.toDouble(c.number?)%3!=0 or Trx.toDouble(c.number?)%7!=0);
+

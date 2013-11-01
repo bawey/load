@@ -19,6 +19,11 @@ public class Settings extends Properties {
 	public static final String KEY_SOCKS_PROXY_HOST = "socksProxyHost";
 	public static final String KEY_SOCKS_PROXY_PORT = "socksProxyPort";
 	public static final String KEY_SOCKS_PROXY_SET = "proxySet";
+	
+	public static final String KEY_TIMER = "timer";
+	public static final String KEY_TIMER_START = "timerStart";
+	public static final String KEY_TIMER_PACE = "timerPace";
+	public static final String KEY_TIMER_STEP = "timerStep";
 
 	private static final Logger logger = Logger.getLogger(Settings.class);
 

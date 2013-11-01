@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
+import ch.cern.cms.esper.Trx;
 import ch.cern.cms.esper.annotations.Conclusion;
 import ch.cern.cms.esper.annotations.Verbose;
 import ch.cern.cms.esper.annotations.Watched;
@@ -18,6 +19,7 @@ import com.espertech.esper.client.EPRuntime;
 import com.espertech.esper.client.EPServiceProvider;
 import com.espertech.esper.client.EPServiceProviderManager;
 import com.espertech.esper.client.EPStatement;
+import com.espertech.esper.client.EPStatementState;
 import com.espertech.esper.client.EPStatementStateListener;
 import com.espertech.esper.client.UpdateListener;
 
@@ -37,17 +39,24 @@ public class EventProcessor {
 
 	private final static Logger logger = Logger.getLogger(EventProcessor.class);
 
-	protected EventProcessor() {
+	protected EventProcessor(Load load) {
 		Configuration c = new Configuration();
 		c.getEngineDefaults().getExecution().setPrioritized(true);
-		// c.getEngineDefaults().getThreading().setInternalTimerEnabled(false);
+
+		if (load.getSettings().containsKey(Settings.KEY_TIMER)) {
+			c.getEngineDefaults().getThreading().setInternalTimerEnabled(false);
+			logger.info("dropping internal timer");
+		} else {
+			logger.info("using internal timer");
+		}
+
 		c.getEngineDefaults().getThreading().setListenerDispatchPreserveOrder(true);
 		c.addImport(HwInfo.class);
 		c.addImport(CmsHw.class);
 		c.addImport("ch.cern.cms.esper.annotations.*");
+		c.addImport(Trx.class);
 
 		epProvider = EPServiceProviderManager.getProvider("myCEPEngine", c);
-		epRT = epProvider.getEPRuntime();
 		epAdmin = epProvider.getEPAdministrator();
 
 		epl("create schema AbstractConclusion as (type String, title String, details String)");
@@ -55,31 +64,17 @@ public class EventProcessor {
 		epl("create window Conclusions.win:keepall() as select * from ConclusionsStream");
 		epl("insert into Conclusions select * from ConclusionsStream");
 
-		// proof of concept
-		// epl("create schema TestConclusion(number Double) inherits AbstractConclusion");
-		//
-		// epl("create variable int nr = 666");
-		// epl("on pattern[every timer:interval(1 msec)] set nr = nr+2");
-		//
-		// epl("on pattern[every timer:interval(1 msec)] "
-		// +
-		// "insert into TestConclusion select 'error' as type, 'sadas' as title, 'ddd' as details, nr as number");
-		//
-		// epl("insert into ConclusionsStream select * from TestConclusion");
-		//
-		// epl("select * from Conclusions", new UpdateListener() {
-		// @Override
-		// public void update(EventBean[] newEvents, EventBean[] oldEvents) {
-		// System.out.println(newEvents[0].getUnderlying());
-		// }
-		// });
-
 		epProvider.addStatementStateListener(new EPStatementStateListener() {
 
 			@Override
 			public void onStatementStateChange(EPServiceProvider serviceProvider, EPStatement statement) {
-				// TODO Auto-generated method stub
-
+				if (statement.getState().equals(EPStatementState.STARTED)) {
+					for (Annotation atn : statement.getAnnotations()) {
+						if (atn.annotationType().equals(Conclusion.class)) {
+							epl("insert into ConclusionsStream select * from " + ((Conclusion) atn).streamName());
+						}
+					}
+				}
 			}
 
 			@Override
@@ -93,8 +88,6 @@ public class EventProcessor {
 						for (LoadView view : Load.getInstance().getViews()) {
 							statement.addListener(view.getWatchedStatementListener());
 						}
-					} else if (a.annotationType().equals(Conclusion.class)) {
-						epl("insert into ConclusionsStream select * from " + ((Conclusion) a).streamName());
 					}
 				}
 			}
@@ -103,7 +96,6 @@ public class EventProcessor {
 	}
 
 	private EPServiceProvider epProvider = null;
-	private EPRuntime epRT;
 	private EPAdministrator epAdmin;
 
 	public EPStatement epl(CharSequence epl, UpdateListener listener) {
@@ -125,15 +117,11 @@ public class EventProcessor {
 	}
 
 	public EPRuntime getRuntime() {
-		return epRT;
+		return getProvider().getEPRuntime();
 	}
 
 	public EPAdministrator getAdministrator() {
 		return epAdmin;
-	}
-
-	private void addEventType(Class<?> eventObjectClass) {
-		getConfiguration().addEventType(eventObjectClass.getSimpleName(), eventObjectClass.getName());
 	}
 
 	public EPStatement epl(String statement, UpdateListener listener) {
@@ -149,7 +137,7 @@ public class EventProcessor {
 	}
 
 	public void sendEvent(Object event) {
-		epRT.sendEvent(event);
+		getProvider().getEPRuntime().sendEvent(event);
 	}
 
 	public static interface MultirowSubscriber {

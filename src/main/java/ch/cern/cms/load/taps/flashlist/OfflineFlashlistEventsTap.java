@@ -26,7 +26,6 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	public static final String SETTINGS_KEY_FLASHLIST_DIR = "offlineFlashlistDir";
 
 	private File rootFolder;
-	private double pace = 1;
 	private long fastForward = 0;
 	private static final Logger logger = Logger.getLogger(OfflineFlashlistEventsTap.class);
 	private static long startPoint = Long.MAX_VALUE;
@@ -94,13 +93,14 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 						}
 						if (lastTime != null) {
 							try {
-								Thread.sleep((long) ((time - lastTime) / getPace()));
+
+								Thread.sleep((long) ((time - lastTime) / Load.getInstance().getPace()));
 							} catch (InterruptedException e) {
 								System.err.println("can't sleep");
 							}
 						}
 
-						//ep.getProvider().getEPRuntime().sendEvent(new CurrentTimeEvent(time));
+						// ep.getProvider().getEPRuntime().sendEvent(new CurrentTimeEvent(time));
 						for (File f : dumpFiles.get(time)) {
 							Flashlist fl = new Flashlist(new URL("file://" + f.getAbsolutePath()), f.getParentFile().getName());
 							logger.info("Sending event: " + f.getParentFile().getName());
@@ -140,14 +140,6 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 			logger.fatal("IOException while registering event types", e);
 			throw new RuntimeException("IOException while registering event types", e);
 		}
-	}
-
-	public synchronized double getPace() {
-		return pace;
-	}
-
-	public synchronized void setPace(double pace) {
-		this.pace = pace;
 	}
 
 	public synchronized void setPosition(long position) {

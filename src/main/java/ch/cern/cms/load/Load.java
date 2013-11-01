@@ -8,9 +8,9 @@ import java.util.Set;
 import org.apache.log4j.Logger;
 
 import ch.cern.cms.load.eplProviders.FileBasedEplProvider;
-import ch.cern.cms.load.guis.DefaultGui;
 import ch.cern.cms.load.guis.ExpertGui;
 import ch.cern.cms.load.taps.AbstractEventsTap;
+import ch.cern.cms.load.timers.SimplePlaybackTimer;
 
 /**
  * Core components, singletons etc. should be initialized here. However, the setup of initial structure should be well separated from the
@@ -21,6 +21,7 @@ import ch.cern.cms.load.taps.AbstractEventsTap;
 
 public class Load {
 
+	private Class<?> dummy = SimplePlaybackTimer.class;
 	private static final Logger logger = Logger.getLogger(Load.class);
 	private static Load instance;
 
@@ -43,11 +44,11 @@ public class Load {
 		instance.defaultSetup();
 	}
 
-	private final EventProcessor ep = new EventProcessor();
+	private final EventProcessor ep;
 
 	private final Set<ExpertGui> guis = new HashSet<ExpertGui>();
 
-	private final Settings settings = new Settings();
+	private final Settings settings;
 
 	private final Set<AbstractEventsTap> taps = new HashSet<AbstractEventsTap>();
 
@@ -55,7 +56,12 @@ public class Load {
 
 	private final Set<LoadView> views = new HashSet<LoadView>();
 
+	private EPTimer timer = null;
+
 	private Load() {
+		// settings have to go first!
+		settings = new Settings();
+		ep = new EventProcessor(this);
 		settings.put(Settings.KEY_RESOLVER, resolver);
 		setUpSOCKSProxy();
 	}
@@ -76,6 +82,10 @@ public class Load {
 		return views;
 	}
 
+	public EPTimer getTimer() {
+		return timer;
+	}
+
 	/**
 	 * Initializes the default application structure.
 	 */
@@ -84,13 +94,14 @@ public class Load {
 		// place for dependency injection??
 
 		temporaryMethodToSetUpResolverTypes();
-		
+
 		// register the views
 		this.setUpViews();
 
 		// register taps
 		AbstractEventsTap.registerKnownOfflineTaps();
 		AbstractEventsTap.registerKnownOnlineTaps();
+		setUpTimer();
 		// register the statements from file
 		new FileBasedEplProvider().registerStatements(ep);
 
@@ -98,6 +109,9 @@ public class Load {
 	}
 
 	public void openTaps() {
+		if (timer != null) {
+			timer.start();
+		}
 		for (AbstractEventsTap et : taps) {
 			et.openStreams();
 		}
@@ -122,15 +136,18 @@ public class Load {
 
 	private void setUpViews() {
 		for (String viewName : settings.getMany("view")) {
-			System.out.println("wow, a view: " + viewName);
-			ClassLoader ldr = this.getClass().getClassLoader();
-			try {
-				String interfaceName = LoadView.class.getCanonicalName();
-				LoadView newView = (LoadView) ldr.loadClass(interfaceName.substring(0, interfaceName.lastIndexOf('.') + 1) + "views." + viewName).newInstance();
-				views.add(newView);
+			views.add((LoadView) instantiateComponent("view", viewName));
+		}
+	}
 
-			} catch (Exception e) {
-				logger.error("Failed to register the view: " + viewName, e);
+	private void setUpTimer() {
+		if (settings.containsKey(Settings.KEY_TIMER)) {
+			this.timer = (EPTimer) instantiateComponent(Settings.KEY_TIMER, settings.getProperty(Settings.KEY_TIMER));
+			if (settings.containsKey(Settings.KEY_TIMER_PACE)) {
+				timer.setPace(Double.parseDouble(settings.getProperty(Settings.KEY_TIMER_PACE)));
+			}
+			if (settings.containsKey(Settings.KEY_TIMER_STEP)) {
+				timer.setStepSize(Long.parseLong(settings.getProperty(Settings.KEY_TIMER_STEP)));
 			}
 		}
 	}
@@ -151,5 +168,27 @@ public class Load {
 		getResolver().setFieldType("bxNumber", Long.class);
 		getResolver().setFieldType("triggerNumber", Long.class);
 		getResolver().setFieldType("FEDSourceId", Integer.class);
+	}
+
+	private Object instantiateComponent(String type, String id) {
+		ClassLoader ldr = this.getClass().getClassLoader();
+		try {
+			String className = this.getClass().getPackage().getName() + "." + type + "s" + "." + id;
+			logger.info("loading class: " + className);
+			return ldr.loadClass(className).newInstance();
+
+		} catch (Exception e) {
+			logger.error("Failed to load " + type + " component: " + id, e);
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	public double getPace() {
+		if (timer != null) {
+			return timer.getPace();
+		} else {
+			return 1;
+		}
 	}
 }

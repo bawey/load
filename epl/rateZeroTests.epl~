@@ -48,7 +48,7 @@ select stuckTime as timeThreshold from pattern[every timer:interval(stuckTime se
 select count(*) from frlBuffer;
 
 
-@Verbose(label='frlBxValues', streamPath={}, fields={'timestamp','bxNumber','cnt'}, append=false)
+@Verbose(label='frlBxValues', streamPath={}, fields={'bxNumber','cnt','timestamp'}, append=false)
 on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] select f.* from frlBxValues as f;
 @Verbose(label='frlTrgValues', streamPath={}, fields={'trgNumber', 'cnt', 'timestamp'}, append=false)
 on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] select f.* from frlTrgValues as f;

@@ -1,9 +1,11 @@
-select 'frBsy: '||context||'G'||geoslot.toString()||'IO'||io.toString() as label, timestamp, fractionBusy as value from FMMInput where fractionBusy > 0",
-				watchUpdater);
-select 'frWrn: '||context||'G'||geoslot.toString()||'IO'||io.toString() as label, timestamp, fractionWarning as value from FMMInput where fractionWarning > 0",
-				watchUpdater);
 
-		/** want to copy datatypes, hence the stream will be created from window **/
+@Watched
+select 'frBsy: '||context||'G'||geoslot.toString()||'IO'||io.toString() as label, timestamp, fractionBusy as value from FMMInput where fractionBusy > 0;
+
+@Watched
+select 'frWrn: '||context||'G'||geoslot.toString()||'IO'||io.toString() as label, timestamp, fractionWarning as value from FMMInput where fractionWarning > 0;
+
+@Description('want to copy datatypes, hence the stream will be created from window')
 create window DeadtimeTmp.win:keepall() as select context as kontext, geoslot, io from FMMInput;
 		createConclusionStream(ep, "DeadtimeAlarm", "(title String) copyfrom DeadtimeTmp ;
 
