@@ -54,15 +54,6 @@ public abstract class AbstractEventsTap {
 			ec.registerTap(new OnlineFlashlistEventsTap(ec, flRoot));
 	}
 
-	@Deprecated
-	public static void setOfflineTapsPace(double pace) {
-		for (AbstractEventsTap tap : Load.getInstance().getTaps()) {
-			if (tap instanceof OfflineFlashlistEventsTap) {
-				((OfflineFlashlistEventsTap) tap).setPace(pace);
-			}
-		}
-	}
-
 	public static void setOfflineTapsPosition(long position) {
 		for (AbstractEventsTap tap : Load.getInstance().getTaps()) {
 			if (tap instanceof OfflineFlashlistEventsTap) {

@@ -73,7 +73,6 @@ public class AdHocTapTest extends SwingTest {
 
 			AbstractEventsTap.registerKnownOfflineTaps();
 
-			AbstractEventsTap.setOfflineTapsPace(pace);	
 			AbstractEventsTap.setOfflineTapsPosition(advance);
 
 			createConclusionStreams(ep);
@@ -212,9 +211,9 @@ public class AdHocTapTest extends SwingTest {
 	private void createConclusionStreams(EventProcessor ep) {
 		ep.epl("create window Conclusions.win:keepall() as select * from ConclusionsStream");
 		ep.epl("insert into Conclusions select * from ConclusionsStream");
-		
+
 		System.out.println();
-		//ep.epl();
+		// ep.epl();
 
 		ep.epl("select c.* from pattern[every c=Conclusions]", new UpdateListener() {
 			@Override
@@ -430,10 +429,8 @@ public class AdHocTapTest extends SwingTest {
 		ep.epl("select count(*) as frlCL from frlcontrollerLink", watchUpdater);
 		ep.epl("select count(*) as frlBuffer from frlBuffer", watchUpdater);
 
-		ep.epl("on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] " +
-				"select count(*) as bxNumbers from frlBxValues", watchUpdater);
-		ep.epl("on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] " +
-				"select count(*) as trgNumbers from  frlTrgValues", watchUpdater);
+		ep.epl("on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] " + "select count(*) as bxNumbers from frlBxValues", watchUpdater);
+		ep.epl("on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] " + "select count(*) as trgNumbers from  frlTrgValues", watchUpdater);
 
 		/** these three should be linked into sth more of a hierarchy **/
 		ep.epl("on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] "
