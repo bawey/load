@@ -1,26 +1,15 @@
-/**
-@Description('connect BackpressureFilter with data sources')
-on pattern[every a=frlcontrollerLink(fifoAlmostFullCnt>0)->b=frlcontrollerLink(fifoAlmostFullCnt>0,context=a.context,slotNumber=a.slotNumber,sessionid=a.sessionid,clockCount>a.clockCount)]"
-				+ " insert into BackpressureFilter select (b.fifoAlmostFullCnt-a.fifoAlmostFullCnt)/(b.clockCount-a.clockCount) as bpFraction, b.slotNumber as slotNumber, b.linkNumber as linkNumber, b.timestamp as timestamp, b.context as kontext;
+@Description('schema with current backpressure values for kontext, slotNumber, linkNumber')
+create schema FrlBackpressure as (bpFraction double, kontext String, slotNumber Integer, linkNumber Integer, timestamp String);
+@Description('populating current backpressure stream')
+on pattern[every a=frlcontrollerLink(fifoAlmostFullCnt>0)->b=frlcontrollerLink(fifoAlmostFullCnt>0,context=a.context,slotNumber=a.slotNumber,sessionid=a.sessionid,clockCount>a.clockCount)]
+	insert into FrlBackpressure select (b.fifoAlmostFullCnt-a.fifoAlmostFullCnt)/(b.clockCount-a.clockCount) as bpFraction, b.slotNumber as slotNumber, b.linkNumber as linkNumber, b.timestamp as timestamp, b.context as kontext;
 
-@Description('/** create Backpressure window to hold most recent values for triplets')
-create window Backpressure.std:unique(kontext, linkNumber, slotNumber) as select * from BackpressureFilter;
-@Description('create stream for BackpressureAlarms')
+@Description('window with positive backpressure values only')
+create window FrlBackpressurePositive.std:unique(kontext, slotNumber, linkNumber) as select * from FrlBackpressure;
+on FrlBackpressure(bpFraction=0) as bf delete from FrlBackpressurePositive b where bf.linkNumber = b.linkNumber and bf.slotNumber = b.slotNumber and bf.kontext=b.kontext;
+insert into FrlBackpressurePositive select fb.* from FrlBackpressure as fb where fb.bpFraction>0;
 
-createConclusionStream(ep, "BackpressureAlarm", "(title String) copyfrom BackpressureFilter;
+@Description('Backpressure > 1%, alarm')
+@Verbose(label='output')
+select x.timestamp as time, HwInfo.getInstance().getFedId(x.kontext, x.slotNumber, x.linkNumber, CmsHw.FRL) as fedId, x.bpFraction as bpFraction from FrlBackpressurePositive as x where x.bpFraction > 0.01;
 
-@Description('split the BackpressureFilter and insert into BackpressureAlarms and/or Backpressure when necessary')
-on BackpressureFilter(bpFraction>0) as bf "
-				+ "insert into BackpressureAlarm select 'frl backpressure' as title, bf.kontext as kontext, bf.linkNumber as linkNumber, bf.slotNumber as slotNumber where (select count(*) as cnt from Backpressure where kontext=bf.kontext and linkNumber=bf.linkNumber and slotNumber=bf.slotNumber)=0"
-				+ " insert into Backpressure select bf.*" + " output all;
-
-@Description('cancel the associated alarm when bpFraction goes back down for a triplet')
-on BackpressureFilter(bpFraction=0) as bf delete from Backpressure b where bf.linkNumber = b.linkNumber and bf.slotNumber = b.slotNumber and bf.kontext=b.kontext;
-on BackpressureFilter(bpFraction=0) as bf delete from Conclusions c where "
-				+ "c.title.toString()='frl backpressure' and c.kontext.toString()=bf.kontext.toString() and c.slotNumber.toString()=bf.slotNumber.toString() and c.linkNumber.toString()=bf.linkNumber.toString();
-
-select b.bpFraction as value, 'BP '||b.kontext||'L'||b.linkNumber.toString()||'S'||b.slotNumber.toString() as label from pattern[every b=Backpressure]",
-				watchUpdater);
-
-
-**/

@@ -23,6 +23,7 @@ public class SimplePlaybackTimer extends EPTimer {
 
 			@Override
 			public void run() {
+				currentTime = System.currentTimeMillis();
 				while (true) {
 					loopStartTime = System.currentTimeMillis();
 					Load.getInstance().getEventProcessor().getRuntime().sendEvent(new CurrentTimeEvent(currentTime));
@@ -31,7 +32,7 @@ public class SimplePlaybackTimer extends EPTimer {
 					} catch (InterruptedException e) {
 						logger.warn("Timer reports sleep deprivation!");
 					}
-					if (Math.random() > 0.9994) {
+					if (Math.random() > 0.9995) {
 						System.out.println(new Date(currentTime).toString());
 					}
 					// }

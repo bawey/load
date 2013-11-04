@@ -1,11 +1,17 @@
 package ch.cern.cms.load.hwdb;
 
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Logger;
+
+import org.apache.log4j.Logger;
 
 import rcms.common.db.DBConnectorException;
 import rcms.common.db.DBConnectorIF;
@@ -19,8 +25,13 @@ import rcms.utilities.hwcfg.eq.FMMCrate;
 import rcms.utilities.hwcfg.eq.FMMFMMLink;
 import rcms.utilities.hwcfg.eq.FRL;
 import rcms.utilities.hwcfg.eq.FRLCrate;
+import ch.cern.cms.load.Load;
 
-public final class HwInfo {
+public final class HwInfo implements Serializable {
+
+	private static final long serialVersionUID = 1L;
+
+	private static final Logger logger = Logger.getLogger(HwInfo.class);
 
 	private final static String hwcfgDbURL = "jdbc:oracle:thin:@localhost:10121/cms_omds_tunnel.cern.ch";
 	private final static String hwcfgPassword = "mickey2mouse";
@@ -31,19 +42,44 @@ public final class HwInfo {
 		if (instance == null) {
 			synchronized (HwInfo.class) {
 				if (instance == null) {
-					instance = new HwInfo();
+					if (Load.getInstance().getSettings().containsKey("HwInfo_load")) {
+						String path = Load.getInstance().getSettings().getProperty("HwInfo_load");
+						ObjectInputStream ois;
+						try {
+							ois = new ObjectInputStream(new FileInputStream(path));
+							Object loaded = ois.readObject();
+							ois.close();
+							if (loaded instanceof HwInfo) {
+								instance = (HwInfo) loaded;
+							}
+						} catch (Exception e) {
+							throw new RuntimeException("I really wanted to read HwInfo dump", e);
+						}
+					} else {
+						instance = new HwInfo();
+						if (Load.getInstance().getSettings().containsKey("HwInfo_dump")) {
+							String path = Load.getInstance().getSettings().getProperty("HwInfo_dump");
+							try {
+								ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(path));
+								oos.writeObject(instance);
+								oos.close();
+								System.out.println("HwInfo dumped at " + path);
+							} catch (Exception e) {
+								logger.error("Failed to dump HwInfo to a file", e);
+							}
+						}
+					}
 				}
 			}
 		}
 		return instance;
 	}
 
-	private DBConnectorIF dbconn = null;
-	private HWCfgDescriptor dpNode;
+	private transient DBConnectorIF dbconn = null;
+	private transient HWCfgDescriptor dpNode;
+	private transient HWCfgConnector hwconn = null;
 
 	private EquipmentSet eqs;
-
-	private HWCfgConnector hwconn = null;
 
 	private HwInfo() {
 		try {
@@ -176,11 +212,11 @@ public final class HwInfo {
 		return ids;
 	}
 
-	public void devoid(){
+	public void devoid() {
 		FED fed = null;
-		
+
 	}
-	
+
 	public static final String esperCheck() {
 		return "If you see this message than you have configured your class import correctly";
 	}
