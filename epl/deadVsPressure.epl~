@@ -1,1 +1,14 @@
-@Description('Any FMM(deadtime>0) corresponds to some fedId. In the same time Backpressure could be observed on one of the ')
+@Description('Any FMM(deadtime>0) corresponds to some fedId. In the same time Backpressure could be observed on that very fed or main fed of that fed. Correlate the two. This is a ver')
+
+@Verbose(label='output-devel')
+select b.timestamp, d.timestamp from pattern[every 
+	(
+		(	b=FrlBackpressurePositive -> d=FMMInput( (fractionWarning + fractionBusy)>0.01 ) )
+		or 
+		(	d=FMMInput(	(fractionBusy+fractionWarning)>0.01	)-> b=FrlBackpressurePositive )
+	where 
+		timer:within(1 sec) 
+	)];
+
+@Verbose(label='output-devel2')
+select * from pattern[every (b=FrlBackpressurePositive and d=FMMInput((fractionWarning + fractionBusy) > 0.01) where timer:within(1 sec))];
