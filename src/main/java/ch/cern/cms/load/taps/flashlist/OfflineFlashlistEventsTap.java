@@ -19,7 +19,7 @@ import ch.cern.cms.load.Load;
 
 public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
-	public static final int QUEUE_CAPACITY = 100;
+	public static final int QUEUE_CAPACITY = 1000;
 
 	public static final String SETTINGS_KEY_FLASHLIST_DIR = "offlineFlashlistDir";
 
@@ -30,6 +30,8 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	private static int totalInstances = 0;
 	private static int readyInstances = 0;
 	private static final Object equalStartLock = new Object();
+	boolean speedCam = (Load.getInstance().getSettings().containsKey("speedCam") && Boolean.parseBoolean(Load.getInstance().getSettings()
+			.getProperty("speedCam")));
 
 	private static synchronized void submitLocalStartPoint(long sp) {
 		startPoint = Math.min(sp, startPoint);
@@ -123,7 +125,7 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 								} catch (InterruptedException e) {
 									System.err.println("can't sleep");
 								}
-							} else if (sleepTime < 0) {
+							} else if (speedCam && sleepTime < 0) {
 								logger.warn("Negative (" + sleepTime
 										+ ") for OfflineEventsTap. Consider lowering the pace or reimplementing the playback facility.");
 							}
