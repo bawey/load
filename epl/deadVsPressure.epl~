@@ -8,7 +8,8 @@ select b.timestamp, d.timestamp from pattern[every
 		(	d=FMMInput(	(fractionBusy+fractionWarning)>0.01	)-> b=FrlBackpressurePositive )
 	where 
 		timer:within(1 sec) 
-	)];
+	)] where HwInfo.getInstance().getFedId(b.kontext, b.slotNumber, b.linkNumber, CmsHw.FRL).getFedId() = HwInfo.getInstance().getFedId(d.context, d.geoslot, d.io, CmsHw.FMM)
+;
 
 @Verbose(label='output-devel2')
 select * from pattern[every (b=FrlBackpressurePositive and d=FMMInput((fractionWarning + fractionBusy) > 0.01) where timer:within(1 sec))];

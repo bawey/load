@@ -1,15 +1,19 @@
 @Description('Any FMM(deadtime>0) corresponds to some fedId. In the same time Backpressure could be observed on that very fed or main fed of that fed. Correlate the two. This is a ver')
 
+
+create variable int deadPressureOffset = 6000;
+
 @Verbose(label='output-devel')
-select b.timestamp, d.timestamp from pattern[every 
+select b.timestamp as bpTime, d.timestamp as dtTime, b.bpFraction as bpFraction, d.fractionBusy+d.fractionWarning as deadtime, HwInfo.getInstance().getFedId(b.kontext, b.slotNumber, b.linkNumber, CmsHw.FRL) as fedId
+    from pattern[every-distinct(d.timestamp, b.timestamp)
 	(
-		(	b=FrlBackpressurePositive -> d=FMMInput( (fractionWarning + fractionBusy)>0.01 ) )
+		(	b=FrlBackpressurePositive -> d=FMMInput( (fractionWarning + fractionBusy)>0.01 ) where timer:within(deadPressureOffset msec)  )
 		or 
-		(	d=FMMInput(	(fractionBusy+fractionWarning)>0.01	)-> b=FrlBackpressurePositive )
-	where 
-		timer:within(1 sec) 
-	)] where HwInfo.getInstance().getFedId(b.kontext, b.slotNumber, b.linkNumber, CmsHw.FRL).getFedId() = HwInfo.getInstance().getFedId(d.context, d.geoslot, d.io, CmsHw.FMM)
-;
+		(	d=FMMInput(	(fractionBusy+fractionWarning)>0.01	)-> b=FrlBackpressurePositive where timer:within(deadPressureOffset msec)  )
+	)] where HwInfo.getInstance().getFedId(b.kontext, b.slotNumber, b.linkNumber, CmsHw.FRL) = HwInfo.getInstance().getFedId(d.context, d.geoslot, d.io, CmsHw.FMM);
+
 
 @Verbose(label='output-devel2')
-select * from pattern[every (b=FrlBackpressurePositive and d=FMMInput((fractionWarning + fractionBusy) > 0.01) where timer:within(1 sec))];
+select b.timestamp as bpTime, d.timestamp as dtTime, b.bpFraction as bpFraction, d.fractionBusy+d.fractionWarning as deadtime, HwInfo.getInstance().getFedId(b.kontext, b.slotNumber, b.linkNumber, CmsHw.FRL) as fedId 
+    from pattern[every-distinct(d.timestamp, b.timestamp) ((timer:interval(deadPressureOffset msec) or (b=FrlBackpressurePositive and d=FMMInput((fractionWarning + fractionBusy) > 0.01)))where timer:within(deadPressureOffset msec))]
+    where b is not null and d is not null and HwInfo.getInstance().getFedId(b.kontext, b.slotNumber, b.linkNumber, CmsHw.FRL) = HwInfo.getInstance().getFedId(d.context, d.geoslot, d.io, CmsHw.FMM);

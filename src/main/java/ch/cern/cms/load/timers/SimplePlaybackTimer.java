@@ -18,26 +18,47 @@ public class SimplePlaybackTimer extends EPTimer {
 
 	public SimplePlaybackTimer() {
 		this.timerJob = new Runnable() {
-			private long loopStartTime = 0l;
-			private long loopTime = 0l;
+			private long loopNanoStart = 0l;
+			private double accumulatedTime = 0;
 
 			@Override
 			public void run() {
 				currentTime = System.currentTimeMillis();
+				final CurrentTimeEvent cte = new CurrentTimeEvent(0);
+				final EPRuntime runtime = Load.getInstance().getEventProcessor().getRuntime();
+
+				Thread sender = new Thread(new Runnable() {
+					@Override
+					public void run() {
+						long lastTime = 0;
+						while (true) {
+							synchronized (SimplePlaybackTimer.class) {
+								if (cte.getTimeInMillis() > lastTime) {
+									lastTime = cte.getTimeInMillis();
+									runtime.sendEvent(cte);
+								}
+							}
+						}
+					}
+				});
+				sender.start();
 				while (true) {
-					loopStartTime = System.currentTimeMillis();
-					Load.getInstance().getEventProcessor().getRuntime().sendEvent(new CurrentTimeEvent(currentTime));
-					try {
-						Thread.sleep(SimplePlaybackTimer.this.stepSize);
-					} catch (InterruptedException e) {
-						logger.warn("Timer reports sleep deprivation!");
+					loopNanoStart = System.nanoTime();
+					if (stepSize > 0) {
+						try {
+							Thread.sleep(SimplePlaybackTimer.this.stepSize);
+						} catch (InterruptedException e) {
+							logger.warn("Timer reports sleep deprivation!");
+						}
 					}
-					if (Math.random() > 0.9995) {
-						System.out.println(new Date(currentTime).toString());
+					if (accumulatedTime >= 1) {
+						currentTime += Math.round(accumulatedTime);
+						synchronized (SimplePlaybackTimer.class) {
+							cte.setTimeInMillis(currentTime);
+						}
+						accumulatedTime = 0;
 					}
-					// }
-					loopTime = System.currentTimeMillis() - loopStartTime;
-					currentTime += ((long) loopTime * pace);
+					accumulatedTime += pace * ((System.nanoTime() - loopNanoStart) / 1000000);
 				}
 			}
 		};
