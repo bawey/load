@@ -197,6 +197,7 @@ public final class HwInfo implements Serializable {
 		return null;
 	}
 
+	/** means: when deadtime observed on the triplet passed here, all the result fedIDs should be checked against backpressure fedIDs **/
 	public Collection<Integer> getDeadtimeRelevantFedIds(Object context, Object geoslot, Object io) {
 		Collection<Integer> ids = new HashSet<Integer>();
 		String c = toText(context);

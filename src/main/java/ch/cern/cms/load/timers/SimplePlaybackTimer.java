@@ -9,6 +9,7 @@ import ch.cern.cms.load.Load;
 
 import com.espertech.esper.client.EPRuntime;
 import com.espertech.esper.client.time.CurrentTimeEvent;
+import com.espertech.esper.client.time.CurrentTimeSpanEvent;
 
 public class SimplePlaybackTimer extends EPTimer {
 
@@ -24,7 +25,7 @@ public class SimplePlaybackTimer extends EPTimer {
 			@Override
 			public void run() {
 				currentTime = System.currentTimeMillis();
-				final CurrentTimeEvent cte = new CurrentTimeEvent(0);
+				final CurrentTimeSpanEvent cte = new CurrentTimeSpanEvent(0);
 				final EPRuntime runtime = Load.getInstance().getEventProcessor().getRuntime();
 
 				Thread sender = new Thread(new Runnable() {
@@ -33,8 +34,8 @@ public class SimplePlaybackTimer extends EPTimer {
 						long lastTime = 0;
 						while (true) {
 							synchronized (SimplePlaybackTimer.class) {
-								if (cte.getTimeInMillis() > lastTime) {
-									lastTime = cte.getTimeInMillis();
+								if (cte.getTargetTimeInMillis() > lastTime) {
+									lastTime = cte.getTargetTimeInMillis();
 									runtime.sendEvent(cte);
 								}
 							}
@@ -44,17 +45,17 @@ public class SimplePlaybackTimer extends EPTimer {
 				sender.start();
 				while (true) {
 					loopNanoStart = System.nanoTime();
-					if (stepSize > 0) {
-						try {
-							Thread.sleep(SimplePlaybackTimer.this.stepSize);
-						} catch (InterruptedException e) {
-							logger.warn("Timer reports sleep deprivation!");
-						}
-					}
+//					if (stepSize > 0) {
+//						try {
+//							Thread.sleep(SimplePlaybackTimer.this.stepSize);
+//						} catch (InterruptedException e) {
+//							logger.warn("Timer reports sleep deprivation!");
+//						}
+//					}
 					if (accumulatedTime >= 1) {
 						currentTime += Math.round(accumulatedTime);
 						synchronized (SimplePlaybackTimer.class) {
-							cte.setTimeInMillis(currentTime);
+							cte.setTargetTimeInMillis(currentTime);
 						}
 						accumulatedTime = 0;
 					}

@@ -1,4 +1,0 @@
-@Description('FED dead-time > 1%')
-@Verbose(label='output')
-select fmm.timestamp as time, HwInfo.getInstance().getFedId(fmm.context, fmm.geoslot, fmm.io, CmsHw.FMM) as fedId, fmm.fractionWarning+fmm.fractionBusy as deadtime from FMMInput((fractionWarning + fractionBusy) > 0.01) as fmm;
-

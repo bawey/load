@@ -10,18 +10,16 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.ArrayBlockingQueue;
 
+import org.apache.commons.collections.list.SynchronizedList;
 import org.apache.log4j.Logger;
 
-import com.espertech.esper.client.EPAdministrator;
-import com.espertech.esper.client.EPOnDemandQueryResult;
-import com.espertech.esper.client.time.CurrentTimeEvent;
-import com.espertech.esper.client.time.TimerEvent;
-
-import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.Load;
 
 public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
+
+	public static final int QUEUE_CAPACITY = 100;
 
 	public static final String SETTINGS_KEY_FLASHLIST_DIR = "offlineFlashlistDir";
 
@@ -31,6 +29,7 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	private static long startPoint = Long.MAX_VALUE;
 	private static int totalInstances = 0;
 	private static int readyInstances = 0;
+	private static final Object equalStartLock = new Object();
 
 	private static synchronized void submitLocalStartPoint(long sp) {
 		startPoint = Math.min(sp, startPoint);
@@ -69,20 +68,45 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 					long ownStart = dumpFiles.keySet().iterator().next();
 					submitLocalStartPoint(ownStart);
 
-					synchronized (OfflineFlashlistEventsTap.class) {
+					synchronized (equalStartLock) {
 						++readyInstances;
-					}
-
-					while (readyInstances != totalInstances) {
-						logger.info(this.hashCode() + " waiting for all instances to be ready");
-						Thread.sleep(100);
+						if (readyInstances != totalInstances) {
+							logger.info(this.hashCode() + " waiting for all instances to be ready");
+							equalStartLock.wait();
+						} else {
+							equalStartLock.notifyAll();
+						}
 					}
 
 					logger.info("ready instances: " + readyInstances);
 
 					if (ownStart > startPoint) {
-						Thread.sleep(ownStart - startPoint);
+						Thread.sleep((long) ((ownStart - startPoint) / Load.getInstance().getPace()));
 					}
+
+					long lastDelivery = 0l;
+					long deliveryStart = 0;
+
+					final ArrayBlockingQueue<Flashlist> queue = new ArrayBlockingQueue<Flashlist>(QUEUE_CAPACITY);
+
+					Thread flashlistDispatcher = new Thread(new Runnable() {
+						private Flashlist fl = null;
+
+						@Override
+						public void run() {
+							while (true) {
+								try {
+									fl = queue.take();
+									fl.emit(ep);
+								} catch (InterruptedException e) {
+									logger.error("Flashlist dispatcher interrupted!", e);
+								}
+							}
+						}
+					});
+
+					flashlistDispatcher.start();
+
 					for (Long time : dumpFiles.keySet()) {
 						if (fastForward > 0) {
 							if (lastSkipped != 0) {
@@ -92,21 +116,30 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 							continue;
 						}
 						if (lastTime != null) {
-							try {
-
-								Thread.sleep((long) ((time - lastTime) / Load.getInstance().getPace()));
-							} catch (InterruptedException e) {
-								System.err.println("can't sleep");
+							double sleepTime = (time - lastTime) / Load.getInstance().getPace() - lastDelivery;
+							if (sleepTime > 0) {
+								try {
+									Thread.sleep((long) sleepTime);
+								} catch (InterruptedException e) {
+									System.err.println("can't sleep");
+								}
+							} else if (sleepTime < 0) {
+								logger.warn("Negative (" + sleepTime
+										+ ") for OfflineEventsTap. Consider lowering the pace or reimplementing the playback facility.");
 							}
 						}
+						deliveryStart = System.currentTimeMillis();
 
 						// ep.getProvider().getEPRuntime().sendEvent(new CurrentTimeEvent(time));
 						for (File f : dumpFiles.get(time)) {
 							Flashlist fl = new Flashlist(new URL("file://" + f.getAbsolutePath()), f.getParentFile().getName());
-							logger.info("Sending event: " + f.getParentFile().getName());
-							fl.emit(ep);
+							queue.put(fl);
+							if (queue.remainingCapacity() < (int) (0.1 * QUEUE_CAPACITY)) {
+								logger.warn("Flashlists queue 90% full");
+							}
 						}
 						lastTime = time;
+						lastDelivery = System.currentTimeMillis() - deliveryStart;
 					}
 					logger.info("This tap is done sending events: " + rootFolder.getAbsolutePath());
 				} catch (Exception e) {
@@ -153,6 +186,19 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 		} catch (Exception e) {
 			throw new RuntimeException("Path issue", e);
 		}
+	}
+
+}
+
+class FlashlistWrapper {
+	private Flashlist fl;
+
+	public Flashlist getFl() {
+		return fl;
+	}
+
+	public void setFl(Flashlist fl) {
+		this.fl = fl;
 	}
 
 }
