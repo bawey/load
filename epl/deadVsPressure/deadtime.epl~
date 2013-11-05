@@ -1,9 +1,0 @@
-@Description('FED dead-time > 1%')
-@Verbose(label='output')
-select fmm.timestamp as time, HwInfo.getInstance().getFedId(fmm.context, fmm.geoslot, fmm.io, CmsHw.FMM) as fedId, fmm.fractionWarning+fmm.fractionBusy as deadtime from FMMInput((fractionWarning + fractionBusy) > 0.01) as fmm;
-
-/**
-on FMMInput(fractionWarning>0 or fractionBusy>0) as fmi insert into DeadtimeAlarm select "
-				+ "'fmm deadtime' as title, fmi.context as kontext, fmi.geoslot as geoslot, fmi.io as io where "
-				+ "(select count(*) from DeadtimeAlarm.win:keepall() where kontext=fmi.context and geoslot=fmi.geoslot and io = fmi.io)=0;
-**/
