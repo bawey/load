@@ -1,0 +1,7 @@
+@Description('alarm on any DAQ state change')
+@Verbose(label='message', fields={'timestamp', 'stateFrom', 'stateTo'}, extraNfo='DAQ state change')
+select b.timestamp as timestamp , a.DAQ_STATE as stateFrom, b.DAQ_STATE as stateTo from pattern[
+    every (a=levelZeroFM_dynamic -> b=levelZeroFM_dynamic(DAQ_STATE!=a.DAQ_STATE))];
+
+
+

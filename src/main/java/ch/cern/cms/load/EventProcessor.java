@@ -55,6 +55,7 @@ public class EventProcessor {
 		c.addImport(CmsHw.class);
 		c.addImport("ch.cern.cms.esper.annotations.*");
 		c.addImport(Trx.class);
+		c.addPlugInSingleRowFunction("caseless_in", Trx.class.getCanonicalName(), "inIgnoreCase");
 
 		epProvider = EPServiceProviderManager.getProvider("myCEPEngine", c);
 		epAdmin = epProvider.getEPAdministrator();

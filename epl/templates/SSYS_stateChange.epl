@@ -1,0 +1,5 @@
+@Verbose(label='message', fields={'timestamp', 'stateFrom', 'stateTo'}, extraNfo = '{SSYS} changed state')
+select b.timestamp as timestamp, a.{SSYS}_STATE as stateFrom, b.{SSYS}_STATE as stateTo from pattern[
+    every (a=levelZeroFM_dynamic -> b=levelZeroFM_dynamic({SSYS}_STATE!=a.{SSYS}_STATE and 
+    ({SSYS}_STATE.toUpperCase() in ('ERROR','RUNNING_DEGRADED','RUNNING_SOFT_ERROR_DETECTED','PAUSING','PAUSED','RESUMING'))
+))];
