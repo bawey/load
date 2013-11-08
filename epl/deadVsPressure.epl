@@ -1,10 +1,13 @@
 @Description('need to filter out feds that are currently masked out')
-
+create schema FrlCtlLnk() copyfrom frlcontrollerLink;
+insert into FrlCtlLnk select * from frlcontrollerLink as x where fedId(x.context, x.slotNumber, x.linkNumber, CmsHw.FRL) in (select fedId from FedMask(slinkEnabled=true));
+create schema FmmInput() copyfrom FMMInput;
+insert into FmmInput select * from FMMInput as x where fedId(x.context, x.geoslot, x.io, CmsHw.FMM) in (select fedId from FedMask(ttsEnabled=true));
 
 @Description('schema with current backpressure values for kontext, slotNumber, linkNumber')
 create schema FrlBackpressure as (bpFraction double, kontext String, slotNumber Integer, linkNumber Integer, timestamp Long);
 @Description('populating current backpressure stream')
-on pattern[every a=frlcontrollerLink(fifoAlmostFullCnt>0)->b=frlcontrollerLink(fifoAlmostFullCnt>0,context=a.context,slotNumber=a.slotNumber,sessionid=a.sessionid,clockCount>a.clockCount)]
+on pattern[every a=FrlCtlLnk(fifoAlmostFullCnt>0)->b=FrlCtlLnk(fifoAlmostFullCnt>0,context=a.context,slotNumber=a.slotNumber,sessionid=a.sessionid,clockCount>a.clockCount)]
 	insert into FrlBackpressure select (b.fifoAlmostFullCnt-a.fifoAlmostFullCnt)/(b.clockCount-a.clockCount) as bpFraction, b.slotNumber as slotNumber, b.linkNumber as linkNumber, b.timestamp.getTime() as timestamp, b.context as kontext;
 
 @Description('window with positive backpressure values only')
@@ -19,25 +22,38 @@ select date(x.timestamp) as time, x.timestamp as timestamp, fedId(x.kontext, x.s
 
 @Description('FED dead-time > 1%')
 @Verbose(label='output',fields={'time','fedId','dt','timestamp'}, extraNfo='Dead-time   :')
-select fmm.timestamp as time, fmm.timestamp.getTime() as timestamp, fedId(fmm.context, fmm.geoslot, fmm.io, CmsHw.FMM) as fedId, fmm.fractionWarning+fmm.fractionBusy as dt from FMMInput((fractionWarning + fractionBusy) > 0.01) as fmm;
+select fmm.timestamp as time, fmm.timestamp.getTime() as timestamp, fedId(fmm.context, fmm.geoslot, fmm.io, CmsHw.FMM) as fedId, fmm.fractionWarning+fmm.fractionBusy as dt from FmmInput((fractionWarning + fractionBusy) > 0.01) as fmm;
 
-create variable int deadPressureOffset = 1800000;
-create variable int deadPressureSpan = 1800000;
+create variable int deadPressureOffset = 6000000;
+create variable int deadPressureSpan = 6000000;
 
+/**
 @Verbose(label='output-devel')
 select date(b.timestamp) as bpTime, d.timestamp as dtTime, b.bpFraction as bpFraction, d.fractionBusy+d.fractionWarning as deadtime, fedId(b.kontext, b.slotNumber, b.linkNumber, CmsHw.FRL) as fedId 
-    from pattern[every-distinct(d.timestamp, b.timestamp) ((timer:interval(deadPressureOffset msec) or (b=FrlBackpressurePositive and d=FMMInput((fractionWarning + fractionBusy) > 0.01)))where timer:within(deadPressureOffset msec))]
+    from pattern[every-distinct(d.timestamp, b.timestamp) ((timer:interval(deadPressureOffset msec) or (d=FmmInput((fractionWarning + fractionBusy) > 0.01) and b=FrlBackpressurePositive)))]
     where b is not null and d is not null and dtRelevantFedIds(d.context, d.geoslot, d.io).contains(fedId(b.kontext, b.slotNumber, b.linkNumber, CmsHw.FRL))
     and time_span(d.timestamp.getTime(), b.timestamp)<deadPressureSpan;
+
 
 
 @Verbose(label='output-devel2')
 select date(b.timestamp) as bpTime, d.timestamp as dtTime, b.bpFraction as bpFraction, d.fractionBusy+d.fractionWarning as deadtime, HwInfo.getInstance().getFedId(b.kontext, b.slotNumber, b.linkNumber, CmsHw.FRL) as fedId
     from pattern[every-distinct(d.timestamp, b.timestamp)
 	(
-		(	b=FrlBackpressurePositive -> d=FMMInput( (fractionWarning + fractionBusy)>0.01 ) where timer:within(deadPressureOffset msec)  )
+		(	b=FrlBackpressurePositive -> d=FmmInput( (fractionWarning + fractionBusy)>0.01 ) where timer:within(deadPressureOffset msec)  )
 		or 
-		(	d=FMMInput(	(fractionBusy+fractionWarning)>0.01	)-> b=FrlBackpressurePositive where timer:within(deadPressureOffset msec)  )
+		(	d=FmmInput(	(fractionBusy+fractionWarning)>0.01	)-> b=FrlBackpressurePositive where timer:within(deadPressureOffset msec)  )
 	)] where HwInfo.getInstance().getFedId(b.kontext, b.slotNumber, b.linkNumber, CmsHw.FRL) = HwInfo.getInstance().getFedId(d.context, d.geoslot, d.io, CmsHw.FMM)
         and time_span(d.timestamp.getTime(), b.timestamp)<deadPressureSpan;
 ;
+**/
+
+@Verbose(label='output-devel')
+select date(b.timestamp) as bpTime, d.timestamp as dtTime, b.bpFraction as bpF
+raction, d.fractionBusy+d.fractionWarning as deadtime, fedId(b.kontext, b.slotNumber, b.linkNumber, CmsHw.FRL) as fedId 
+    from pattern[every ((d=FmmInput((fractionWarning + fractionBusy) > 0.01) and b=FrlBackpressurePositive))]
+    where b is not null and d is not null and fedId(d.context, d.geoslot, d.io, CmsHw.FMM)=fedId(b.kontext, b.slotNumber, b.linkNumber, CmsHw.FRL);
+
+//dtRelevantFedIds(d.context, d.geoslot, d.io).contains
+
+
