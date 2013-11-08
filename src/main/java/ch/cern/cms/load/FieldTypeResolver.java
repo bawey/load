@@ -1,11 +1,17 @@
 package ch.cern.cms.load;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
 public final class FieldTypeResolver extends HashMap<String, Class<?>> {
+	// 2013-09-26T08:16:01.987334Z
+	public final static SimpleDateFormat dateFormat = new SimpleDateFormat(Load.getInstance().getSettings().getProperty("dateFormat"));
+
 	protected FieldTypeResolver() {
 	}
 
@@ -46,6 +52,12 @@ public final class FieldTypeResolver extends HashMap<String, Class<?>> {
 					list.add(s);
 				}
 				return list;
+			} else if (type.equals(Date.class)) {
+				try {
+					return dateFormat.parse(rawValue);
+				} catch (ParseException e) {
+					throw new RuntimeException(e);
+				}
 			}
 		}
 		return rawValue;

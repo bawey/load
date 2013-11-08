@@ -9,8 +9,10 @@ import ch.cern.cms.esper.Trx;
 import ch.cern.cms.esper.annotations.Conclusion;
 import ch.cern.cms.esper.annotations.Verbose;
 import ch.cern.cms.esper.annotations.Watched;
+import ch.cern.cms.load.eventData.FedMask;
 import ch.cern.cms.load.hwdb.CmsHw;
 import ch.cern.cms.load.hwdb.HwInfo;
+import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;
 
 import com.espertech.esper.client.Configuration;
 import com.espertech.esper.client.ConfigurationOperations;
@@ -22,6 +24,7 @@ import com.espertech.esper.client.EPStatement;
 import com.espertech.esper.client.EPStatementState;
 import com.espertech.esper.client.EPStatementStateListener;
 import com.espertech.esper.client.UpdateListener;
+import com.espertech.esper.client.time.CurrentTimeEvent;
 
 /**
  * a wrap-up for esper engine
@@ -43,7 +46,7 @@ public class EventProcessor {
 		Configuration c = new Configuration();
 		c.getEngineDefaults().getExecution().setPrioritized(true);
 
-		if (load.getSettings().containsKey(Settings.KEY_TIMER)) {
+		if (load.getSettings().getMany(OfflineFlashlistEventsTap.SETTINGS_KEY_FLASHLIST_DIR).size() > 0) {
 			c.getEngineDefaults().getThreading().setInternalTimerEnabled(false);
 			logger.info("dropping internal timer");
 		} else {
@@ -56,14 +59,30 @@ public class EventProcessor {
 		c.addImport("ch.cern.cms.esper.annotations.*");
 		c.addImport(Trx.class);
 		c.addPlugInSingleRowFunction("caseless_in", Trx.class.getCanonicalName(), "inIgnoreCase");
+		c.addPlugInSingleRowFunction("date", Trx.class.getCanonicalName(), "toDate");
+		c.addPlugInSingleRowFunction("time_span", Trx.class.getCanonicalName(), "timeSpan");
+		c.addPlugInSingleRowFunction("Integer", Trx.class.getCanonicalName(), "toInteger");
+		c.addPlugInSingleRowFunction("int", Trx.class.getCanonicalName(), "toInt");
+		c.addPlugInSingleRowFunction("text", Trx.class.getCanonicalName(), "toText");
+		c.addPlugInSingleRowFunction("Long", Trx.class.getCanonicalName(), "toLong");
+		c.addPlugInSingleRowFunction("Double", Trx.class.getCanonicalName(), "toDouble");
+
+		c.addPlugInSingleRowFunction("fmm", HwInfo.class.getCanonicalName(), "getFMM");
+		c.addPlugInSingleRowFunction("fedId", HwInfo.class.getCanonicalName(), "getFedId");
+		c.addPlugInSingleRowFunction("dtRelevantFedIds", HwInfo.class.getCanonicalName(), "getDeadtimeRelevantFedIds");
+
+		c.addPlugInSingleRowFunction("parseFem", FedMask.class.getCanonicalName(), "parse");
+		
+		//this might be a nice way to define the timestamps relationship
+		//c.addPlugInPatternGuard(namespace, name, guardFactoryClass)
+		
+		// c.addPlugInSingleRowFunction("", HwInfo.class.getCanonicalName(), "");
 
 		epProvider = EPServiceProviderManager.getProvider("myCEPEngine", c);
+		if (load.getSettings().containsKey(Settings.KEY_TIMER_START)) {
+			epProvider.getEPRuntime().sendEvent(new CurrentTimeEvent(Long.parseLong(load.getSettings().getProperty(Settings.KEY_TIMER_START))));
+		}
 		epAdmin = epProvider.getEPAdministrator();
-
-		epl("create schema AbstractConclusion as (type String, title String, details String)");
-		epl("create variant schema ConclusionsStream as AbstractConclusion");
-		epl("create window Conclusions.win:keepall() as select * from ConclusionsStream");
-		epl("insert into Conclusions select * from ConclusionsStream");
 
 		epProvider.addStatementStateListener(new EPStatementStateListener() {
 

@@ -1,15 +1,18 @@
 package ch.cern.cms.load;
 
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
 
+import ch.cern.cms.load.eplProviders.BasicStructEplProvider;
 import ch.cern.cms.load.eplProviders.FileBasedEplProvider;
 import ch.cern.cms.load.guis.ExpertGui;
 import ch.cern.cms.load.taps.AbstractEventsTap;
+import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;
 import ch.cern.cms.load.timers.SimplePlaybackTimer;
 
 /**
@@ -99,10 +102,13 @@ public class Load {
 		this.setUpViews();
 
 		// register taps
-		AbstractEventsTap.registerKnownOfflineTaps();
+		if (settings.getMany(OfflineFlashlistEventsTap.SETTINGS_KEY_FLASHLIST_DIR).size() > 0) {
+			registerTap(new OfflineFlashlistEventsTap(this, null));
+		}
 		AbstractEventsTap.registerKnownOnlineTaps();
 		setUpTimer();
 		// register the statements from file
+		new BasicStructEplProvider().registerStatements(ep);
 		new FileBasedEplProvider().registerStatements(ep);
 
 		openTaps();
@@ -168,6 +174,8 @@ public class Load {
 		getResolver().setFieldType("bxNumber", Long.class);
 		getResolver().setFieldType("triggerNumber", Long.class);
 		getResolver().setFieldType("FEDSourceId", Integer.class);
+		getResolver().setFieldType("timestamp", Date.class);
+		getResolver().setFieldType("lastEVMtimestamp", Date.class);
 	}
 
 	private Object instantiateComponent(String type, String id) {

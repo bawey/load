@@ -7,8 +7,8 @@
 create variable int stuckTime = 1;
 create variable int samplingT = 200;
 
-create window frlBxValues.std:unique(bxNumber).win:time(stuckTime sec) as (bxNumber Long, cnt Long, timestamp String);
-create window frlTrgValues.std:unique(trgNumber).win:time(stuckTime sec) as (trgNumber Long, cnt Long, timestamp String);
+create window frlBxValues.std:unique(bxNumber).win:time(stuckTime sec) as (bxNumber Long, cnt Long, timestamp Long);
+create window frlTrgValues.std:unique(trgNumber).win:time(stuckTime sec) as (trgNumber Long, cnt Long, timestamp Long);
 
 create window frlBuffer.std:unique(slotNumber, context, linkNumber) as select * from frlcontrollerLink;
 
@@ -16,9 +16,9 @@ insert into frlBuffer select * from frlcontrollerLink;
 
 
 on pattern[every timer:interval(samplingT msec)] 
-	insert into frlBxValues select bxNumber as bxNumber, count(*) as cnt, lastever(timestamp) as timestamp from frlBuffer group by bxNumber ;
+	insert into frlBxValues select bxNumber as bxNumber, count(*) as cnt, lastever(timestamp.getTime()) as timestamp from frlBuffer group by bxNumber ;
 on pattern[every timer:interval(samplingT msec)] 
-	insert into frlTrgValues select triggerNumber as trgNumber, count(*) as cnt, lastever(timestamp) as timestamp from frlBuffer group by triggerNumber;
+	insert into frlTrgValues select triggerNumber as trgNumber, count(*) as cnt, lastever(timestamp.getTime()) as timestamp from frlBuffer group by triggerNumber;
 
 on pattern[every timer:interval(samplingT msec)] delete from frlBxValues as fbc where fbc.bxNumber not in (select bxNumber from frlBuffer);
 on pattern[every timer:interval(samplingT msec)] delete from frlTrgValues as ftv where ftv.trgNumber not in (select triggerNumber from frlBuffer);

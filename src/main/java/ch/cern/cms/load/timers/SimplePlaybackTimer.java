@@ -45,13 +45,13 @@ public class SimplePlaybackTimer extends EPTimer {
 				sender.start();
 				while (true) {
 					loopNanoStart = System.nanoTime();
-//					if (stepSize > 0) {
-//						try {
-//							Thread.sleep(SimplePlaybackTimer.this.stepSize);
-//						} catch (InterruptedException e) {
-//							logger.warn("Timer reports sleep deprivation!");
-//						}
-//					}
+					// if (stepSize > 0) {
+					// try {
+					// Thread.sleep(SimplePlaybackTimer.this.stepSize);
+					// } catch (InterruptedException e) {
+					// logger.warn("Timer reports sleep deprivation!");
+					// }
+					// }
 					if (accumulatedTime >= 1) {
 						currentTime += Math.round(accumulatedTime);
 						synchronized (SimplePlaybackTimer.class) {

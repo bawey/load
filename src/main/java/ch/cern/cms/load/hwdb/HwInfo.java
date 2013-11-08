@@ -25,6 +25,7 @@ import rcms.utilities.hwcfg.eq.FMMCrate;
 import rcms.utilities.hwcfg.eq.FMMFMMLink;
 import rcms.utilities.hwcfg.eq.FRL;
 import rcms.utilities.hwcfg.eq.FRLCrate;
+import ch.cern.cms.esper.Trx;
 import ch.cern.cms.load.Load;
 
 public final class HwInfo implements Serializable {
@@ -94,7 +95,7 @@ public final class HwInfo implements Serializable {
 		}
 	}
 
-	private String peelHostname(String hostname) {
+	private static String peelHostname(String hostname) {
 		hostname = hostname.trim();
 		if (hostname.startsWith("http://")) {
 			hostname = hostname.substring(7);
@@ -117,9 +118,10 @@ public final class HwInfo implements Serializable {
 		return fed;
 	}
 
-	public FED getFedForFmm(String hostname, int geoSlot, int io) throws DBConnectorException {
+	public static FED getFedForFmm(String hostname, int geoSlot, int io) throws DBConnectorException {
+		HwInfo hi = getInstance();
 		FED fed = null;
-		FMMCrate fmmCrate = eqs.getFMMCrateByHostName(peelHostname(hostname));
+		FMMCrate fmmCrate = hi.eqs.getFMMCrateByHostName(peelHostname(hostname));
 		if (fmmCrate != null) {
 			FMM fmm = fmmCrate.getFMMbyGeoSlot(geoSlot);
 			if (fmm != null) {
@@ -133,21 +135,23 @@ public final class HwInfo implements Serializable {
 		return fed;
 	}
 
-	public FMM getFMM(String context, int geoSlot) {
-		FMMCrate crate = eqs.getFMMCrateByHostName(peelHostname(context));
+	public static FMM getFMM(String context, int geoSlot) {
+		HwInfo hi = getInstance();
+		FMMCrate crate = hi.eqs.getFMMCrateByHostName(peelHostname(context));
 		if (crate != null) {
 			return crate.getFMMbyGeoSlot(geoSlot);
 		}
 		return null;
 	}
 
-	public FED getFed(String context, int geoSlotOrSlot, int linkOrIo, CmsHw seenByHw) {
+	public static FED getFed(String context, int geoSlotOrSlot, int linkOrIo, CmsHw seenByHw) {
+		HwInfo hi = getInstance();
 		try {
 			switch (seenByHw) {
 			case FMM:
 				return getFedForFmm(context, geoSlotOrSlot, linkOrIo);
 			case FRL:
-				return getFedForFrl(context, geoSlotOrSlot, linkOrIo);
+				return hi.getFedForFrl(context, geoSlotOrSlot, linkOrIo);
 			default:
 				return null;
 			}
@@ -158,7 +162,7 @@ public final class HwInfo implements Serializable {
 		}
 	}
 
-	public Integer getFedId(Object context, Object geoSlotOrSlot, Object linkOrIo, CmsHw seenByHw) {
+	public static Integer getFedId(Object context, Object geoSlotOrSlot, Object linkOrIo, CmsHw seenByHw) {
 		if (context instanceof String && geoSlotOrSlot instanceof Integer && linkOrIo instanceof Integer) {
 			return getFedId((String) context, ((Integer) geoSlotOrSlot).intValue(), ((Integer) linkOrIo).intValue(), seenByHw);
 		} else {
@@ -166,12 +170,12 @@ public final class HwInfo implements Serializable {
 		}
 	}
 
-	public Integer getFedId(String context, int geoSlotOrSlot, int linkOrIo, CmsHw seenByHw) {
+	public static Integer getFedId(String context, int geoSlotOrSlot, int linkOrIo, CmsHw seenByHw) {
 		FED fed = getFed(context, geoSlotOrSlot, linkOrIo, seenByHw);
 		return fed == null ? null : fed.getSrcId();
 	}
 
-	public Integer getFedId(Object c, Object g, Object l, CmsHw s, String str) {
+	public static Integer getFedId(Object c, Object g, Object l, CmsHw s, String str) {
 		System.out.println("whattahell!");
 		Integer v = getFedId(c, g, l, s);
 		System.out.println(str + "(" + c + ", " + g + ", " + l + ", " + s + ") source id: " + v);
@@ -186,23 +190,25 @@ public final class HwInfo implements Serializable {
 		// eqs.getFMMFMMLinks()
 	}
 
-	public FMM getSrcFMM(FMM fmm, int io) {
-		Set<FMMFMMLink> ffls = eqs.getFMMFMMLinks();
+	public static FMM getSrcFMM(FMM fmm, int io) {
+		HwInfo hi = getInstance();
+		Set<FMMFMMLink> ffls = hi.eqs.getFMMFMMLinks();
 		for (Iterator<FMMFMMLink> iter = ffls.iterator(); iter.hasNext();) {
 			FMMFMMLink link = iter.next();
 			if (link.getTargetFMMId() == fmm.getId() && link.getTargetFMMIO() == io) {
-				return eqs.getFMMs().get(link.getTargetFMMId());
+				return hi.eqs.getFMMs().get(link.getTargetFMMId());
 			}
 		}
 		return null;
 	}
 
 	/** means: when deadtime observed on the triplet passed here, all the result fedIDs should be checked against backpressure fedIDs **/
-	public Collection<Integer> getDeadtimeRelevantFedIds(Object context, Object geoslot, Object io) {
+	public static Collection<Integer> getDeadtimeRelevantFedIds(Object context, Object geoslot, Object io) {
+
 		Collection<Integer> ids = new HashSet<Integer>();
-		String c = toText(context);
-		int slot = toInt(geoslot);
-		int i = toInt(io);
+		String c = Trx.toText(context);
+		int slot = Trx.toInt(geoslot);
+		int i = Trx.toInt(io);
 		FED fed = getFed(peelHostname(c), slot, i, CmsHw.FMM);
 		if (fed != null) {
 			ids.add(fed.getSrcId());
@@ -211,36 +217,5 @@ public final class HwInfo implements Serializable {
 			}
 		}
 		return ids;
-	}
-
-	public void devoid() {
-		FED fed = null;
-
-	}
-
-	public static final String esperCheck() {
-		return "If you see this message than you have configured your class import correctly";
-	}
-
-	private Integer toInt(Object o) {
-		if (o == null) {
-			return null;
-		}
-		if (o instanceof Integer) {
-			return (Integer) o;
-		} else {
-			return Integer.parseInt(o.toString());
-		}
-	}
-
-	private String toText(Object o) {
-		if (o == null) {
-			return null;
-		}
-		if (o instanceof String) {
-			return (String) o;
-		} else {
-			return o.toString();
-		}
 	}
 }

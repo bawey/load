@@ -39,13 +39,6 @@ public abstract class AbstractEventsTap {
 		new Thread(job).start();
 	}
 
-	@Deprecated
-	public static void registerKnownOfflineTaps() {
-		Load ec = Load.getInstance();
-		for (String dir : ec.getSettings().getMany(OfflineFlashlistEventsTap.SETTINGS_KEY_FLASHLIST_DIR)) {
-			ec.registerTap(new OfflineFlashlistEventsTap(ec, dir));
-		}
-	}
 
 	@Deprecated
 	public static void registerKnownOnlineTaps() {

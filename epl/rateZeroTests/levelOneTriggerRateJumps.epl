@@ -9,9 +9,9 @@ create window subrates.std:unique(url,lid).win:time(30 sec) as (subrate Double, 
 insert into subrates select deltaN/deltaT as subrate, context as url, lid from EVM where sessionid=sid and deltaT>0;
 
 @Description('the last timestamp of EventManager flashlist with desired SessionID')
-create variable String lastEVMtimestamp = '';
+create variable Long lastEVMtimestamp = 0;
 @Watched(label='lastEVM time')
-on EVM(sessionid=sid) as evm set lastEVMtimestamp=evm.timestamp;
+on EVM(sessionid=sid) as evm set lastEVMtimestamp=evm.timestamp.getTime();
 
 @Description('Window for all the RATES observed over the previous 60 seconds. ')
 create window rates.win:time(60 sec) as (rate double);

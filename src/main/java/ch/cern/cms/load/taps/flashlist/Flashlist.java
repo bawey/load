@@ -28,7 +28,8 @@ public class Flashlist extends LinkedList<Map<String, Object>> {
 		String[] keys = null;
 		try {
 			URLConnection conn = url.openConnection();
-			BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+			InputStreamReader isr = new InputStreamReader(conn.getInputStream());
+			BufferedReader br = new BufferedReader(isr);
 			String line = null;
 			while ((line = br.readLine()) != null) {
 				if (keys == null) {
@@ -45,6 +46,7 @@ public class Flashlist extends LinkedList<Map<String, Object>> {
 					this.add(map);
 				}
 			}
+			isr.close();
 			br.close();
 		} catch (IOException e) {
 			throw new RuntimeException("No mistakes allowed!", e);
