@@ -19,11 +19,13 @@ public class Settings extends Properties {
 	public static final String KEY_SOCKS_PROXY_HOST = "socksProxyHost";
 	public static final String KEY_SOCKS_PROXY_PORT = "socksProxyPort";
 	public static final String KEY_SOCKS_PROXY_SET = "proxySet";
-	
+
 	public static final String KEY_TIMER = "timer";
 	public static final String KEY_TIMER_START = "timerStart";
 	public static final String KEY_TIMER_PACE = "timerPace";
 	public static final String KEY_TIMER_STEP = "timerStep";
+	public static final String KEY_TIMER_END = "timerEnd";
+	public static final String KEY_TIMER_OFFSET = "timerOffset";
 
 	private static final Logger logger = Logger.getLogger(Settings.class);
 
@@ -188,6 +190,14 @@ public class Settings extends Properties {
 
 	public void setMaxValueLengthInTree(int maxValueLengthInTree) {
 		this.maxValueLengthInTree = maxValueLengthInTree;
+	}
+
+	public long getLong(String key, long defaultValue) {
+		if (containsKey(key)) {
+			return Long.parseLong(this.getProperty(key));
+		} else {
+			return defaultValue;
+		}
 	}
 
 }

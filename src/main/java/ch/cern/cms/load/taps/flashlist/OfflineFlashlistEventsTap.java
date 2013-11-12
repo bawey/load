@@ -25,11 +25,14 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
 	public static final String SETTINGS_KEY_FLASHLIST_DIR = "offlineFlashlistDir";
 
-	private double pace = 1;
+	private Settings settings = Load.getInstance().getSettings();
 	private File[] rootFolders;
-	private long timerStart = (Load.getInstance().getSettings().containsKey("timerStart") ? Long.parseLong(Load.getInstance().getSettings()
-			.getProperty("timerStart")) : 1);
+	private double pace = 1;
+	private long timerOffset = settings.getLong(Settings.KEY_TIMER_OFFSET, 0l);
+	private long timerStart = settings.getLong(Settings.KEY_TIMER_START, 1) + timerOffset;
+	private long timerEnd = settings.getLong(Settings.KEY_TIMER_END, Long.MAX_VALUE) + timerOffset;
 	private static final Logger logger = Logger.getLogger(OfflineFlashlistEventsTap.class);
+
 	boolean speedCam = (Load.getInstance().getSettings().containsKey("speedCam") && Boolean.parseBoolean(Load.getInstance().getSettings()
 			.getProperty("speedCam")));
 	boolean detachedTimeSender = (Load.getInstance().getSettings().containsKey("detachedTimeSender") && Boolean.parseBoolean(Load.getInstance().getSettings()
@@ -63,7 +66,7 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 					}
 					Long lastTime = null;
 					logger.info("Offline tap ready. buckets: " + dumpFiles.size() + ", detachedTimeSender: " + detachedTimeSender + ", startPosition: "
-							+ timerStart + ", pace: " + pace);
+							+ timerStart + ", timerEnd: " + timerEnd + ", pace: " + pace + ", offset: " + timerOffset);
 					// sleep to align the starting point with other offline taps
 
 					long lastDelivery = 0l;
@@ -98,8 +101,10 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 					for (Long time : dumpFiles.keySet()) {
 						long loopStart = System.currentTimeMillis();
 						if (timerStart > time) {
-							logger.info("Skipping time position <" + time + "> to reach <" + timerStart + ">");
+							// logger.info("Skipping time position <" + time + "> to reach <" + timerStart + ">");
 							continue;
+						} else if (timerEnd < time) {
+							break;
 						}
 						long timeSendStart = System.currentTimeMillis();
 						if (detachedTimeSender) {
