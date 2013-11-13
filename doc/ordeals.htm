@@ -134,6 +134,15 @@
     delete from FedDeadPressure fdp where fdp.fedId in (select * from FmmDeadtime(fedId=fmi.fedId)[mainFedIds@type(DeadtimeRecoveredFedId)]);</code><br />
 
             </li>
+            <li>
+                This worked: <br />
+                <code>
+                    create schema DeadtimeRecoveredFedId as Integer;
+                    @Description('Populating DeadtimeRecoveredFedId')
+insert into DeadtimeRecoveredFedId select * from FmmInput(fractionWarning<0.01, fractionBusy<0.01)[dtRelevantFedIds(context, geoslot, io)@type(DeadtimeRecoveredFedId)].std:lastevent();
+                </code>
+            </li>
+
         </ul>
 
     </body>

@@ -209,7 +209,6 @@ public final class HwInfo implements Serializable {
 		int i = Trx.toInt(io);
 		FED fed = getFed(peelHostname(c), slot, i, CmsHw.FMM);
 		if (fed != null) {
-			ids.add(813);
 			for (FED mainFed : fed.getMainFEDs()) {
 				ids.add(mainFed.getSrcId());
 			}

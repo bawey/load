@@ -143,9 +143,8 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 							sendSum += (flend - flmid);
 							loadSum += (flmid - flstart);
 						}
-						// logger.info(String.format("times: loop: %d, load: %d, send: %d, setTime: %d", System.currentTimeMillis() -
-						// loopStart, loadSum, sendSum,
-						// timeSendEnd - timeSendStart));
+						logger.info(String.format("times: loop: %d, load: %d, send: %d, setTime: %d", System.currentTimeMillis() - loopStart, loadSum, sendSum,
+								timeSendEnd - timeSendStart));
 						lastTime = time;
 						lastDelivery = System.currentTimeMillis() - deliveryStart;
 					}

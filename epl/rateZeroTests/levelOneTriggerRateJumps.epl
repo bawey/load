@@ -42,9 +42,9 @@ create variable double trgRateTolerance = 0.1;
 on pattern[every a=rates(rate>(avgTrgRate*(1+trgRateTolerance)) or rate < (avgTrgRate*(1-trgRateTolerance)))] delete from rates;
 
 @Description('Notify about rate jumps. Should send some error instead')
-@Verbose(label='output', extraNfo='Level one trigger rate jump!', fields={'trgRate','avgTrgRate','timestamp'})
+@Verbose(label='output', extraNfo='Level one trigger rate jump!', fields={'timestamp','avgTrgRate','timestamp'})
 @Priority(10)
-select avgTrgRate, a.rate as trgRate, lastEVMtimestamp as timestamp from pattern[every a=rates(rate>(avgTrgRate*(1+trgRateTolerance)) or rate < (avgTrgRate*(1-trgRateTolerance)))];
+select avgTrgRate, a.rate as trgRate, date(lastEVMtimestamp) as timestamp from pattern[every a=rates(rate>(avgTrgRate*(1+trgRateTolerance)) or rate < (avgTrgRate*(1-trgRateTolerance)))];
 
 @Description('Show the last average trigger rate')
 @Watched

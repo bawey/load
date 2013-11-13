@@ -2,6 +2,7 @@ package ch.cern.cms.load.views;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.GridLayout;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -34,7 +35,6 @@ import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.StatementAwareUpdateListener;
 import com.espertech.esper.event.WrapperEventBean;
 import com.espertech.esper.event.map.MapEventBean;
-import com.espertech.esper.event.map.MapEventType;
 
 public class SwingGui implements LoadView {
 
@@ -145,7 +145,9 @@ public class SwingGui implements LoadView {
 
 	protected void console(String title, String message) {
 		if (!consoles.keySet().contains(title)) {
-			consoles.put(title, new JTextArea());
+			JTextArea area = new JTextArea();
+			area.setFont(new Font("monospaced", Font.PLAIN, 12));
+			consoles.put(title, area);
 			consoles.get(title).setEditable(false);
 			consoleBox.addTab(title, new JScrollPane(consoles.get(title)));
 		}
@@ -280,7 +282,7 @@ public class SwingGui implements LoadView {
 					sb.append("\n");
 				}
 				if (xtrMsg.length() > 0) {
-					sb.append(xtrMsg).append(" | ");
+					sb.append(String.format("%1$-30s", xtrMsg)).append(" | ");
 				}
 				Object bundled = eventBean.getUnderlying();
 				for (String pathElement : streamPath) {
