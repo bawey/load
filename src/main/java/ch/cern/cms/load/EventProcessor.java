@@ -70,12 +70,14 @@ public class EventProcessor {
 		c.addPlugInSingleRowFunction("fmm", HwInfo.class.getCanonicalName(), "getFMM");
 		c.addPlugInSingleRowFunction("fedId", HwInfo.class.getCanonicalName(), "getFedId");
 		c.addPlugInSingleRowFunction("dtRelevantFedIds", HwInfo.class.getCanonicalName(), "getDeadtimeRelevantFedIds");
+		c.addPlugInSingleRowFunction("mainFedIds", HwInfo.class.getCanonicalName(), "getMainFedIds");
 
 		c.addPlugInSingleRowFunction("parseFem", FedMask.class.getCanonicalName(), "parse");
-		
-		//this might be a nice way to define the timestamps relationship
-		//c.addPlugInPatternGuard(namespace, name, guardFactoryClass)
-		
+		c.addPlugInSingleRowFunction("in_array", Trx.class.getCanonicalName(), "inArray");
+
+		// this might be a nice way to define the timestamps relationship
+		// c.addPlugInPatternGuard(namespace, name, guardFactoryClass)
+
 		// c.addPlugInSingleRowFunction("", HwInfo.class.getCanonicalName(), "");
 
 		epProvider = EPServiceProviderManager.getProvider("myCEPEngine", c);

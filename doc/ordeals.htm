@@ -122,6 +122,18 @@
                 <p>It seems like <code>every</code> tends to produce some repeated results. Then you switch between distinct and normal and it seems not to differ again. </p>
                 <p>PAY ATTENTION TO the BRACES: every A -> B is not every (A->B)</p>
             </li>
+            <li>
+                Blocked paths. Here will be a matrix of allowed and forbidden combinations of esper techniques along with epl examples <br />
+                - cannot do "on rstream A ..." <br />
+                - cannot do delete from B as b where b.id in (select rstream A.id); <br />
+                - stream splitting with contained events...? <br />
+                - <code>delete from FedDeadPressure as f where f.fedId in (select * from FmmInput(fractionWarning<0.01, fractionBusy<0.01)[dtRelevantFedIds(context, geoslot, io)@type(FedId)].std:lastevent());</code> yields <br />
+                <code>Unexpected exception starting statement: Invalid null or zero-element list of select clause expression types</code><br/>
+                - in subqueries you cannot use references to streams made available higher up, like:<br/>
+                <code>on FmmInput(fractionBusy<0.01, fractionWarning<0.01) as fmi 
+    delete from FedDeadPressure fdp where fdp.fedId in (select * from FmmDeadtime(fedId=fmi.fedId)[mainFedIds@type(DeadtimeRecoveredFedId)]);</code><br />
+
+            </li>
         </ul>
 
     </body>

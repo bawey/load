@@ -202,8 +202,23 @@ public final class HwInfo implements Serializable {
 		return null;
 	}
 
+	public static Integer[] getMainFedIds(Object context, Object geoslot, Object io) {
+		Collection<Integer> ids = new HashSet<Integer>();
+		String c = Trx.toText(context);
+		int slot = Trx.toInt(geoslot);
+		int i = Trx.toInt(io);
+		FED fed = getFed(peelHostname(c), slot, i, CmsHw.FMM);
+		if (fed != null) {
+			ids.add(813);
+			for (FED mainFed : fed.getMainFEDs()) {
+				ids.add(mainFed.getSrcId());
+			}
+		}
+		return ids.toArray(new Integer[ids.size()]);
+	}
+
 	/** means: when deadtime observed on the triplet passed here, all the result fedIDs should be checked against backpressure fedIDs **/
-	public static Collection<Integer> getDeadtimeRelevantFedIds(Object context, Object geoslot, Object io) {
+	public static Integer[] getDeadtimeRelevantFedIds(Object context, Object geoslot, Object io) {
 
 		Collection<Integer> ids = new HashSet<Integer>();
 		String c = Trx.toText(context);
@@ -216,6 +231,6 @@ public final class HwInfo implements Serializable {
 				ids.add(mainFed.getSrcId());
 			}
 		}
-		return ids;
+		return ids.toArray(new Integer[ids.size()]);
 	}
 }

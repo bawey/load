@@ -1,5 +1,6 @@
 package ch.cern.cms.esper;
 
+import java.util.Arrays;
 import java.util.Date;
 
 import org.apache.log4j.Logger;
@@ -63,4 +64,23 @@ public class Trx {
 			return o.toString();
 		}
 	}
+
+	public static <N extends Object, H extends Object> boolean inArray(N needle, H[] haystack) {
+		for (H cand : haystack) {
+			if (cand.equals(needle)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static boolean inArray(Integer needle, Integer[] haystack) {
+		return inArray((Object) needle, haystack);
+	}
+
+	public static final void main(String[] args) {
+		System.out.println(inArray("I", args));
+		System.out.println(inArray(9, new Integer[] { 1, 2, 18, 9, 89 }));
+	}
+
 }
