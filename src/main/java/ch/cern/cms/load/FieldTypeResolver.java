@@ -10,9 +10,15 @@ import java.util.List;
 
 public final class FieldTypeResolver extends HashMap<String, Class<?>> {
 	// 2013-09-26T08:16:01.987334Z
+
+	private Load load;
 	public final static SimpleDateFormat dateFormat = new SimpleDateFormat(Load.getInstance().getSettings().getProperty("dateFormat"));
 
-	protected FieldTypeResolver() {
+	private int dateTrimLength;
+
+	protected FieldTypeResolver(Load load) {
+		dateTrimLength = load.getSettings().getProperty("dateFormat").replace("'", "").length();
+		this.load = load;
 	}
 
 	private static final long serialVersionUID = 1L;
@@ -54,7 +60,7 @@ public final class FieldTypeResolver extends HashMap<String, Class<?>> {
 				return list;
 			} else if (type.equals(Date.class)) {
 				try {
-					return dateFormat.parse(rawValue);
+					return dateFormat.parse(rawValue.substring(0, dateTrimLength));
 				} catch (ParseException e) {
 					throw new RuntimeException(e);
 				}

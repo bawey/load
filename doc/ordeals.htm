@@ -52,6 +52,8 @@
                     and the triggering event under <code>"stream_1"</code> </br>
                     Same goes for patterns, but there is no <code>"stream_1"</code>, like:
                     <code>on pattern[every SomeEvent] select * from SomeStream</code><br />
+                    However, specifying an alias makes the listener receive only one stream, like: <br />
+                    <code>on SomeEvent select s.* from SomeStream as s</code>
                 </p>
             </li>
             <li>
@@ -132,6 +134,11 @@
                 - in subqueries you cannot use references to streams made available higher up, like:<br/>
                 <code>on FmmInput(fractionBusy<0.01, fractionWarning<0.01) as fmi 
     delete from FedDeadPressure fdp where fdp.fedId in (select * from FmmDeadtime(fedId=fmi.fedId)[mainFedIds@type(DeadtimeRecoveredFedId)]);</code><br />
+                - <code>on FrlCtlLnk as ctl <br/>
+    insert into FrlBackpressure select ((ctl.fifoAlmostFullCnt - tmp.fifoAlmostFullCnt) / (ctl.clockCount-tmp.clockCount)) as bpFraction, <br />
+        ctl.fedId as fedId, ctl.timestamp.getTime() as timestamp <br />
+        from FedBackpressureTemp as tmps</code><br />
+        Another problem. Splitting stream with a nested select... ?
 
             </li>
             <li>

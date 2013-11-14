@@ -43,6 +43,7 @@ public class Flashlist extends LinkedList<Map<String, Object>> {
 					for (int i = 0; i < tokens.length; ++i) {
 						map.put(keys[i], Load.getInstance().getResolver().convert(tokens[i], keys[i], listName));
 					}
+					map.put("catchstamp", Long.parseLong(url.getFile().substring(url.getFile().lastIndexOf('/') + 1)));
 					this.add(map);
 				}
 			}

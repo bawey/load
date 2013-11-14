@@ -47,15 +47,15 @@ public class Load {
 		instance.defaultSetup();
 	}
 
+	private final Settings settings;
+	
 	private final EventProcessor ep;
 
 	private final Set<ExpertGui> guis = new HashSet<ExpertGui>();
 
-	private final Settings settings;
-
 	private final Set<AbstractEventsTap> taps = new HashSet<AbstractEventsTap>();
 
-	private final FieldTypeResolver resolver = new FieldTypeResolver();
+	private final FieldTypeResolver resolver;
 
 	private final Set<LoadView> views = new HashSet<LoadView>();
 
@@ -65,6 +65,7 @@ public class Load {
 		// settings have to go first!
 		settings = new Settings();
 		ep = new EventProcessor(this);
+		resolver = new FieldTypeResolver(this);
 		settings.put(Settings.KEY_RESOLVER, resolver);
 		setUpSOCKSProxy();
 	}
