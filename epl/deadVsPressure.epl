@@ -14,9 +14,6 @@ create window FmmDeadtime.std:unique(fedId) as (fedId int, dtFraction double, ti
 /** FedDeadPressure [dtTime, bpTime, dtFraction, bpFraction, fedId] **/
 create window FedDeadPressure.std:unique(fedId) as (bpTime long, dtTime long, bpFraction double, dtFraction double, fedId int);
 
-/** FedId [fedId] - holds fedIds of feds that stop reporting deadtime, along with fedIds of their mainFeds**/
-create schema DeadtimeRecoveredFedId as Integer;
-
 /** FrlCtlLnk [@frlcontrollerLink] **/
 create schema FrlCtlLnk(fedId int) copyfrom frlcontrollerLink;
 
@@ -29,9 +26,6 @@ create schema FedBpGone as (fedId Integer, timestamp Long, bpFraction double);
 /** FedDtGone **/
 create schema FedDtGone as (fedId Integer, mainFedIds Integer[], timestamp Long, dtFraction double);
 
-/** FedBackpressureTemp [fedId | fifoAlmostFullCnt | clockCount] **/
-create window FedBackpressureTemp.std:unique(fedId) as (fedId Integer, fifoAlmostFullCnt Long, clockCount Long);
-
 /****** DECLARE THE INSERTION AND DELETION LOGIC (PREFERABLY MUTE), TOP-DOWN ORDER ******/
 
 @Description('Timespan to look for DT and BP within. In msec.')
@@ -43,7 +37,7 @@ create variable double dtBound = 0.01;
 
 @Description('Populating FedDeadPressure window')
 insert into FedDeadPressure select d.timestamp as dtTime, b.timestamp as bpTime, d.dtFraction as dtFraction, b.bpFraction as bpFraction, b.fedId as fedId from FmmDeadtime as d, FrlBackpressure as b where 
-(b.fedId=d.fedId or in_array(b.fedId, d.mainFedIds)) and time_span(d.timestamp, b.timestamp) < deadPressureSpan;
+(b.fedId=d.fedId or in_array(b.fedId, d.mainFedIds)) and time_span(d.timestamp, b.timestamp) <= deadPressureSpan;
 
 @Description('Emptying FedDeadPressure window: 1/2')
 on pattern[every (x=FedBpGone or y=FedDtGone)] delete from FedDeadPressure fdp where (x is not null and fdp.fedId = x.fedId) or (y is not null and fdp.fedId = y.fedId);
@@ -55,53 +49,41 @@ on FedDtGone as gone delete from FedDeadPressure fdp where in_array(fdp.fedId, g
 @Description('Populating FmmDeadtime window')
 insert into FmmDeadtime 
 	select fi.fractionBusy+fi.fractionWarning as dtFraction, fi.timestamp.getTime() as timestamp, 
-	fi.fedId as fedId, mainFedIds(fi.context, fi.geoslot, fi.io) as mainFedIds from FmmInput as fi where (fi.fractionBusy + fi.fractionWarning)>0.01;
+	fi.fedId as fedId, mainFedIds(fi.context, fi.geoslot, fi.io) as mainFedIds from FmmInput as fi where (fi.fractionBusy + fi.fractionWarning)>dtBound;
 
 @Description('Emptying FmmDeadtime window')
-on FedDtGone as gone delete from FmmDeadtime as fd where fd.fedId = gone.fedId;
+on FedDtGone as gone delete from FmmDeadtime fd where fd.fedId = gone.fedId;
+
 
 @Description('Populating FrlBackpressure window')
-insert into FrlBackpressure select fb.* from FrlBackpressureStream as fb where fb.bpFraction>0;
+insert into FrlBackpressure select fb.* from FrlBackpressureStream fb where fb.bpFraction>bpBound;
 
 @Description('Emptying FrlBackpressure window')
 on FedBpGone as gone delete from FrlBackpressure fb where fb.fedId = gone.fedId;
 
-/**STREAM SPLITTING FAILS
-@Description('Populating FrlBackpressure and FrlBackpressureTemp window')
-on FrlCtlLnk as ctl
-	insert into FrlBackpressure select ((ctl.fifoAlmostFullCnt - tmp.fifoAlmostFullCnt) / (ctl.clockCount-tmp.clockCount)) as bpFraction, 
-		ctl.fedId as fedId, ctl.timestamp.getTime() as timestamp
-		from FedBackpressureTemp as tmps 
-	insert into FedBackpressureTemp select ctl.fedId as fedId, ctl.fifoAlmostFullCnt as fifoAlmostFullCnt, ctl.clockCount as clockCount
-	output all;
-**/
 
-@Verbose(label='FrlCtlLnk', fields={'fedId','timestamp', 'catchstamp', 'rawcatchstamp'})
-select fedId, timestamp, date(catchstamp) as catchstamp, timestamp.getTime() as rawtimestamp, catchstamp as rawcatchstamp from FrlCtlLnk;
-
-@Verbose(label='backpressure')
-select a.fedId, a.timestamp, b.timestamp, b.fifoAlmostFullCnt-a.fifoAlmostFullCnt as almostFullDiff, (b.clockCount-a.clockCount) as clockDiff 
-	from pattern[every a=FrlCtlLnk->b=FrlCtlLnk(fedId = a.fedId, fifoAlmostFullCnt> a.fifoAlmostFullCnt, clockCount>a.clockCount) 
-	and not b=FrlCtlLnk(fedId = a.fedId, fifoAlmostFullCnt=a.fifoAlmostFullCnt)];
+@Description('Populating FrlBackpressureStream')
+insert into FrlBackpressureStream select a.fedId as fedId, b.timestamp.getTime() as timestamp, (b.fifoAlmostFullCnt-a.fifoAlmostFullCnt)/(b.clockCount-a.clockCount) as bpFraction 
+	from pattern[every a=FrlCtlLnk->b=FrlCtlLnk(fedId = a.fedId, clockCount>a.clockCount) 
+	and not b=FrlCtlLnk(fedId = a.fedId, clockCount <= a.clockCount)];
 
 
-@Verbose(label='DtGoneSideTrack')
 @Description('Populating FedDtGone')
 insert into FedDtGone select fd.fedId as fedId, fd.mainFedIds as mainFedIds, fmi.timestamp.getTime() as timestamp, fmi.fractionWarning+fmi.fractionBusy as dtFraction 
-	from FmmInput((fractionWarning+fractionBusy)<0.01).std:unique(context, geoslot, io) as fmi, FmmDeadtime as fd where fedId(fmi.context, fmi.geoslot, fmi.io, CmsHw.FMM)<=fd.fedId;
+	from FmmInput((fractionWarning+fractionBusy)<=dtBound).std:unique(fedId) as fmi, FmmDeadtime as fd 
+	where fmi.fedId=fd.fedId and fmi.fedId in (select fedId from FmmDeadtime);
 
 
 @Description('Populating FedBpGone')
-insert into FedBpGone select fedId, timestamp, bpFraction from FrlBackpressureStream(bpFraction<0.01, fedId in (select fedId from FrlBackpressure));
+insert into FedBpGone select f.fedId as fedId, f.timestamp as timestamp, f.bpFraction as bpFraction 
+	from FrlBackpressureStream(bpFraction<=bpBound) as f 
+	where f.fedId in (select fedId from FrlBackpressure);
 
-/**
+
 @Description('Populating FrlCtlLnk')
 insert into FrlCtlLnk select *, fedId(x.context, x.slotNumber, x.linkNumber, CmsHw.FRL) as fedId from frlcontrollerLink as x 
 	where fedId(x.context, x.slotNumber, x.linkNumber, CmsHw.FRL) in (select fedId from FedMask(slinkEnabled=true));
-**/
 
-on frlcontrollerLink(fedId(context, slotNumber, linkNumber, CmsHw.FRL) in (select fedId from FedMask(slinkEnabled=true))) as x
-	insert into FrlCtlLnk select *, fedId(x.context, x.slotNumber, x.linkNumber, CmsHw.FRL) as fedId;
 
 @Description('Populating FmmInput')
 insert into FmmInput select *, fedId(x.context, x.geoslot, x.io, CmsHw.FMM) as fedId from FMMInput as x 
@@ -133,10 +115,20 @@ select rstream * from FedDeadPressure where fedId not in (select fedId from FedD
 @Watched(label='DeadPressure FEDS#')
 select count(*) from FedDeadPressure;
 
-@Verbose(label='NewSTreams')
-select fifoAlmostFullCnt, context, timestamp, date(catchstamp), fedId from FrlCtlLnk;
+@Verbose(label='FrlCtlLnk', fields={'fedId','timestamp', 'catchstamp', 'rawcatchstamp'})
+select fedId, timestamp, date(catchstamp) as catchstamp, timestamp.getTime() as rawtimestamp, catchstamp as rawcatchstamp from FrlCtlLnk;
 
+@Verbose(label='FrlBackpressureStream', fields={'time','fedId','bpFraction'})
+select fedId, date(timestamp) as time, bpFraction from FrlBackpressureStream;
 
+@Watched(label='BPfeds')
+select count(*) from FrlBackpressure;
+
+@Verbose(label='FedBackpressureGone')
+select * from FedBpGone;
+
+@Verbose(label='FrlBackpressure')
+select * from FrlBackpressure;
 
 /** ALL THE NOT-SO USEFUL ANYMORE EPL 
 

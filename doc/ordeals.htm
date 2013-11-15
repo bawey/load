@@ -150,6 +150,22 @@ insert into DeadtimeRecoveredFedId select * from FmmInput(fractionWarning<0.01, 
                 </code>
             </li>
 
+            <li>
+                <h3>Statement Execution Order</h3>
+                <p>
+                    <code>
+                        @Verbose(label='orderTest',extraNfo='first') <br />
+                        select count(*) from FrlCtlLnk; <br /><br />
+
+                        @Verbose(label='orderTest',extraNfo='second') <br />
+                        select count(*) from FrlCtlLnk; <br /><br />
+
+                        @Verbose(label='orderTest',extraNfo='third') <br />
+                        select count(*) from FrlCtlLnk; <br />
+                    </code>
+                    yields a random order each time.
+                </p>
+            </li>
         </ul>
 
     </body>

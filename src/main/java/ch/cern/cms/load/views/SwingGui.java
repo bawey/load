@@ -151,7 +151,7 @@ public class SwingGui implements LoadView {
 			consoles.get(title).setEditable(false);
 			consoleBox.addTab(title, new JScrollPane(consoles.get(title)));
 		}
-		consoles.get(title).setText(message + "\n" + consoles.get(title).getText());
+		consoles.get(title).setText(consoles.get(title).getText() + message + "\n");
 	}
 
 	protected void clearConsole(String title) {
