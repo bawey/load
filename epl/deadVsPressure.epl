@@ -130,6 +130,19 @@ select * from FedBpGone;
 @Verbose(label='FrlBackpressure')
 select * from FrlBackpressure;
 
+/** TESTS **/
+
+@Verbose(label='EvaldasWay', fields={'time','fedId','bpFraction'})
+select (max(fifoAlmostFullCnt) - min(fifoAlmostFullCnt))/(max(clockCount)-min(clockCount)) as bpFraction, fedId, max(timestamp) as time from FrlCtlLnk.std:groupwin(fedId).win:length(2) 
+	group by fedId having max(clockCount)>min(clockCount);
+
+
+create context BpPerFedId partition by fedId from FrlCtlLnk;
+@Verbose(label='BpPerFedId', fields={'time','fedId','bpFraction'})
+context BpPerFedId
+	select fedId, timestamp as time, (fifoAlmostFullCnt-prior(1,fifoAlmostFullCnt))/(clockCount-prior(1,clockCount)) as bpFraction from FrlCtlLnk where clockCount>prior(1,clockCount); 
+
+
 /** ALL THE NOT-SO USEFUL ANYMORE EPL 
 
 @Verbose(label='output', extraNfo='Removing from FedDeadPressure')
