@@ -166,6 +166,11 @@ insert into DeadtimeRecoveredFedId select * from FmmInput(fractionWarning<0.01, 
                     yields a random order each time.
                 </p>
             </li>
+            <li>
+                <h3>Calling 'get' on any Java object from EPL</h3>
+                <code>select tuple(streamNames, ratePerStream).get('A') from StorageManagerPerformance;</code> <br />
+                <code class="error">Date-time enumeration method 'get' requires either a Calendar, Date or long value as input or events of an event type that declares a timestamp property but received java.util.Map</code>
+            </li>
         </ul>
 
     </body>

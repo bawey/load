@@ -14,6 +14,8 @@ import ch.cern.cms.load.guis.ExpertGui;
 import ch.cern.cms.load.taps.AbstractEventsTap;
 import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;
 import ch.cern.cms.load.timers.SimplePlaybackTimer;
+import fieldTypes.ListOfDoubles;
+import fieldTypes.ListOfStrings;
 
 /**
  * Core components, singletons etc. should be initialized here. However, the setup of initial structure should be well separated from the
@@ -48,7 +50,7 @@ public class Load {
 	}
 
 	private final Settings settings;
-	
+
 	private final EventProcessor ep;
 
 	private final Set<ExpertGui> guis = new HashSet<ExpertGui>();
@@ -177,6 +179,8 @@ public class Load {
 		getResolver().setFieldType("FEDSourceId", Integer.class);
 		getResolver().setFieldType("timestamp", Date.class);
 		getResolver().setFieldType("lastEVMtimestamp", Date.class);
+		getResolver().setFieldType("streamNames", String.class);
+		getResolver().setFieldType("ratePerStream", Double.class);
 	}
 
 	private Object instantiateComponent(String type, String id) {

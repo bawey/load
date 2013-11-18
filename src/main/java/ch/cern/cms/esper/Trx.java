@@ -1,7 +1,10 @@
 package ch.cern.cms.esper;
 
-import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 import org.apache.log4j.Logger;
 
@@ -34,12 +37,10 @@ public class Trx {
 	}
 
 	public static final long timeSpan(Date a, Date b) {
-		logger.info("DateSpan {" + a.toString() + " : " + b.toString() + "} = " + Math.abs(a.getTime() - b.getTime()));
 		return Math.abs(a.getTime() - b.getTime());
 	}
 
 	public static final long timeSpan(long a, long b) {
-		logger.info("longSpan: {" + a + " : " + b + "}=" + Math.abs(a - b));
 		return Math.abs(a - b);
 	}
 
@@ -78,9 +79,23 @@ public class Trx {
 		return inArray((Object) needle, haystack);
 	}
 
-	public static final void main(String[] args) {
-		System.out.println(inArray("I", args));
-		System.out.println(inArray(9, new Integer[] { 1, 2, 18, 9, 89 }));
-	}
+	public static final Map<?, ? extends Object> tuple(Object a, Object b) {
+		Map<Object, Object> map = null;
 
+		if (a instanceof Collection<?> && b instanceof Collection<?>) {
+			Collection<?> as = (Collection<?>) a;
+			Collection<?> bs = (Collection<?>) b;
+			assert (as.size() == bs.size());
+			map = new HashMap<Object, Object>(bs.size());
+			Iterator<?> ita = as.iterator();
+			Iterator<?> itb = bs.iterator();
+			while (ita.hasNext() && itb.hasNext()) {
+				map.put(ita.next(), itb.next());
+			}
+		} else {
+			map = new HashMap<Object, Object>(1);
+			map.put(a, b);
+		}
+		return map;
+	}
 }

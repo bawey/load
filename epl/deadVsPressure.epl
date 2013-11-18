@@ -63,15 +63,19 @@ on FedBpGone as gone delete from FrlBackpressure fb where fb.fedId = gone.fedId;
 
 
 @Description('Populating FrlBackpressureStream')
-insert into FrlBackpressureStream select a.fedId as fedId, b.timestamp.getTime() as timestamp, (b.fifoAlmostFullCnt-a.fifoAlmostFullCnt)/(b.clockCount-a.clockCount) as bpFraction 
-	from pattern[every a=FrlCtlLnk->b=FrlCtlLnk(fedId = a.fedId, clockCount>a.clockCount) 
-	and not b=FrlCtlLnk(fedId = a.fedId, clockCount <= a.clockCount)];
+create context BpPerFedId partition by fedId from FrlCtlLnk;
+context BpPerFedId
+	insert into FrlBackpressureStream 
+	select fedId, timestamp.getTime() as timestamp, (fifoAlmostFullCnt-prior(1,fifoAlmostFullCnt))/(clockCount-prior(1,clockCount)) as bpFraction 
+	from FrlCtlLnk where clockCount>prior(1,clockCount); 
 
 
 @Description('Populating FedDtGone')
-insert into FedDtGone select fd.fedId as fedId, fd.mainFedIds as mainFedIds, fmi.timestamp.getTime() as timestamp, fmi.fractionWarning+fmi.fractionBusy as dtFraction 
-	from FmmInput((fractionWarning+fractionBusy)<=dtBound).std:unique(fedId) as fmi, FmmDeadtime as fd 
-	where fmi.fedId=fd.fedId and fmi.fedId in (select fedId from FmmDeadtime);
+insert into FedDtGone select fmi.fedId as fedId, fd.mainFedIds as mainFedIds, fmi.timestamp.getTime() as timestamp, fmi.fractionWarning+fmi.fractionBusy as dtFraction 
+	from FmmInput.std:unique(fedId) as fmi, FmmDeadtime as fd 
+	where fmi.fedId=fd.fedId and (fmi.fractionWarning+fmi.fractionBusy)<=dtBound and fmi.fedId in (select fedId from FmmDeadtime);
+
+	//and timestamp.getTime() != (select timestamp from ) 
 
 
 @Description('Populating FedBpGone')
@@ -132,15 +136,14 @@ select * from FrlBackpressure;
 
 /** TESTS **/
 
-@Verbose(label='EvaldasWay', fields={'time','fedId','bpFraction'})
+@Verbose(label='BpPerFedIdEvaldasWay', fields={'time','fedId','bpFraction'})
 select (max(fifoAlmostFullCnt) - min(fifoAlmostFullCnt))/(max(clockCount)-min(clockCount)) as bpFraction, fedId, max(timestamp) as time from FrlCtlLnk.std:groupwin(fedId).win:length(2) 
 	group by fedId having max(clockCount)>min(clockCount);
 
-
-create context BpPerFedId partition by fedId from FrlCtlLnk;
-@Verbose(label='BpPerFedId', fields={'time','fedId','bpFraction'})
-context BpPerFedId
-	select fedId, timestamp as time, (fifoAlmostFullCnt-prior(1,fifoAlmostFullCnt))/(clockCount-prior(1,clockCount)) as bpFraction from FrlCtlLnk where clockCount>prior(1,clockCount); 
+@Verbose(label='BpPerFedIdPattern', fields={'time','fedId','bpFraction'})
+select a.fedId as fedId, b.timestamp.getTime() as time, (b.fifoAlmostFullCnt-a.fifoAlmostFullCnt)/(b.clockCount-a.clockCount) as bpFraction 
+	from pattern[every a=FrlCtlLnk->b=FrlCtlLnk(fedId = a.fedId, clockCount>a.clockCount) 
+	and not b=FrlCtlLnk(fedId = a.fedId, clockCount <= a.clockCount)];
 
 
 /** ALL THE NOT-SO USEFUL ANYMORE EPL 

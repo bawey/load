@@ -8,6 +8,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
+import fieldTypes.ListOfDoubles;
+import fieldTypes.ListOfStrings;
+
 public final class FieldTypeResolver extends HashMap<String, Class<?>> {
 	// 2013-09-26T08:16:01.987334Z
 
@@ -50,6 +53,16 @@ public final class FieldTypeResolver extends HashMap<String, Class<?>> {
 				return Long.parseLong(rawValue);
 			} else if (type.equals(Double.class)) {
 				return Double.parseDouble(rawValue);
+			} else if (type.equals(Date.class)) {
+				try {
+					return dateFormat.parse(rawValue.substring(0, dateTrimLength));
+				} catch (ParseException e) {
+					throw new RuntimeException(e);
+				}
+			} else if (type.equals(ListOfStrings.class)) {
+				return new ListOfStrings(rawValue);
+			} else if (type.equals(ListOfDoubles.class)) {
+				return new ListOfDoubles(rawValue);
 			} else if (Collection.class.isAssignableFrom(type)) {
 				rawValue = rawValue.substring(rawValue.indexOf('[') + 1, rawValue.lastIndexOf(']'));
 				String[] array = rawValue.split(",");
@@ -58,14 +71,13 @@ public final class FieldTypeResolver extends HashMap<String, Class<?>> {
 					list.add(s);
 				}
 				return list;
-			} else if (type.equals(Date.class)) {
-				try {
-					return dateFormat.parse(rawValue.substring(0, dateTrimLength));
-				} catch (ParseException e) {
-					throw new RuntimeException(e);
-				}
 			}
 		}
 		return rawValue;
+	}
+
+	// TODO: placeholder really. so far
+	public boolean isRolled(String propertyName, String eventName) {
+		return propertyName.equals("streamNames") || propertyName.equals("ratePerStream");
 	}
 }

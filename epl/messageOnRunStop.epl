@@ -1,0 +1,10 @@
+/**
+	Message on run stop giving:
+	- run nr
+	- sid
+	- feds in per detector
+	- average l1 rate
+	- average stream A rate
+	- average dead-time (from trg LAS)
+	- duration
+**/

@@ -6,12 +6,16 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
+import org.codehaus.plexus.util.CollectionUtils;
 
 import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.Load;
@@ -61,8 +65,49 @@ public class Flashlist extends LinkedList<Map<String, Object>> {
 
 	public void emit(EventProcessor ep) {
 		for (Map<String, Object> event : this) {
-			ep.getRuntime().sendEvent(event, streamName);
+			for (Map<String, Object> unrolled : unroll(event, streamName)) {
+				ep.getRuntime().sendEvent(unrolled, streamName);
+			}
 		}
+	}
+
+	private Collection<Map<String, Object>> unroll(Map<String, Object> event, String name) {
+		Set<Map<String, Object>> result = new HashSet<Map<String, Object>>();
+		Set<String> unrollable = new HashSet<String>();
+		for (String key : event.keySet()) {
+			if (Load.getInstance().getResolver().isRolled(key, name)) {
+				unrollable.add(key);
+			}
+		}
+		if (unrollable.isEmpty()) {
+			result.add(event);
+		} else {
+			int unrolledLength = -1;
+			Map<String, List<?>> unrolled = new HashMap<String, List<?>>();
+			for (String key : unrollable) {
+				if (event.get(key) instanceof List<?>) {
+					unrolled.put(key, (List<?>) event.get(key));
+					if (unrolledLength == -1) {
+						unrolledLength = unrolled.get(key).size();
+					}
+					assert (unrolled.get(key).size() == unrolledLength);
+				} else {
+					throw new RuntimeException("Attempted to unroll a non-list object");
+				}
+			}
+			for (int i = 0; i < unrolledLength; ++i) {
+				Map<String, Object> newEvent = new HashMap<String, Object>();
+				for (String rootKey : event.keySet()) {
+					if (unrolled.keySet().contains(rootKey)) {
+						newEvent.put(rootKey, unrolled.get(rootKey).get(i));
+					} else {
+						newEvent.put(rootKey, event.get(rootKey));
+					}
+				}
+				result.add(newEvent);
+			}
+		}
+		return result;
 	}
 
 	public static String[] smartSplit(String str) {

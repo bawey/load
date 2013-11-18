@@ -1,0 +1,3 @@
+@Verbose(label='streamA', fields={'name','rate'})
+select ratePerStream as rate, streamNames as name from StorageManagerPerformance(streamNames='A');
+
