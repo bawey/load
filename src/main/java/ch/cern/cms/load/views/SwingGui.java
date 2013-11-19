@@ -6,6 +6,8 @@ import java.awt.Font;
 import java.awt.GridLayout;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -50,6 +52,7 @@ public class SwingGui implements LoadView {
 		return watchUpdater;
 	}
 
+	private SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss.SSS");
 	protected JTextArea[] txts = new JTextArea[6];
 
 	protected JFrame frm = new JFrame();
@@ -282,7 +285,7 @@ public class SwingGui implements LoadView {
 					sb.append("\n");
 				}
 				if (xtrMsg.length() > 0) {
-					sb.append(String.format("%1$-30s", xtrMsg)).append(" | ");
+					sb.append(String.format("%1$-32s", xtrMsg)).append(" | ");
 				}
 				Object bundled = eventBean.getUnderlying();
 				for (String pathElement : streamPath) {
@@ -305,14 +308,17 @@ public class SwingGui implements LoadView {
 							try {
 								Method m = bundled.getClass().getMethod("get", Object.class);
 								Object desired = m.invoke(bundled, field);
-								sb.append(field).append(": ");
-								sb.append(desired.toString());
-								if (!field.equals(fields[fields.length - 1])) {
-									sb.append(", ");
+								if (desired instanceof Date) {
+									Date date = (Date) desired;
+									desired = sdf.format(date);
 								}
+								sb.append(String.format("%1$-10s", field + ":") + String.format("%1$-26s", desired != null ? desired.toString() : "null"));
 								break;
 							} catch (Exception e) {
 								logger.error("Ah, failed to invoke the get method using " + ptype + " as parameter type for statement: " + statement.getText());
+								for (StackTraceElement el : e.getStackTrace()) {
+									logger.error(el);
+								}
 							}
 						}
 					}

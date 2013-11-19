@@ -1,3 +1,49 @@
+/** DEFINE STREAMS, WINDOWS AND VARIABLES **/
+create variable long minStuckTime = 10000;
+
+create window RecentL1Rates.win:expr(timestamp>max(timestamp)-minStuckTime) as select * from L1Rates;
+
+
+create window ConsecutiveZeroL1Rates.win:expr(newest_event.rate=0) as select * from L1Rates;
+
+@Verbose(label='bxNumbers')
+select count(*) as cnt, bxNumber from FrlCtlLnk where (select max(timestamp)-min(timestamp) from ConsecutiveZeroL1Rates ) > 10000 group by bxNumber;
+
+/** DEFINE INSERTION / DELETION LOGIC **/
+
+insert into RecentL1Rates select * from L1Rates;
+insert into ConsecutiveZeroL1Rates select * from L1Rates;
+
+
+/** DEFINE OUTPUT PRINTING **/
+
+@Watched(label = 'RecentRatesLength')
+select count(*) from RecentL1Rates;
+
+@Watched(label = 'RatesLength')
+select count(*) from L1Rates;
+
+@Watched(label='ConsecutiveZeroL1Rates')
+select count(*) from ConsecutiveZeroL1Rates;
+
+@Watched(label='L1Rates zero for')
+select (max(timestamp)-min(timestamp))/1000 from ConsecutiveZeroL1Rates having max(timestamp) is not null;
+
+@Verbose(label='l1Rates', append=false)
+select * from L1Rates;
+
+@Verbose(label='l1Rates')
+select count(*) from L1Rates;
+
+//@Watched(label='minRecentRateStamp')
+//select min(timestamp) from RecentL1Rates;
+
+//@Verbose(label='L1Rates', append=false)
+//select min(timestamp) from L1Rates where timestamp >= (select max(timestamp) from L1Rates);
+
+
+
+
 //measure how long the trigger rate has been 0
 // if long enough, check bxNumber and triggerNumber of frlcontrollerLink
 // + report on the ones standing out! (unless there is dynamic
@@ -24,34 +70,34 @@ on pattern[every timer:interval(samplingT msec)] delete from frlBxValues as fbc 
 on pattern[every timer:interval(samplingT msec)] delete from frlTrgValues as ftv where ftv.trgNumber not in (select triggerNumber from frlBuffer);
 
 @Watched
-on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] 
+on pattern[every timer:interval(stuckTime sec) and not L1Rates(rate>0)] 
 	select count(*) as bxNumbers from frlBxValues;
 @Watched
-on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] 
+on pattern[every timer:interval(stuckTime sec) and not L1Rates(rate>0)] 
 	select count(*) as trgNumbers from  frlTrgValues;
 
 @Description('these three should be linked into sth more of a hierarchy')
 @Verbose(label='error')
-on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] 
-	select 'rates stuck, bxNumbers inconsistent' as problem, count(*) as bxNumbers from frlBxValues where 
+on pattern[every timer:interval(stuckTime sec) and not L1Rates(rate>0)] 
+	select 'L1Rates stuck, bxNumbers inconsistent' as problem, count(*) as bxNumbers from frlBxValues where 
 	(select count(*) from frlBxValues)>1;
 
 @Verbose(label='error')
-on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)]
-	select 'rates stuck, triggerNumbers inconsistent' as problem, count(*) as trgNumbers from frlTrgValues where 
+on pattern[every timer:interval(stuckTime sec) and not L1Rates(rate>0)]
+	select 'L1Rates stuck, triggerNumbers inconsistent' as problem, count(*) as trgNumbers from frlTrgValues where 
 	(select count(*) from frlTrgValues)>1;
 
 @Verbose(label='warning', extraNfo='Level one trigger rate stuck at 0', fields={'timeThreshold'})
-select stuckTime as timeThreshold from pattern[every timer:interval(stuckTime sec) and not rates(rate>0) ];
+select stuckTime as timeThreshold from pattern[every timer:interval(stuckTime sec) and not L1Rates(rate>0) ];
 
 @Watched(label='buffered FRL ctl link')
 select count(*) from frlBuffer;
 
 
 @Verbose(label='frlBxValues', streamPath={}, fields={'timestamp','bxNumber','cnt'}, append=false)
-on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] select f.* from frlBxValues as f;
+on pattern[every timer:interval(stuckTime sec) and not L1Rates(rate>0)] select f.* from frlBxValues as f;
 @Verbose(label='frlTrgValues', streamPath={}, fields={'trgNumber', 'cnt', 'timestamp'}, append=false)
-on pattern[every timer:interval(stuckTime sec) and not rates(rate>0)] select f.* from frlTrgValues as f;
+on pattern[every timer:interval(stuckTime sec) and not L1Rates(rate>0)] select f.* from frlTrgValues as f;
 
 @Verbose(label='insertedBx')
 select * from frlBxValues;

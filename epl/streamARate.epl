@@ -1,3 +1,6 @@
-@Verbose(label='streamA', fields={'name','rate'})
-select ratePerStream as rate, streamNames as name from StorageManagerPerformance(streamNames='A');
+@Watched(label='streamA rate')
+select ratePerStream from StorageManagerPerformance where streamNames='A';
+
+@Verbose(label='output', fields={'time','name','rate'}, extraNfo='Stream A rate high!')
+select timestamp as time, ratePerStream as rate, streamNames as name from StorageManagerPerformance(streamNames='A', ratePerStream>500);
 

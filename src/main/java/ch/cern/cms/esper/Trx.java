@@ -32,8 +32,8 @@ public class Trx {
 		return false;
 	}
 
-	public static final String toDate(long time) {
-		return new Date(time).toString();
+	public static final Date toDate(long time) {
+		return new Date(time);
 	}
 
 	public static final long timeSpan(Date a, Date b) {
