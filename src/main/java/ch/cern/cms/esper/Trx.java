@@ -98,4 +98,9 @@ public class Trx {
 		}
 		return map;
 	}
-}
+
+	public static final boolean isNonvariant(Object o){
+		System.out.println(o.getClass());
+		System.out.println(o.toString());
+		return false;
+	}}

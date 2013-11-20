@@ -9,7 +9,7 @@ create variable Long lastEVMtimestamp = 0;
 create window L1Subrates.std:unique(url,lid).win:time(30 sec) as (subrate Double, url String, lid String, timestamp Long);
 
 @Description('Window for all the L1Rates observed over the previous 60 seconds. ')
-create window L1Rates.win:expr(timestamp>max(timestamp)-60000) as (rate double, timestamp Long);
+create window L1Rates.win:expr(timestamp>max(timestamp)-60000 and current_count<60) as (rate double, timestamp Long);
 
 create variable Double avgTrgRate=null;
 create variable Double indirectAvgTrgRate = null;

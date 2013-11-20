@@ -4,15 +4,59 @@ create variable long minStuckTime = 10000;
 create window RecentL1Rates.win:expr(timestamp>max(timestamp)-minStuckTime) as select * from L1Rates;
 
 
-create window ConsecutiveZeroL1Rates.win:expr(newest_event.rate=0) as select * from L1Rates;
+create window L1DeadRates.win:expr(newest_event.rate=0) as select * from L1Rates;
 
-@Verbose(label='bxNumbers')
-select count(*) as cnt, bxNumber from FrlCtlLnk where (select max(timestamp)-min(timestamp) from ConsecutiveZeroL1Rates ) > 10000 group by bxNumber;
+@Description('Schema will hold the bxNumber standard deviation calculated when the L1Rate is 0')
+create schema DeadL1RateBxStDev as (value double, timestamp long);
+
+create schema DeadL1RateTimer as (elapsed long, timestamp long);
+
+create schema DeadL1RateBxHistogram as (bxNumber long, support long, timestamp long);
+
 
 /** DEFINE INSERTION / DELETION LOGIC **/
 
 insert into RecentL1Rates select * from L1Rates;
-insert into ConsecutiveZeroL1Rates select * from L1Rates;
+insert into L1DeadRates select * from L1Rates;
+
+insert into DeadL1RateTimer select max(timestamp)-min(timestamp) as elapsed, max(timestamp) as timestamp from L1DeadRates;
+
+@Verbose(label='bxNumbers')
+select bxNumber from FrlCtlLnk.std:unique(fedId)
+	where (select max(timestamp)-min(timestamp) from L1DeadRates ) > minStuckTime;
+	
+
+@Verbose(label='bxNumbers')
+select count(distinct bxNumber) as cnt from FrlCtlLnk
+	where (select max(timestamp)-min(timestamp) from L1DeadRates ) > minStuckTime;
+
+@Verbose(label='deadRateBxStDev')
+select distinct stats.stddev as value, max(feds.timestamp) as timestamp from FrlCtlLnk.std:unique(fedId).stat:uni(bxNumber) as stats, FrlCtlLnk.std:unique(fedId) as feds
+	where (select max(timestamp)-min(timestamp) from L1DeadRates ) > minStuckTime
+	having stats.stddev > 0;
+
+@Verbose(label='distinct bx numbers')
+select count(distinct bxNumber) as bxNumberValues, max(timestamp) as timestamp from FrlCtlLnk.std:unique(fedId)
+	where (select max(timestamp)-min(timestamp) from L1DeadRates) > minStuckTime;
+
+@Verbose(label='PatternTriggeredBxAlignmentCheck')
+select * from DeadL1RateTimer(elapsed>minStuckTime);
+
+
+create window ForYourStupidSatisfaction.std:unique(fedId) as select * from FrlCtlLnk;
+insert into ForYourStupidSatisfaction select * from FrlCtlLnk;
+
+@Verbose(label='bxHistogram')
+on pattern[every DeadL1RateTimer(elapsed>minStuckTime)] insert into DeadL1RateBxHistogram 
+	select count(fedId) as support, bxNumber, max(timestamp.getTime()) as timestamp from ForYourStupidSatisfaction group by bxNumber;
+
+@Verbose(label='possible?')
+select count(fedId) as support, bxNumber, max(timestamp.getTime()) as timestamp from FrlCtlLnk.std:unique(fedId) group by bxNumber;
+
+
+@Verbose(label='printMe')
+on pattern[every FrlCtlLnk] select current_timestamp() from *;
+
 
 
 /** DEFINE OUTPUT PRINTING **/
@@ -23,11 +67,11 @@ select count(*) from RecentL1Rates;
 @Watched(label = 'RatesLength')
 select count(*) from L1Rates;
 
-@Watched(label='ConsecutiveZeroL1Rates')
-select count(*) from ConsecutiveZeroL1Rates;
+@Watched(label='L1DeadRates')
+select count(*) from L1DeadRates;
 
 @Watched(label='L1Rates zero for')
-select (max(timestamp)-min(timestamp))/1000 from ConsecutiveZeroL1Rates having max(timestamp) is not null;
+select (max(timestamp)-min(timestamp))/1000 from L1DeadRates having max(timestamp) is not null;
 
 @Verbose(label='l1Rates', append=false)
 select * from L1Rates;

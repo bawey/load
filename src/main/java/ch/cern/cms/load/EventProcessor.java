@@ -75,6 +75,7 @@ public class EventProcessor {
 		c.addPlugInSingleRowFunction("parseFem", FedMask.class.getCanonicalName(), "parse");
 		c.addPlugInSingleRowFunction("in_array", Trx.class.getCanonicalName(), "inArray");
 		c.addPlugInSingleRowFunction("tuple", Trx.class.getCanonicalName(), "tuple");
+		c.addPlugInSingleRowFunction("is_nonvariant", Trx.class.getCanonicalName(), "isNonvariant");
 
 		// this might be a nice way to define the timestamps relationship
 		// c.addPlugInPatternGuard(namespace, name, guardFactoryClass)

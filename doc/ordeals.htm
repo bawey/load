@@ -171,6 +171,49 @@ insert into DeadtimeRecoveredFedId select * from FmmInput(fractionWarning<0.01, 
                 <code>select tuple(streamNames, ratePerStream).get('A') from StorageManagerPerformance;</code> <br />
                 <code class="error">Date-time enumeration method 'get' requires either a Calendar, Date or long value as input or events of an event type that declares a timestamp property but received java.util.Map</code>
             </li>
+            <li>
+                <h3>Inline if?</h3>
+                <code>(case when result='' then '' else ',' end)</code>
+            </li>
+            <li>
+                <h3>What does count(*) actually count...</h3>
+                <p>Events in a window or all events that heve ever gone through a stream.</p>   
+            </li>
+            <li>
+                <h3>Aggregates 101</h3>
+                it's just weird...
+                <code>select window(*).aggregate(0, (result, item) => result + item.rate) as totalRate
+from RecentL1Rates;</code>
+            </li>
+
+            <li><h3>Count distinct returns 0 when 'whered' using different view</h3>
+            <code>select count(distinct bxNumber) as cnt from FrlCtlLnk.std:unique(fedId) <br />
+    where (select max(timestamp)-min(timestamp) from ConsecutiveZeroL1Rates ) >  minStuckTime;</code>
+            <p>It might be that aggregation function rejects all rows 'whered' by some unrelated window, whereas selecting single rows in such case is fine. (Snippet above produces expected output without the 'where' clause.)</p>
+            <code>select bxNumber from FrlCtlLnk.std:unique(fedId) <br>
+    where (select max(timestamp)-min(timestamp) from ConsecutiveZeroL1Rates ) > minStuckTime;</code>
+        </li>
+            <li>
+                <h3></h3>
+                <p>
+                    This is not fine by esper: [<code class="error">Incorrect syntax near '.' expecting end of input but found a dot '.'</code>] <br />
+                    <code>
+                        on pattern[every DeadL1RateTimer(elapsed>minStuckTime)] insert into DeadL1RateBxHistogram <br />
+    select count(fedId) as support, bxNumber, max(timestamp.getTime()) as timestamp from FrlCtlLnk.std.unique(fedId) group by bxNumber; <br />
+                    </code>
+                    Neither is this: [<code class="error">Named window 'FrlCtlLnk' has not been declared</code>] <br />
+                    <code>
+on pattern[every DeadL1RateTimer(elapsed>minStuckTime)] insert into DeadL1RateBxHistogram <br />
+    select count(fedId) as support, bxNumber, max(timestamp.getTime()) as timestamp from FrlCtlLnk group by bxNumber; <br />
+                    </code>
+                    But this is fine: <br />
+                    <code>
+create window ForYourStupidSatisfaction.std:unique(fedId) as select * from FrlCtlLnk; <br/>
+insert into ForYourStupidSatisfaction select * from FrlCtlLnk; <br/> <br/>
+on pattern[every DeadL1RateTimer(elapsed>minStuckTime)] insert into DeadL1RateBxHistogram <br/>
+    select count(fedId) as support, bxNumber, max(timestamp.getTime()) as timestamp from ForYourStupidSatisfaction group by bxNumber;</code>
+                </p>
+            </li>
         </ul>
 
     </body>
