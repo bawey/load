@@ -1,7 +1,7 @@
 /****** CREATE WORKING VIEWS / SCHEMAS ******/
 
 /** FrlBackpressureStream [ bpFraction | kontext | slotNumber | linkNumber | timestamp ] **/
-@Description('schema with current backpressure values for kontext, slotNumber, linkNumber')
+@Description('schema with current ...')
 create schema FrlBackpressureStream as (fedId Integer, bpFraction double, timestamp long);
 
 /** FrlBackpressure [@FrlBackpressureStream] **/
@@ -29,21 +29,24 @@ create schema FedDtGone as (fedId Integer, mainFedIds Integer[], timestamp Long,
 /****** DECLARE THE INSERTION AND DELETION LOGIC (PREFERABLY MUTE), TOP-DOWN ORDER ******/
 
 @Description('Timespan to look for DT and BP within. In msec.')
-create variable int deadPressureSpan = 720000;
+create variable int deadPressureSpan = 60000;
 
 @Description('Threshold bp')
 create variable double bpBound = 0.01;
 create variable double dtBound = 0.01;
 
 @Description('Populating FedDeadPressure window')
-insert into FedDeadPressure select d.timestamp as dtTime, b.timestamp as bpTime, d.dtFraction as dtFraction, b.bpFraction as bpFraction, b.fedId as fedId from FmmDeadtime as d, FrlBackpressure as b where 
-(b.fedId=d.fedId or in_array(b.fedId, d.mainFedIds)) and time_span(d.timestamp, b.timestamp) <= deadPressureSpan;
+insert into FedDeadPressure select d.timestamp as dtTime, b.timestamp as bpTime, d.dtFraction as dtFraction, b.bpFraction as bpFraction, b.fedId as fedId 
+	from FmmDeadtime as d, FrlBackpressure as b 
+	where (b.fedId=d.fedId or in_array(b.fedId, d.mainFedIds)) and time_span(d.timestamp, b.timestamp) <= deadPressureSpan;
 
 @Description('Emptying FedDeadPressure window: 1/2')
 on pattern[every (x=FedBpGone or y=FedDtGone)] delete from FedDeadPressure fdp where (x is not null and fdp.fedId = x.fedId) or (y is not null and fdp.fedId = y.fedId);
 
+/** When FDP has no backpressure itself and the gone backpressure was on one of its main feds **/
 @Description('Emptying FedDeadPressure window: 2/2')
-on FedDtGone as gone delete from FedDeadPressure fdp where in_array(fdp.fedId, gone.mainFedIds) and fdp.fedId not in (select fedId from FmmDeadtime);
+on FedBpGone as gone delete from FedDeadPressure fdp where in_array(gone.fedId, mainFedIds(fdp.fedId)) and 
+	mainFedIds(fdp.fedId).allOf( v => v not in (select fedId from FrlBackpressure));
 
 
 @Description('Populating FmmDeadtime window')

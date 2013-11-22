@@ -11,6 +11,9 @@
             code.error{
                 color: red;
             }
+            code.wrong{
+                text-decoration:line-through
+            }
         </style>
     </head>
     <body>
@@ -187,11 +190,18 @@ from RecentL1Rates;</code>
             </li>
 
             <li><h3>Count distinct returns 0 when 'whered' using different view</h3>
+            <p>
             <code>select count(distinct bxNumber) as cnt from FrlCtlLnk.std:unique(fedId) <br />
-    where (select max(timestamp)-min(timestamp) from ConsecutiveZeroL1Rates ) >  minStuckTime;</code>
-            <p>It might be that aggregation function rejects all rows 'whered' by some unrelated window, whereas selecting single rows in such case is fine. (Snippet above produces expected output without the 'where' clause.)</p>
+    where (select max(timestamp)-min(timestamp) from ConsecutiveZeroL1Rates ) >  minStuckTime;</code> <br />
+            It might be that aggregation function rejects all rows 'whered' by some unrelated window, whereas selecting single rows in such case is fine. (Snippet above produces expected output without the 'where' clause.) <br />
             <code>select bxNumber from FrlCtlLnk.std:unique(fedId) <br>
-    where (select max(timestamp)-min(timestamp) from ConsecutiveZeroL1Rates ) > minStuckTime;</code>
+    where (select max(timestamp)-min(timestamp) from ConsecutiveZeroL1Rates ) > minStuckTime;</code><br />
+            It works as above, on its own, and works if you put it all together and use 'having': <br />
+            <code>select distinct count(distinct ctl.bxNumber) as bxNumbers, max(deads.timestamp)-min(deads.timestamp) as duration from FrlCtlLnk.std:unique(fedId) as ctl, L1DeadRates as deads <br>
+    having count(distinct ctl.bxNumber) is not null <br>
+    and count(distinct ctl.bxNumber) > 1 <br>
+    and max(deads.timestamp)-min(deads.timestamp) > deadRateTimeout;</code>
+            </p>
         </li>
             <li>
                 <h3></h3>
@@ -214,6 +224,15 @@ on pattern[every DeadL1RateTimer(elapsed>minStuckTime)] insert into DeadL1RateBx
     select count(fedId) as support, bxNumber, max(timestamp.getTime()) as timestamp from ForYourStupidSatisfaction group by bxNumber;</code>
                 </p>
             </li>
+            <li>
+                <h3>Streams populated with upsert</h3>
+                <p>When updating both, otherwise insert or remove respectively.</p>
+            </li>
+            <li>Joining remove and insert stream</li>
+            <p>
+                <code class="wrong">select fedId, date(timestamp) as time, bpFraction from FedBackpressure as r where r.fedId not in (select rstream i.fedId from FedBackpressure as i);</code> <br />
+                <code class="fine">select rstream fedId, date(timestamp) as time, bpFraction from FedBackpressure as r where r.fedId not in (select i.fedId from FedBackpressure as i);</code>
+            </p>
         </ul>
 
     </body>

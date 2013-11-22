@@ -1,6 +1,11 @@
+create schema StreamRates as (name String, rate double, time long);
+
+insert into StreamRates select cast(tuple(smp.streamNames, smp.ratePerStream).take('A'),double) as rate, 'A' as name, timestamp.getTime() as time from StorageManagerPerformance as smp;
+
+
 @Watched(label='streamA rate')
-select ratePerStream from StorageManagerPerformance where streamNames='A';
+select rate from StreamRates(name='A');
 
 @Verbose(label='output', fields={'time','name','rate'}, extraNfo='Stream A rate high!')
-select timestamp as time, ratePerStream as rate, streamNames as name from StorageManagerPerformance(streamNames='A', ratePerStream>500);
+select time as time, rate as rate, name as name from StreamRates(name='A', rate>500);
 

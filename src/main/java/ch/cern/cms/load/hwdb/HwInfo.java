@@ -216,6 +216,17 @@ public final class HwInfo implements Serializable {
 		return ids.toArray(new Integer[ids.size()]);
 	}
 
+	public static Integer[] getMainFedIds(int fedId) {
+		Collection<Integer> ids = new HashSet<Integer>();
+		FED fed = getInstance().eqs.getFED(fedId);
+		if (fed != null) {
+			for (FED mainFed : fed.getMainFEDs()) {
+				ids.add(mainFed.getSrcId());
+			}
+		}
+		return ids.toArray(new Integer[ids.size()]);
+	}
+
 	/** means: when deadtime observed on the triplet passed here, all the result fedIDs should be checked against backpressure fedIDs **/
 	public static Integer[] getDeadtimeRelevantFedIds(Object context, Object geoslot, Object io) {
 

@@ -179,8 +179,8 @@ public class Load {
 		getResolver().setFieldType("FEDSourceId", Integer.class);
 		getResolver().setFieldType("timestamp", Date.class);
 		getResolver().setFieldType("lastEVMtimestamp", Date.class);
-		getResolver().setFieldType("streamNames", String.class);
-		getResolver().setFieldType("ratePerStream", Double.class);
+		getResolver().setFieldType("streamNames", String[].class);
+		getResolver().setFieldType("ratePerStream", Double[].class);
 	}
 
 	private Object instantiateComponent(String type, String id) {

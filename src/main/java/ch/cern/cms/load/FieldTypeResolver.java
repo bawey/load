@@ -1,5 +1,6 @@
 package ch.cern.cms.load;
 
+import java.lang.reflect.Array;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -8,6 +9,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
+import com.espertech.esper.epl.generated.EsperEPL2GrammarParser.firstAggregation_return;
+
+import fieldTypes.AbstractListOfData;
 import fieldTypes.ListOfDoubles;
 import fieldTypes.ListOfStrings;
 
@@ -44,8 +48,12 @@ public final class FieldTypeResolver extends HashMap<String, Class<?>> {
 		put(listName + "." + fieldName, type);
 	}
 
-	public Object convert(String rawValue, String fieldName, String listName) {
-		Class<?> type = this.getFieldType(fieldName, listName);
+	public Object convert(String input, String field, String list) {
+		return convert(input, field, list, null);
+	}
+
+	public Object convert(String rawValue, String fieldName, String listName, Class<?> typeOverride) {
+		Class<?> type = typeOverride == null ? this.getFieldType(fieldName, listName) : typeOverride;
 		if (type != null) {
 			if (type.equals(Integer.class)) {
 				return Integer.parseInt(rawValue);
@@ -63,6 +71,17 @@ public final class FieldTypeResolver extends HashMap<String, Class<?>> {
 				return new ListOfStrings(rawValue);
 			} else if (type.equals(ListOfDoubles.class)) {
 				return new ListOfDoubles(rawValue);
+			} else if (type.isArray()) {
+				String[] tokens = AbstractListOfData.tokenizeFlashlistInput(rawValue);
+				if (type.getComponentType().equals(String.class)) {
+					return tokens;
+				} else {
+					Object result = Array.newInstance(type.getComponentType(), tokens.length);
+					for (int i = 0; i < tokens.length; ++i) {
+						Array.set(result, i, convert(tokens[i], null, null, type.getComponentType()));
+					}
+					return result;
+				}
 			} else if (Collection.class.isAssignableFrom(type)) {
 				rawValue = rawValue.substring(rawValue.indexOf('[') + 1, rawValue.lastIndexOf(']'));
 				String[] array = rawValue.split(",");
@@ -78,6 +97,7 @@ public final class FieldTypeResolver extends HashMap<String, Class<?>> {
 
 	// TODO: placeholder really. so far
 	public boolean isRolled(String propertyName, String eventName) {
-		return propertyName.equals("streamNames") || propertyName.equals("ratePerStream");
+		return false;
+		// return propertyName.equals("streamNames") || propertyName.equals("ratePerStream");
 	}
 }

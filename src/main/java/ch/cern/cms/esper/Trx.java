@@ -1,5 +1,8 @@
 package ch.cern.cms.esper;
 
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -79,28 +82,63 @@ public class Trx {
 		return inArray((Object) needle, haystack);
 	}
 
-	public static final Map<?, ? extends Object> tuple(Object a, Object b) {
-		Map<Object, Object> map = null;
+	public static final FakeMap tuple(Object a, Object b) {
+		FakeMap map = null;
 
-		if (a instanceof Collection<?> && b instanceof Collection<?>) {
-			Collection<?> as = (Collection<?>) a;
-			Collection<?> bs = (Collection<?>) b;
+		Collection<?> as = null;
+		Collection<?> bs = null;
+
+		if (a.getClass().isArray()) {
+			ArrayList<Object> list = new ArrayList<Object>(Array.getLength(a));
+			for (int i = 0; i < Array.getLength(a); ++i) {
+				list.add(Array.get(a, i));
+			}
+			as = list;
+		} else if (a instanceof Collection<?>) {
+			as = (Collection<?>) a;
+		}
+		if (b.getClass().isArray()) {
+			ArrayList<Object> list = new ArrayList<Object>(Array.getLength(b));
+			for (int i = 0; i < Array.getLength(b); ++i) {
+				list.add(Array.get(b, i));
+			}
+			bs = list;
+		} else if (b instanceof Collection<?>) {
+			bs = (Collection<?>) b;
+		}
+
+		if (as != null && bs != null) {
+
 			assert (as.size() == bs.size());
-			map = new HashMap<Object, Object>(bs.size());
+			map = new FakeMap(bs.size());
 			Iterator<?> ita = as.iterator();
 			Iterator<?> itb = bs.iterator();
 			while (ita.hasNext() && itb.hasNext()) {
 				map.put(ita.next(), itb.next());
 			}
 		} else {
-			map = new HashMap<Object, Object>(1);
+			map = new FakeMap(1);
 			map.put(a, b);
 		}
 		return map;
 	}
 
-	public static final boolean isNonvariant(Object o){
+	public static final boolean isNonvariant(Object o) {
 		System.out.println(o.getClass());
 		System.out.println(o.toString());
 		return false;
-	}}
+	}
+
+	public static final class FakeMap extends HashMap<Object, Object> {
+		private static final long serialVersionUID = 1L;
+
+		public FakeMap(int capacity) {
+			super(capacity);
+		}
+
+		public Object take(Object key) {
+			return super.get(key);
+		}
+	}
+
+}
