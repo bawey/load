@@ -223,7 +223,7 @@ public class SwingGui implements LoadView {
 			if (props != null) {
 				if (props.size() == 1) {
 					Object key = props.keySet().iterator().next();
-					SwingGui.this.watch(label.length() > 0 ? label : key.toString(), props.get(key).toString());
+					SwingGui.this.watch(label.length() > 0 ? label : key.toString(), props.get(key) != null ? props.get(key).toString() : "null");
 				} else {
 					String[] timeKeys = { "timestamp", "time", "timeStamp", "time_stamp" };
 					String[] labelKeys = { "label" };

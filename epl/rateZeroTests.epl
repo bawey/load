@@ -1,5 +1,6 @@
 /** STRUCTURE **/
 @Description('')
+create variable long deadRateElaplsed=0;
 create variable long deadRateTimeout=10000;
 
 create variable int bxBucketsLimit = 10;
@@ -16,8 +17,6 @@ create window L1DeadRates.win:expr(newest_event.rate=0) as select * from L1Rates
 create window FrlCtlLnkSnapshot.std:unique(fedId) as select * from FrlCtlLnk;
 
 
-create variable boolean printBxBuckets = false;
-
 create schema BxMismatch as (timestamp Long, duration Long, bxNumbers Long);
 /** LOGIC **/
 insert into FrlCtlLnkSnapshot select * from FrlCtlLnk;
@@ -25,6 +24,9 @@ insert into FrlCtlLnkSnapshot select * from FrlCtlLnk;
 
 @Description('Store the L1 zero rates and their timestamps as they come and flush whenever a non-zero comes')
 insert into L1DeadRates select * from L1Rates;
+
+@Watched(label='deadReteElapsed')
+on pattern[every timer:interval(333 msec)] set deadRateElaplsed = (select case when (3>1) then (12 as dbt) else (0 as dbt) end from L1DeadRates);
 
 insert into BxMismatch
 select distinct count(distinct ctl.bxNumber) as bxNumbers, max(deads.timestamp)-min(deads.timestamp) as duration, max(deads.timestamp) as timestamp from FrlCtlLnk.std:unique(fedId) as ctl,
@@ -34,7 +36,7 @@ select distinct count(distinct ctl.bxNumber) as bxNumbers, max(deads.timestamp)-
 	and count(distinct ctl.bxNumber) > 1
 	and max(deads.timestamp)-min(deads.timestamp) > deadRateTimeout;
 
-on BxMismatch set printBxBuckets=true;
+
 
 
 /** OUTPUT **/
@@ -53,3 +55,4 @@ select count(ctl.fedId) as support, ctl.bxNumber as bxNumber, max(deads.timestam
 @Description("Prints all the feds with deviating bxNumber")
 select * from FrlCtlLnk;
 /** WILD GUESS **/
+		

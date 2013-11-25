@@ -228,11 +228,16 @@ on pattern[every DeadL1RateTimer(elapsed>minStuckTime)] insert into DeadL1RateBx
                 <h3>Streams populated with upsert</h3>
                 <p>When updating both, otherwise insert or remove respectively.</p>
             </li>
-            <li>Joining remove and insert stream</li>
+            <li><h3></h3>Joining remove and insert stream
             <p>
                 <code class="wrong">select fedId, date(timestamp) as time, bpFraction from FedBackpressure as r where r.fedId not in (select rstream i.fedId from FedBackpressure as i);</code> <br />
                 <code class="fine">select rstream fedId, date(timestamp) as time, bpFraction from FedBackpressure as r where r.fedId not in (select i.fedId from FedBackpressure as i);</code>
             </p>
+            </li>
+            <li>
+                <h3>Case's (lack of) flexibility</h3>
+                <p>on pattern[every timer:interval(333 msec)] set deadRateElaplsed = (select case when (3>1) then (12 as dbt) else (0 as dbt) end from L1DeadRates);</p>
+            </li>
         </ul>
 
     </body>
