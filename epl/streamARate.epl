@@ -1,6 +1,6 @@
 create schema StreamRates as (name String, rate double, time long);
 
-insert into StreamRates select cast(tuple(smp.streamNames, smp.ratePerStream).take('A'),double) as rate, 'A' as name, timestamp.getTime() as time from StorageManagerPerformance as smp;
+insert into StreamRates select cast(tuple(smp.streamNames, smp.ratePerStream).get('A'),double) as rate, 'A' as name, timestamp.getTime() as time from StorageManagerPerformance as smp;
 
 
 @Watched(label='streamA rate')

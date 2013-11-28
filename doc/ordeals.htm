@@ -1,6 +1,6 @@
 <html>
     <head>
-        <title>Esperiences</title>
+        <title>Esperiences: par espera ad astra</title>
         <style type="text/css">
             code {
                 font-size: 1.1em;
@@ -237,6 +237,77 @@ on pattern[every DeadL1RateTimer(elapsed>minStuckTime)] insert into DeadL1RateBx
             <li>
                 <h3>Case's (lack of) flexibility</h3>
                 <p>on pattern[every timer:interval(333 msec)] set deadRateElaplsed = (select case when (3>1) then (12 as dbt) else (0 as dbt) end from L1DeadRates);</p>
+            </li>
+            <li>
+                <p>The unidirectional keyword instructs the engine to evaluate the join only when an event arrives from the single stream that was marked with the unidirectional keyword. In this case no data window should be specified for the stream marked as unidirectional since the keyword implies that the current event of that stream triggers the join.</p>
+            </li>
+            <li>
+                <h3></h3>
+                <p>
+                    Where <code>deadRateTimeout</code> and <code>deadRateElapsed</code> are variables. <br/>
+                    <code>
+                        select count(distinct bxNumber) from pattern[every timer:interval(5 sec)] unidirectional, FrlCtlLnk.std:unique(fedId) where deadRateTimeout&lt;deadRateElaplsed;
+                    </code>
+                    <br />
+                    Yields ones which seems to be a useful output.
+                    <br />
+                    <code>
+                        select count(distinct bxNumber) from FrlCtlLnk.std:unique(fedId) where deadRateTimeout&lt;deadRateElaplsed;
+                    </code>
+                    <br>
+                    Yields only zeroes, seemingy discarding any FrlCtlLnk events as not matching the constraint imposed on a variable (as opposed to Event's properties).
+                </p>
+            </li>
+
+            <li>
+                <h3>No logic in patterns</h3>
+                <p>
+                    Impossible to do something like: <br />
+                    <code class="error">on pattern[every timer:interval(3 sec) and someVariable>-6]</code>
+                </p>
+            </li>
+
+            <li>
+                <h3>Snapshot vs continuous access, intuition</h3>
+                <p>
+                    Seems like the triggered access to windows (using patterns for instance) is much better when it comes to obtaining reliable aggregate values than continous, 'where'-constrained approach. So: <br />
+                    <code class="error">select count(distinct color) from CarEvent.std:unique(carId) where someOtherVariable>threshold</code><br />
+                    is likely to quirk giving zeros (the condition under 'where' close ain't directly related to the CarEvent). However, if the <code>someOtherVariable</code> was a <code>win.length(1)</code> window instead, the following would be fine: <br />
+                    <code>select count(distinct color) from pattern[every SomeOtherVariableEvent(value>threshold)] unidirectional, CarEvent.std:unique(carId)</code> <br/>
+                    The idea behind the first snippet was actually to achieve the same behavior as in the latter example, yet without using a window for the variable. Failed.
+                </p>
+            </li>
+
+
+            <li>
+                <h3>Cryptic underlying Java exceptions surfacing</h3>
+                <p>
+                    The following statement yields an <code>Array index out of bounds exception</code> thrown somewhere within Esper.<br />
+                    <code class="error">
+                    insert into BxDistribution select count(distinct bxNumber) as groups, timestamp.getTime() as timestamp from pattern[every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, FrlCtlLnk.std:unique(fedId)
+    having count(distinct bxNumber) > 1;</code><br/>
+                    As it turned out, some <code>FrlCtlLnk</code> arrived with null Date. The following fixes the problem without actually changing the output that is of any concern: <br />
+                    <code>insert into BxDistribution select count(distinct ctl.bxNumber) as groups, (case when ctl.timestamp is not null then ctl.timestamp.getTime() else 0 end) as timestamp from pattern[every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional,
+    FrlCtlLnk.std:unique(fedId) as ctl where ctl is not null having count(distinct bxNumber) > 1;
+</code>
+                </p>
+
+            </li>
+            <li>
+                <h3>The <code>on... set...</code> limitations</h3>
+                <p>
+                    Cannot be followed by select, making it impossible to set the value based on some event A upon arrival of an event B.
+                    <code>
+                    </code><br/>
+                </p>
+            </li>
+            <li>
+                <h3></h3>
+                <p>
+                    
+                    <code>
+                    </code><br/>
+                </p>
             </li>
         </ul>
 

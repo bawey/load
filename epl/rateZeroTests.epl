@@ -1,6 +1,5 @@
 /** STRUCTURE **/
 @Description('')
-create variable long deadRateElaplsed=0;
 create variable long deadRateTimeout=10000;
 
 create variable int bxBucketsLimit = 10;
@@ -9,6 +8,8 @@ create variable int bxDetailsLimit = 30;
 create variable int trgBucketsLimit = 10;
 create variable int trgDetailsLimit = 30;
 
+create variable int prevalentBx = -1;
+create variable int prevalentTrg = -1;
 
 @Description('Store the L1 zero rates and their timestamps as they come and flush whenever a non-zero comes')
 create window L1DeadRates.win:expr(newest_event.rate=0) as select * from L1Rates;
@@ -16,43 +17,60 @@ create window L1DeadRates.win:expr(newest_event.rate=0) as select * from L1Rates
 @Description('Vital to satisfy patterns syntactic whims')
 create window FrlCtlLnkSnapshot.std:unique(fedId) as select * from FrlCtlLnk;
 
+create window ZeroRateTimer.win:length(1) as (elapsed long);
 
-create schema BxMismatch as (timestamp Long, duration Long, bxNumbers Long);
+create window PrevalentBxn.win:length(1) as (bxNumber long);
+
+
+create schema BxDistribution as (timestamp Long, groups Long);
+create schema TrgDistribution as (timestamp Long, groups Long);
 /** LOGIC **/
 insert into FrlCtlLnkSnapshot select * from FrlCtlLnk;
 
 
+@Verbose(label="L1DR")
 @Description('Store the L1 zero rates and their timestamps as they come and flush whenever a non-zero comes')
-insert into L1DeadRates select * from L1Rates;
+insert into L1DeadRates select distinct * from L1Rates;
 
-@Watched(label='deadReteElapsed')
-on pattern[every timer:interval(333 msec)] set deadRateElaplsed = (select case when (3>1) then (12 as dbt) else (0 as dbt) end from L1DeadRates);
+@Verbose(label='deadReteElapsed')
+insert into ZeroRateTimer select distinct (case when count(*)>1 then max(timestamp)-min(timestamp) else 0 end) as elapsed from pattern[every L1DeadRates] unidirectional, L1DeadRates;
 
-insert into BxMismatch
-select distinct count(distinct ctl.bxNumber) as bxNumbers, max(deads.timestamp)-min(deads.timestamp) as duration, max(deads.timestamp) as timestamp from FrlCtlLnk.std:unique(fedId) as ctl,
-	L1DeadRates as deads
-	where deads.countOf()>0
-	having max(deads.timestamp) is not null and count(distinct ctl.bxNumber) is not null 
-	and count(distinct ctl.bxNumber) > 1
-	and max(deads.timestamp)-min(deads.timestamp) > deadRateTimeout;
+insert into BxDistribution select distinct count(distinct ctl.bxNumber) as groups, (case when ctl.timestamp is not null then max(ctl.timestamp.getTime()) else 0 end) as timestamp 
+	from pattern[every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, FrlCtlLnk.std:unique(fedId) as ctl where ctl is not null having count(distinct bxNumber) > 1;
 
 
+@Priority(10)
+@Description('Prepare the prevalent Bx number')
+insert into PrevalentBxn
+select bxNumber from pattern[every BxDistribution(groups>1)] unidirectional, FrlCtlLnk.std:unique(fedId) group by bxNumber having count(*)=max(count(*));
+
+//not sure if this is actually needed
+//@Description('reset the bx and trg distributions to n/a when rate > 0')
+//on pattern[every a = L1Rates(rate>0)] 
+//	insert into BxDistribution select a.timestamp as timestamp, -1 as groups
+//	insert into TrgDistrubution select a.timestamp as timestamp, -1 as groups
+//output all;
 
 
 /** OUTPUT **/
 
 @Priority(10)
-@Verbose(label='BxMismatches')
-select * from BxMismatch;
+@Description('First, a message about bx misalignment')
+@Verbose(label='BxDistribution', extraNfo='FEDs BX-misalignment alert!', fields={'time','groups'})
+select date(timestamp) as time, groups from BxDistribution(groups>1);
 
 @Priority(9)
-@Verbose(label='BxMismatches')
-select count(ctl.fedId) as support, ctl.bxNumber as bxNumber, max(deads.timestamp) as deadsTimestamp, max(ctl.timestamp) as fedTimestamp 
-	from FrlCtlLnk.std:unique(fedId) as ctl, L1DeadRates as deads
-	group by bxNumber
-	having max(deads.timestamp) is not null;
+@Description('Second, a limited list of all the groups')
+@Verbose(label='BxDistribution', extraNfo='BX number groups', fields={'time','bxNumber','support'})
+select bxNumber, count(fedId) as support, max(timestamp) as time from pattern[every BxDistribution(groups>1)] unidirectional, FrlCtlLnk.std:unique(fedId) group by bxNumber limit bxBucketsLimit;
 
-@Description("Prints all the feds with deviating bxNumber")
-select * from FrlCtlLnk;
+@Priority(7)
+@Description("Third, a limited list of misaligned feds")
+@Verbose(label='BxDistribution', extraNfo='BX-misaligned FEDs', fields={'time','bxNumber','fedId'})
+select fedId, bxNumber, timestamp as time from pattern[every BxDistribution(groups>1)] unidirectional, FrlCtlLnk.std:unique(fedId) 
+where bxNumber != (select bxNumber from PrevalentBxn) limit bxDetailsLimit;
 /** WILD GUESS **/
+
+
+
 		
