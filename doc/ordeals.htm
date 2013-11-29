@@ -296,7 +296,15 @@ on pattern[every DeadL1RateTimer(elapsed>minStuckTime)] insert into DeadL1RateBx
             <li>
                 <h3>The <code>on... set...</code> limitations</h3>
                 <p>
-                    Cannot be followed by select, making it impossible to set the value based on some event A upon arrival of an event B.
+                    Cannot be followed by select, making it impossible, for instance, to set the value based on some aggregation of events A upon arrival of an event B.
+                    <code>
+                    </code><br/>
+                </p>
+            </li>
+            <li>
+                <h3>Do expr-window events to-be-dropped get to attached statements?</h3>
+                <p>
+                    
                     <code>
                     </code><br/>
                 </p>

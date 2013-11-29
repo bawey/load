@@ -8,14 +8,12 @@ create variable int bxDetailsLimit = 30;
 create variable int trgBucketsLimit = 10;
 create variable int trgDetailsLimit = 30;
 
-create variable int prevalentBx = -1;
-create variable int prevalentTrg = -1;
+create variable long prevalentBxn = 0;
 
 @Description('Store the L1 zero rates and their timestamps as they come and flush whenever a non-zero comes')
 create window L1DeadRates.win:expr(newest_event.rate=0) as select * from L1Rates;
 
-@Description('Vital to satisfy patterns syntactic whims')
-create window FrlCtlLnkSnapshot.std:unique(fedId) as select * from FrlCtlLnk;
+
 
 create window ZeroRateTimer.win:length(1) as (elapsed long);
 
@@ -25,24 +23,30 @@ create window PrevalentBxn.win:length(1) as (bxNumber long);
 create schema BxDistribution as (timestamp Long, groups Long);
 create schema TrgDistribution as (timestamp Long, groups Long);
 /** LOGIC **/
-insert into FrlCtlLnkSnapshot select * from FrlCtlLnk;
+
 
 
 @Verbose(label="L1DR")
 @Description('Store the L1 zero rates and their timestamps as they come and flush whenever a non-zero comes')
 insert into L1DeadRates select distinct * from L1Rates;
 
-@Verbose(label='deadReteElapsed')
-insert into ZeroRateTimer select distinct (case when count(*)>1 then max(timestamp)-min(timestamp) else 0 end) as elapsed from pattern[every L1DeadRates] unidirectional, L1DeadRates;
+@Watched(label='deadRateElapsed')
+insert into ZeroRateTimer select (case when count(*)>1 then max(timestamp)-min(timestamp) else 0 end) as elapsed 
+	from pattern[every L1Rates] unidirectional, L1DeadRates;
 
-insert into BxDistribution select distinct count(distinct ctl.bxNumber) as groups, (case when ctl.timestamp is not null then max(ctl.timestamp.getTime()) else 0 end) as timestamp 
-	from pattern[every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, FrlCtlLnk.std:unique(fedId) as ctl where ctl is not null having count(distinct bxNumber) > 1;
+insert into BxDistribution select distinct count(distinct ctl.bxNumber) as groups, max(ctl.timestamp.getTime()) as timestamp 
+	from pattern[every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, FrlCtlLnk.std:unique(fedId) as ctl;
 
 
 @Priority(10)
 @Description('Prepare the prevalent Bx number')
+@Verbose(label='BxDistribution', extraNfo='inserting into PrevalentBxn window', fields={'bxNumber'})
 insert into PrevalentBxn
-select bxNumber from pattern[every BxDistribution(groups>1)] unidirectional, FrlCtlLnk.std:unique(fedId) group by bxNumber having count(*)=max(count(*));
+select bxNumber from pattern[every BxDistribution(groups>1)] unidirectional, FrlCtlLnk.std:unique(fedId) group by bxNumber having count(*)=max(count(*)) limit 1;
+
+@Priority(10)
+@Verbose(label='BxDistribution')
+on PrevalentBxn as bxn set prevalentBxn = bxn.bxNumber;
 
 //not sure if this is actually needed
 //@Description('reset the bx and trg distributions to n/a when rate > 0')
@@ -62,13 +66,20 @@ select date(timestamp) as time, groups from BxDistribution(groups>1);
 @Priority(9)
 @Description('Second, a limited list of all the groups')
 @Verbose(label='BxDistribution', extraNfo='BX number groups', fields={'time','bxNumber','support'})
-select bxNumber, count(fedId) as support, max(timestamp) as time from pattern[every BxDistribution(groups>1)] unidirectional, FrlCtlLnk.std:unique(fedId) group by bxNumber limit bxBucketsLimit;
+select bxNumber, count(fedId) as support, max(timestamp) as time from pattern[every BxDistribution(groups>1)] unidirectional, FrlCtlLnk.std:unique(fedId) 
+group by bxNumber limit bxBucketsLimit;
 
-@Priority(7)
+@Priority(8)
 @Description("Third, a limited list of misaligned feds")
 @Verbose(label='BxDistribution', extraNfo='BX-misaligned FEDs', fields={'time','bxNumber','fedId'})
 select fedId, bxNumber, timestamp as time from pattern[every BxDistribution(groups>1)] unidirectional, FrlCtlLnk.std:unique(fedId) 
-where bxNumber != (select bxNumber from PrevalentBxn) limit bxDetailsLimit;
+where cast(bxNumber,long) not in (select bxNumber from PrevalentBxn)  limit bxDetailsLimit;
+
+@Priority(7)
+@Verbose(label='BxDistribution')
+select bxNumber from pattern[every BxDistribution(groups>1)] unidirectional, PrevalentBxn;
+
+
 /** WILD GUESS **/
 
 
