@@ -23,8 +23,8 @@ public class OfflineFlashlistEventsTapTestRealData {
 		expert = Load.getInstance();
 		ep = Load.getInstance().getEventProcessor();
 		tap = new OfflineFlashlistEventsTap(expert, "/home/bawey/Documents/flashlists/41/");
-		tap.preRegistrationSetup();
-		tap.registerEventTypes();
+		tap.preRegistrationSetup(expert);
+		tap.registerEventTypes(expert);
 	}
 
 	@Test

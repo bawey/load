@@ -13,9 +13,8 @@ import ch.cern.cms.load.eplProviders.FileBasedEplProvider;
 import ch.cern.cms.load.guis.ExpertGui;
 import ch.cern.cms.load.taps.AbstractEventsTap;
 import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;
+import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap2;
 import ch.cern.cms.load.timers.SimplePlaybackTimer;
-import fieldTypes.ListOfDoubles;
-import fieldTypes.ListOfStrings;
 
 /**
  * Core components, singletons etc. should be initialized here. However, the setup of initial structure should be well separated from the
@@ -106,7 +105,8 @@ public class Load {
 
 		// register taps
 		if (settings.getMany(OfflineFlashlistEventsTap.SETTINGS_KEY_FLASHLIST_DIR).size() > 0) {
-			registerTap(new OfflineFlashlistEventsTap(this, null));
+			//registerTap(new OfflineFlashlistEventsTap(this, null));
+			registerTap(new OfflineFlashlistEventsTap2(this));
 		}
 		AbstractEventsTap.registerKnownOnlineTaps();
 		setUpTimer();

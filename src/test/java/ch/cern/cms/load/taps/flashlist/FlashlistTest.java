@@ -54,7 +54,7 @@ public class FlashlistTest {
 		/** prepare a dummy FlashlistEventsTap **/
 		AbstractFlashlistEventsTap tap = new AbstractFlashlistEventsTap(ctl, null) {
 			@Override
-			public void registerEventTypes() {
+			public void registerEventTypes(Load app) {
 				Map<String, Object> def = new HashMap<String, Object>();
 				for (String f : fields) {
 					def.put(f, Load.getInstance().getResolver().getFieldType(f, STREAM_NAME));
@@ -63,14 +63,14 @@ public class FlashlistTest {
 			}
 
 			@Override
-			public void preRegistrationSetup() {
+			public void preRegistrationSetup(Load app) {
 				// TODO Auto-generated method stub
 			}
 
 		};
-		tap.preRegistrationSetup();
+		tap.preRegistrationSetup(ctl);
 
-		tap.registerEventTypes();
+		tap.registerEventTypes(ctl);
 		ctl.getEventProcessor().epl("select * from " + STREAM_NAME + " where vowels>1", new UpdateListener() {
 			@Override
 			public void update(EventBean[] newEvents, EventBean[] oldEvents) {

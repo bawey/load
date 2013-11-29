@@ -159,7 +159,7 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	}
 
 	@Override
-	public void registerEventTypes() {
+	public void registerEventTypes(Load app) {
 		try {
 			BufferedReader br = null;
 			for (File rootFolder : rootFolders) {
@@ -191,7 +191,7 @@ public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	}
 
 	@Override
-	public void preRegistrationSetup() {
+	public void preRegistrationSetup(Load app) {
 		try {
 			Collection<String> dirPaths = this.controller.getSettings().getMany(OfflineFlashlistEventsTap.SETTINGS_KEY_FLASHLIST_DIR);
 			this.rootFolders = new File[dirPaths.size()];

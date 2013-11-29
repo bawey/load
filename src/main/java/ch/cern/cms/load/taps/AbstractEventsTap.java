@@ -21,18 +21,18 @@ public abstract class AbstractEventsTap {
 		this.ep = expert.getEventProcessor();
 		this.controller = expert;
 		this.path = path;
-		preRegistrationSetup();
-		registerEventTypes();
+		preRegistrationSetup(expert);
+		registerEventTypes(expert);
 	}
 
 	/**
 	 * allows setting things up before performing the full registration with expert
 	 * {@link AbstractEventsTap#initWithExpert(Load)}
 	 **/
-	public abstract void preRegistrationSetup();
+	public abstract void preRegistrationSetup(Load expert);
 
 	/** adds event definitions to configuration obtained via {@link Load} **/
-	public abstract void registerEventTypes();
+	public abstract void registerEventTypes(Load expert);
 
 	/** launches the Tap-specific job in a separate thread **/
 	public final void openStreams() {

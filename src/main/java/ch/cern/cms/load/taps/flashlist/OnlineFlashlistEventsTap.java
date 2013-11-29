@@ -91,7 +91,7 @@ public class OnlineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
 	/** gather the information about event types **/
 	@Override
-	public void preRegistrationSetup() {
+	public void preRegistrationSetup(Load expert) {
 		eventDefinitions = new HashMap<String, Map<String, Object>>();
 		String catalog = HttpTools.getHTML(path + CATALOG_SUFFIX);
 		logger.info("catalog: \n" + catalog);
@@ -122,7 +122,7 @@ public class OnlineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	}
 
 	@Override
-	public void registerEventTypes() {
+	public void registerEventTypes(Load expert) {
 		for (String eventName : eventDefinitions.keySet()) {
 			logger.info("registering event type: " + eventName);
 			ep.getAdministrator().getConfiguration().addEventType(eventName, eventDefinitions.get(eventName));
