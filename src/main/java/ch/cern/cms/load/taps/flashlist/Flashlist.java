@@ -40,7 +40,10 @@ public class Flashlist extends LinkedList<Map<String, Object>> {
 					if (tokens.length != keys.length) {
 						throw new RuntimeException("tokens and keys lengths differ for: " + url);
 					}
-					/** creating actual events. should already know which rows should be unrolled **/
+					/**
+					 * creating actual events. should already know which rows
+					 * should be unrolled
+					 **/
 					Map<String, List<?>> unrolledValues = new HashMap<String, List<?>>();
 					int unrolledSize = -1;
 					for (int i = 0; i < tokens.length; ++i) {
@@ -86,8 +89,10 @@ public class Flashlist extends LinkedList<Map<String, Object>> {
 	}
 
 	private List<?> unrollValues(String rolledString, String fieldName, String listName) {
-		String[] tokens = rolledString.trim()
-				.substring((rolledString.startsWith("[") ? 1 : 0), (rolledString.endsWith("]") ? rolledString.length() - 1 : rolledString.length())).split(",");
+		String[] tokens = rolledString
+				.trim()
+				.substring((rolledString.startsWith("[") ? 1 : 0),
+						(rolledString.endsWith("]") ? rolledString.length() - 1 : rolledString.length())).split(",");
 		List<Object> list = new ArrayList<Object>(tokens.length);
 		for (String token : tokens) {
 			list.add(Load.getInstance().getResolver().convert(token, fieldName, listName));
@@ -138,7 +143,10 @@ public class Flashlist extends LinkedList<Map<String, Object>> {
 			if (isCloseable(s.charAt(pos))) {
 				pos = findClosing(s, pos);
 			} else {
-				++pos;
+				if (++pos == s.length()) {
+					System.err.println(s);
+					throw new RuntimeException("Ran out of string trying to close: " + c + ": ");
+				}
 			}
 		}
 		return pos;
