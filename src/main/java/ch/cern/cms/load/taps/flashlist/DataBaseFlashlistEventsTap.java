@@ -110,7 +110,7 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	private void prepareStatements() throws SQLException {
 		showTables = conn.prepareStatement("show tables");
 		descTable = conn.prepareStatement("describe ?");
-		select = conn.prepareStatement("select * from `?`");
+		select = conn.prepareStatement("select * from `?` where fetchstamp=");
 	}
 
 	public static final String getDbPath(Settings settings) {
@@ -121,18 +121,23 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 		return dbUrl.toString();
 	}
 
-	private static final Runnable dbjob = new Runnable() {
+	private final Runnable dbjob = new Runnable() {
 
 		@Override
 		public void run() {
-			while (true) {
-				System.out.println("yupa!");
-				try {
-					Thread.sleep(4000);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+			try {
+				ResultSet times = conn.createStatement().executeQuery(
+						"select * from fetchstamps where fetchstamp between " + timespanStart + " and " + timespanEnd);
+				while (times.next()) {
+					long time = times.getLong(1);
+					System.out.println(time);
+					for (String table : columns.keySet()) {
+
+					}
 				}
+			} catch (SQLException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
 			}
 		}
 	};
