@@ -18,11 +18,13 @@ import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap2;
 import ch.cern.cms.load.timers.SimplePlaybackTimer;
 
 /**
- * Core components, singletons etc. should be initialized here. However, the setup of initial structure should be well separated from the
+ * Core components, singletons etc. should be initialized here. However, the
+ * setup of initial structure should be well separated from the
  * configuration-specific actions to enable unit-testing and reconfigurations.
  */
 
-// try this for loading properties: inputFile = this.getClass().getClassLoader().getResourceAsStream("etc/trivia.epl")
+// try this for loading properties: inputFile =
+// this.getClass().getClassLoader().getResourceAsStream("etc/trivia.epl")
 
 public class Load {
 
@@ -100,7 +102,8 @@ public class Load {
 	 * Initializes the default application structure.
 	 */
 	private void defaultSetup() {
-		// looks stupid - calls every known component to perform its setup depending on the config file's contents
+		// looks stupid - calls every known component to perform its setup
+		// depending on the config file's contents
 		// place for dependency injection??
 
 		temporaryMethodToSetUpResolverTypes();
@@ -135,7 +138,8 @@ public class Load {
 	}
 
 	/**
-	 * Inserts into the list of known taps this should depend on some configuration later on or start-up choice
+	 * Inserts into the list of known taps this should depend on some
+	 * configuration later on or start-up choice
 	 */
 	public void registerTap(AbstractEventsTap tap) {
 		taps.add(tap);
@@ -211,6 +215,10 @@ public class Load {
 		} else {
 			return 1;
 		}
+	}
+
+	public boolean isInternalTimerEnabled() {
+		return false;
 	}
 
 }

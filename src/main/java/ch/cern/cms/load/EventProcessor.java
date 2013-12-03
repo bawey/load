@@ -46,7 +46,7 @@ public class EventProcessor {
 		Configuration c = new Configuration();
 		c.getEngineDefaults().getExecution().setPrioritized(true);
 
-		if (load.getSettings().getMany(OfflineFlashlistEventsTap.SETTINGS_KEY_FLASHLIST_DIR).size() > 0) {
+		if (load.isInternalTimerEnabled()) {
 			c.getEngineDefaults().getThreading().setInternalTimerEnabled(false);
 			logger.info("dropping internal timer");
 		} else {
@@ -80,11 +80,13 @@ public class EventProcessor {
 		// this might be a nice way to define the timestamps relationship
 		// c.addPlugInPatternGuard(namespace, name, guardFactoryClass)
 
-		// c.addPlugInSingleRowFunction("", HwInfo.class.getCanonicalName(), "");
+		// c.addPlugInSingleRowFunction("", HwInfo.class.getCanonicalName(),
+		// "");
 
 		epProvider = EPServiceProviderManager.getProvider("myCEPEngine", c);
 		if (load.getSettings().containsKey(Settings.KEY_TIMER_START)) {
-			epProvider.getEPRuntime().sendEvent(new CurrentTimeEvent(Long.parseLong(load.getSettings().getProperty(Settings.KEY_TIMER_START))));
+			epProvider.getEPRuntime().sendEvent(
+					new CurrentTimeEvent(Long.parseLong(load.getSettings().getProperty(Settings.KEY_TIMER_START))));
 		}
 		epAdmin = epProvider.getEPAdministrator();
 

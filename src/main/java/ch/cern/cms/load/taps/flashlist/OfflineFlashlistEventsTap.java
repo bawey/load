@@ -16,9 +16,11 @@ import org.apache.log4j.Logger;
 
 import ch.cern.cms.load.Load;
 import ch.cern.cms.load.Settings;
+import ch.cern.cms.load.annotations.TimeSource;
 
 import com.espertech.esper.client.time.CurrentTimeSpanEvent;
 
+@TimeSource
 public class OfflineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
 	public static final int QUEUE_CAPACITY = 1;

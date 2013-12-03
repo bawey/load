@@ -12,14 +12,20 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import oracle.xml.transx.loader;
+import com.espertech.esper.client.time.CurrentTimeSpanEvent;
 
 import ch.cern.cms.load.Load;
 import ch.cern.cms.load.Settings;
+import ch.cern.cms.load.annotations.TimeSource;
 
+@TimeSource
 public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
 	private class Columns extends HashMap<String, String[]> {
+		private static final long serialVersionUID = 1L;
+	}
+
+	private class Selects extends HashMap<String, PreparedStatement> {
 		private static final long serialVersionUID = 1L;
 	}
 
@@ -31,18 +37,18 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	public static final String KEY_DB_PASS = "flashlistDbPass";
 	public static final String KEY_RETRIEVAL_TIMESTAMP_NAME = "retrievalTimestampName";
 
-	private Connection conn = null;
-	private Statement statement = null;
-	private PreparedStatement showTables = null;
-	private PreparedStatement descTable = null;
-	private PreparedStatement select = null;
-	private String fetchstamp = null;
+	private Connection conn;
+	private Statement statement;
+	private PreparedStatement showTables;
+	private PreparedStatement descTable;
+	private Selects selects;
+	private String fetchstamp;
 
-	private Columns columns = null;
+	private Columns columns;
 
-	private String fetchstampName = null;
-	private Long timespanStart = null;
-	private Long timespanEnd = null;
+	private String fetchstampName;
+	private Long timespanStart;
+	private Long timespanEnd;
 
 	/**
 	 * 
@@ -110,7 +116,6 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	private void prepareStatements() throws SQLException {
 		showTables = conn.prepareStatement("show tables");
 		descTable = conn.prepareStatement("describe ?");
-		select = conn.prepareStatement("select * from `?` where fetchstamp=");
 	}
 
 	public static final String getDbPath(Settings settings) {
@@ -126,18 +131,40 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 		@Override
 		public void run() {
 			try {
+				System.out.println("Running the thread");
+				selects = new Selects();
+				for (String table : columns.keySet()) {
+					selects.put(
+							table,
+							conn.prepareStatement(new StringBuilder("select * from ").append(table).append(" where fetchstamp=?")
+									.toString()));
+				}
+
 				ResultSet times = conn.createStatement().executeQuery(
-						"select * from fetchstamps where fetchstamp between " + timespanStart + " and " + timespanEnd);
+						"select fetchstamp from fetchstamps where fetchstamp between " + timespanStart + " and " + timespanEnd);
+
+				CurrentTimeSpanEvent timeEvent = new CurrentTimeSpanEvent(0);
 				while (times.next()) {
 					long time = times.getLong(1);
-					System.out.println(time);
+					timeEvent.setTargetTimeInMillis(time);
+					controller.getEventProcessor().getRuntime().sendEvent(timeEvent);
 					for (String table : columns.keySet()) {
-
+						selects.get(table).setLong(1, time);
+						ResultSet events = selects.get(table).executeQuery();
+						while (events.next()) {
+							Map<String, Object> event = new HashMap<String, Object>();
+							for (String column : columns.get(table)) {
+								if (column.equals(fetchstampName)) {
+									event.put(column, events.getLong(column));
+								}
+								event.put(column, controller.getResolver().convert(events.getString(column), column, table));
+							}
+							controller.getEventProcessor().getRuntime().sendEvent(event, table);
+						}
 					}
 				}
-			} catch (SQLException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
+			} catch (Exception e1) {
+				throw new RuntimeException(e1);
 			}
 		}
 	};
