@@ -12,6 +12,7 @@ import ch.cern.cms.load.eplProviders.BasicStructEplProvider;
 import ch.cern.cms.load.eplProviders.FileBasedEplProvider;
 import ch.cern.cms.load.guis.ExpertGui;
 import ch.cern.cms.load.taps.AbstractEventsTap;
+import ch.cern.cms.load.taps.flashlist.DataBaseFlashlistEventsTap;
 import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;
 import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap2;
 import ch.cern.cms.load.timers.SimplePlaybackTimer;
@@ -45,7 +46,11 @@ public class Load {
 	 */
 	public static final void main(String[] args) {
 		instance = getInstance();
-		instance.defaultSetup();
+		if (instance.settings.getProperty(DataBaseFlashlistEventsTap.KEY_DB_MODE, "read").equalsIgnoreCase("write")) {
+			DbPumper.main(args);
+		} else {
+			instance.defaultSetup();
+		}
 	}
 
 	private final Settings settings;
@@ -105,8 +110,11 @@ public class Load {
 
 		// register taps
 		if (settings.getMany(OfflineFlashlistEventsTap.SETTINGS_KEY_FLASHLIST_DIR).size() > 0) {
-			//registerTap(new OfflineFlashlistEventsTap(this, null));
-			registerTap(new OfflineFlashlistEventsTap2(this));
+			// registerTap(new OfflineFlashlistEventsTap(this, null));
+			// registerTap(new OfflineFlashlistEventsTap2(this));
+		}
+		if (settings.getProperty(DataBaseFlashlistEventsTap.KEY_DB_MODE).equalsIgnoreCase("read")) {
+			registerTap(new DataBaseFlashlistEventsTap(this));
 		}
 		AbstractEventsTap.registerKnownOnlineTaps();
 		setUpTimer();
@@ -204,4 +212,5 @@ public class Load {
 			return 1;
 		}
 	}
+
 }

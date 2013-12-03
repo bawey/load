@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -41,8 +42,7 @@ public class Flashlist extends LinkedList<Map<String, Object>> {
 						throw new RuntimeException("tokens and keys lengths differ for: " + url);
 					}
 					/**
-					 * creating actual events. should already know which rows
-					 * should be unrolled
+					 * creating actual events. should already know which rows should be unrolled
 					 **/
 					Map<String, List<?>> unrolledValues = new HashMap<String, List<?>>();
 					int unrolledSize = -1;
@@ -89,10 +89,8 @@ public class Flashlist extends LinkedList<Map<String, Object>> {
 	}
 
 	private List<?> unrollValues(String rolledString, String fieldName, String listName) {
-		String[] tokens = rolledString
-				.trim()
-				.substring((rolledString.startsWith("[") ? 1 : 0),
-						(rolledString.endsWith("]") ? rolledString.length() - 1 : rolledString.length())).split(",");
+		String[] tokens = rolledString.trim()
+				.substring((rolledString.startsWith("[") ? 1 : 0), (rolledString.endsWith("]") ? rolledString.length() - 1 : rolledString.length())).split(",");
 		List<Object> list = new ArrayList<Object>(tokens.length);
 		for (String token : tokens) {
 			list.add(Load.getInstance().getResolver().convert(token, fieldName, listName));
@@ -102,28 +100,58 @@ public class Flashlist extends LinkedList<Map<String, Object>> {
 
 	public static String[] smartSplit(String str) {
 		List<String> lst = new LinkedList<String>();
-		int a = 0, b = 0;
+		try {
+			int a = 0, b = 0;
 
-		while (a < str.length() && b < str.length()) {
-			// a has to stop on opening quote, b on closing
-			while (str.charAt(a) != '"') {
-				++a;
-			}
-			while (str.charAt(b) != '"' || b == a) {
-				if (isCloseable(str.charAt(b))) {
-					b = findClosing(str, b);
-				} else {
-					++b;
+			while (a < str.length() && b < str.length()) {
+				// a has to stop on opening quote, b on closing
+				while (str.charAt(a) != '"') {
+					++a;
 				}
+				while (!(str.charAt(b) == '"' && (str.length() - b == 1 || str.charAt(b + 1) == ',')) || b == a) {
+					if (isCloseable(str.charAt(b)) && !isFakeClosable(b, str)) {
+						b = findClosing(str, b);
+					} else {
+						++b;
+					}
+				}
+				if (a < 0 || b < 0) {
+					logger.error("a:" + a + ", b:" + b);
+				}
+				lst.add(str.substring(a + 1, b));
+				a = ++b;
 			}
-			lst.add(str.substring(a + 1, b));
-			a = ++b;
+			return lst.toArray(new String[lst.size()]);
+		} catch (StringIndexOutOfBoundsException sioobe) {
+			throw new RuntimeException("Failed to smart-split this: " + str, sioobe);
 		}
-		return lst.toArray(new String[lst.size()]);
 	}
 
 	private static boolean isCloseable(char c) {
 		return (c == '[' || c == '{');
+	}
+
+	private static List<Character> fakeClosableNeighbours = Arrays.asList(new Character[] { '<', '>' });
+
+	// an awkward fix for rare cases of stray '[' characters being embedded in a regular text
+	private static boolean isFakeClosable(int startPosition, String str) {
+		char chr = ' ';
+		int position = startPosition;
+		while (Character.isWhitespace((chr = str.charAt(++position)))) {
+
+		}
+		if (Character.isLetter(chr) || fakeClosableNeighbours.contains(chr)) {
+			return true;
+		}
+		// ahhh, need to check before as well..
+		position = startPosition;
+		while (Character.isWhitespace((chr = str.charAt(--position)))) {
+
+		}
+		if (Character.isLetter(chr) || fakeClosableNeighbours.contains(chr)) {
+			return true;
+		}
+		return false;
 	}
 
 	private static char closingChar(char c) {
