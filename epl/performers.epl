@@ -23,12 +23,14 @@ on GroupStats as gs
 on GroupStats as gs 
 	delete from Overperformers o where gs.units = o.units and (select r.yield from Reads as r where r.name = o.name) < gs.avrg+tolerance*gs.sdev;
 
+/**
 @Verbose
 select * from GroupStats;
 @Verbose
 select 'under' as title, u.*, gs.avrg-tolerance*gs.sdev as threshold from Underperformers as u, GroupStats as gs where u.units = gs.units;
 @Verbose
 select 'over' as title, o.*, gs.avrg+tolerance*gs.sdev as threshold from Overperformers as o, GroupStats as gs where o.units = gs.units;
+**/
 
 @Watched(label='#Underperformers')
 select count(*) from Underperformers;

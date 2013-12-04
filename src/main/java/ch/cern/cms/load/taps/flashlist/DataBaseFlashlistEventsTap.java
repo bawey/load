@@ -7,16 +7,23 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
-import com.espertech.esper.client.time.CurrentTimeSpanEvent;
+import org.apache.log4j.Logger;
 
 import ch.cern.cms.load.Load;
 import ch.cern.cms.load.Settings;
 import ch.cern.cms.load.annotations.TimeSource;
+import ch.cern.cms.load.utils.Stats;
+
+import com.espertech.esper.client.EPRuntime;
+import com.espertech.esper.client.time.CurrentTimeSpanEvent;
 
 @TimeSource
 public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
@@ -28,6 +35,8 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	private class Selects extends HashMap<String, PreparedStatement> {
 		private static final long serialVersionUID = 1L;
 	}
+
+	private final static Logger logger = Logger.getLogger(DataBaseFlashlistEventsTap.class);
 
 	public static final String KEY_DB_MODE = "flashlistDbMode";
 	public static final String KEY_DB_TYPE = "flashlistDbType";
@@ -42,9 +51,8 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	private PreparedStatement showTables;
 	private PreparedStatement descTable;
 	private Selects selects;
-	private String fetchstamp;
 
-	private Columns columns;
+	private Columns definitions;
 
 	private String fetchstampName;
 	private Long timespanStart;
@@ -63,7 +71,7 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
 	@Override
 	public void preRegistrationSetup(Load expert) {
-		columns = new Columns();
+		definitions = new Columns();
 		fetchstampName = this.controller.getSettings().getProperty(KEY_RETRIEVAL_TIMESTAMP_NAME, "fetchstamp");
 		timespanStart = this.controller.getSettings().getLong(Settings.KEY_TIMER_START, 0l);
 		timespanEnd = this.controller.getSettings().getLong(Settings.KEY_TIMER_END, System.currentTimeMillis());
@@ -78,7 +86,6 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 		try {
 			prepareStatements();
 			ResultSet rs = showTables.executeQuery();
-			ResultSetMetaData meta = rs.getMetaData();
 
 			while (rs.next()) {
 				String tableName = rs.getString(1);
@@ -88,7 +95,15 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 				while (details.next()) {
 					headers.add(details.getString(1));
 				}
-				columns.put(tableName, headers.toArray(new String[headers.size()]));
+				definitions.put(tableName, headers.toArray(new String[headers.size()]));
+			}
+
+			if (controller.getSettings().containsKey(AbstractFlashlistEventsTap.KEY_FLASHLISTS_BLACKLIST)) {
+				for (String blacklisted : this.controller.getSettings().getProperty(AbstractFlashlistEventsTap.KEY_FLASHLISTS_BLACKLIST).split(";")) {
+					if (definitions.keySet().contains(blacklisted)) {
+						definitions.remove(blacklisted);
+					}
+				}
 			}
 
 		} catch (Exception e) {
@@ -98,17 +113,27 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
 	@Override
 	public void registerEventTypes(Load expert) {
-		for (String eventName : columns.keySet()) {
+		for (String eventName : definitions.keySet()) {
+			System.out.println("Registering event: " + eventName);
+
+			// as Object[]
+			// Object[] types = new Object[columns.get(eventName).length];
+			// types[0] = Long.class;
+			// for (int i = 1; i < types.length; ++i) {
+			// types[i] = controller.getResolver().getFieldType(eventName, columns.get(eventName)[i]);
+			// }
+			// controller.getEventProcessor().getAdministrator().getConfiguration().addEventType(eventName, columns.get(eventName), types);
+
 			Map<String, Object> types = new HashMap<String, Object>();
-			for (String fieldName : columns.get(eventName)) {
+			for (String fieldName : definitions.get(eventName)) {
 				Class<?> type = String.class;
-				if (fieldName.equals(fetchstamp)) {
+				if (fieldName.equals(fetchstampName)) {
 					type = Long.class;
 				} else {
 					type = controller.getResolver().getFieldType(fieldName, eventName);
 				}
+				types.put(fieldName, type);
 			}
-			System.out.println("Registering event: " + eventName);
 			controller.getEventProcessor().getAdministrator().getConfiguration().addEventType(eventName, types);
 		}
 	}
@@ -128,40 +153,108 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
 	private final Runnable dbjob = new Runnable() {
 
+		final class EventEnvelope {
+			public final Object event;
+			public final String name;
+
+			public EventEnvelope(String name, Object event) {
+				this.event = event;
+				this.name = name;
+			}
+
+			public Map<?, ?> map() {
+				return (Map<?, ?>) event;
+			}
+
+			public Object[] array() {
+				return (Object[]) event;
+			}
+		}
+
+		private BlockingQueue<EventEnvelope> queue = new ArrayBlockingQueue<EventEnvelope>(1000);
+
+		private Runnable heraldRunnable = new Runnable() {
+			@Override
+			public void run() {
+				EPRuntime rt = controller.getEventProcessor().getRuntime();
+				// ArrayList<Long> deliveryTimes = new ArrayList<Long>(1000);
+				while (true) {
+					try {
+						EventEnvelope ee = queue.take();
+						long start = System.currentTimeMillis();
+						if (ee.name != null) {
+							rt.sendEvent(ee.map(), ee.name);
+						} else {
+							rt.sendEvent(ee.event);
+						}
+						// deliveryTimes.add(System.currentTimeMillis() - start);
+					} catch (InterruptedException e) {
+						logger.warn("Event herald interrupted ", e);
+					}
+					// if (deliveryTimes.size() == 1000) {
+					// logger.info(Stats.summarize("delivery times", deliveryTimes));
+					// deliveryTimes.clear();
+					// }
+				}
+			}
+		};
+
 		@Override
 		public void run() {
 			try {
+				new Thread(heraldRunnable).start();
+
 				System.out.println("Running the thread");
 				selects = new Selects();
-				for (String table : columns.keySet()) {
-					selects.put(
-							table,
-							conn.prepareStatement(new StringBuilder("select * from ").append(table).append(" where fetchstamp=?")
-									.toString()));
+				for (String table : definitions.keySet()) {
+					selects.put(table, conn.prepareStatement(new StringBuilder("select * from ").append(table).append(" where fetchstamp=?").toString()));
 				}
 
 				ResultSet times = conn.createStatement().executeQuery(
 						"select fetchstamp from fetchstamps where fetchstamp between " + timespanStart + " and " + timespanEnd);
 
-				CurrentTimeSpanEvent timeEvent = new CurrentTimeSpanEvent(0);
+				// ArrayList<Long> dataPushTimes = new ArrayList<Long>(100);
+				// ArrayList<Long> timePushTimes = new ArrayList<Long>(100);
+				// ArrayList<Long> dataPullTimes = new ArrayList<Long>(1000);
+
 				while (times.next()) {
+					long start = System.currentTimeMillis();
 					long time = times.getLong(1);
-					timeEvent.setTargetTimeInMillis(time);
-					controller.getEventProcessor().getRuntime().sendEvent(timeEvent);
-					for (String table : columns.keySet()) {
+					queue.put(new EventEnvelope(null, new CurrentTimeSpanEvent(time)));
+					// timePushTimes.add(System.currentTimeMillis() - start);
+					for (String table : definitions.keySet()) {
 						selects.get(table).setLong(1, time);
-						ResultSet events = selects.get(table).executeQuery();
-						while (events.next()) {
+						start = System.currentTimeMillis();
+						ResultSet fetched = selects.get(table).executeQuery();
+						// dataPullTimes.add(System.currentTimeMillis() - start);
+						start = System.currentTimeMillis();
+						String[] columnsArray = definitions.get(table);
+						while (fetched.next()) {
+
+							// as Object[]?
+							// Object[] event = new Object[columnsArray.length];
+							// event[0] = fetched.getLong(1);
+							// for (int i = 1; i < event.length; ++i) {
+							// event[i] = controller.getResolver().convert(fetched.getString(i + 1), columnsArray[i], table);
+							// }
+
 							Map<String, Object> event = new HashMap<String, Object>();
-							for (String column : columns.get(table)) {
-								if (column.equals(fetchstampName)) {
-									event.put(column, events.getLong(column));
-								}
-								event.put(column, controller.getResolver().convert(events.getString(column), column, table));
+							event.put(columnsArray[0], fetched.getLong(1));
+							for (int i = 1; i < columnsArray.length; ++i) {
+								event.put(columnsArray[i], controller.getResolver().convert(fetched.getString(i + 1), columnsArray[i], table));
 							}
-							controller.getEventProcessor().getRuntime().sendEvent(event, table);
+							queue.put(new EventEnvelope(table, event));
 						}
+						// dataPushTimes.add(System.currentTimeMillis() - start);
 					}
+					// if (timePushTimes.size() == 10) {
+					// logger.info(Stats.summarize("Data pushing: ", dataPushTimes));
+					// logger.info(Stats.summarize("Data pulling: ", dataPullTimes));
+					// logger.info(Stats.summarize("Time pushing: ", timePushTimes));
+					// dataPullTimes.clear();
+					// dataPushTimes.clear();
+					// timePushTimes.clear();
+					// }
 				}
 			} catch (Exception e1) {
 				throw new RuntimeException(e1);

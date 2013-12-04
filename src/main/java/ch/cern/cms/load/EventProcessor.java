@@ -46,7 +46,7 @@ public class EventProcessor {
 		Configuration c = new Configuration();
 		c.getEngineDefaults().getExecution().setPrioritized(true);
 
-		if (load.isInternalTimerEnabled()) {
+		if (!load.isInternalTimerEnabled()) {
 			c.getEngineDefaults().getThreading().setInternalTimerEnabled(false);
 			logger.info("dropping internal timer");
 		} else {

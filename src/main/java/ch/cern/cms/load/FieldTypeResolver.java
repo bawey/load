@@ -55,41 +55,45 @@ public final class FieldTypeResolver extends HashMap<String, Class<?>> {
 	public Object convert(String rawValue, String fieldName, String listName, Class<?> typeOverride) {
 		Class<?> type = typeOverride == null ? this.getFieldType(fieldName, listName) : typeOverride;
 		if (type != null) {
-			if (type.equals(Integer.class)) {
-				return Integer.parseInt(rawValue);
-			} else if (type.equals(Long.class)) {
-				return Long.parseLong(rawValue);
-			} else if (type.equals(Double.class)) {
-				return Double.parseDouble(rawValue);
-			} else if (type.equals(Date.class)) {
-				try {
-					return dateFormat.parse(rawValue.substring(0, dateTrimLength));
-				} catch (ParseException e) {
-					throw new RuntimeException(e);
-				}
-			} else if (type.equals(ListOfStrings.class)) {
-				return new ListOfStrings(rawValue);
-			} else if (type.equals(ListOfDoubles.class)) {
-				return new ListOfDoubles(rawValue);
-			} else if (type.isArray()) {
-				String[] tokens = AbstractListOfData.tokenizeFlashlistInput(rawValue);
-				if (type.getComponentType().equals(String.class)) {
-					return tokens;
-				} else {
-					Object result = Array.newInstance(type.getComponentType(), tokens.length);
-					for (int i = 0; i < tokens.length; ++i) {
-						Array.set(result, i, convert(tokens[i], null, null, type.getComponentType()));
+			try {
+				if (type.equals(Integer.class)) {
+					return Integer.parseInt(rawValue);
+				} else if (type.equals(Long.class)) {
+					return Long.parseLong(rawValue);
+				} else if (type.equals(Double.class)) {
+					return Double.parseDouble(rawValue);
+				} else if (type.equals(Date.class)) {
+					try {
+						return dateFormat.parse(rawValue.substring(0, dateTrimLength));
+					} catch (ParseException e) {
+						throw new RuntimeException(e);
 					}
-					return result;
+				} else if (type.equals(ListOfStrings.class)) {
+					return new ListOfStrings(rawValue);
+				} else if (type.equals(ListOfDoubles.class)) {
+					return new ListOfDoubles(rawValue);
+				} else if (type.isArray()) {
+					String[] tokens = AbstractListOfData.tokenizeFlashlistInput(rawValue);
+					if (type.getComponentType().equals(String.class)) {
+						return tokens;
+					} else {
+						Object result = Array.newInstance(type.getComponentType(), tokens.length);
+						for (int i = 0; i < tokens.length; ++i) {
+							Array.set(result, i, convert(tokens[i], null, null, type.getComponentType()));
+						}
+						return result;
+					}
+				} else if (Collection.class.isAssignableFrom(type)) {
+					rawValue = rawValue.substring(rawValue.indexOf('[') + 1, rawValue.lastIndexOf(']'));
+					String[] array = rawValue.split(",");
+					List<Object> list = new ArrayList<Object>(array.length);
+					for (String s : array) {
+						list.add(s);
+					}
+					return list;
 				}
-			} else if (Collection.class.isAssignableFrom(type)) {
-				rawValue = rawValue.substring(rawValue.indexOf('[') + 1, rawValue.lastIndexOf(']'));
-				String[] array = rawValue.split(",");
-				List<Object> list = new ArrayList<Object>(array.length);
-				for (String s : array) {
-					list.add(s);
-				}
-				return list;
+			} catch (Exception e) {
+				throw new RuntimeException("Failed convert " + listName + "[" + fieldName + "] to " + type.getSimpleName() + " from " + rawValue, e);
 			}
 		}
 		return rawValue;

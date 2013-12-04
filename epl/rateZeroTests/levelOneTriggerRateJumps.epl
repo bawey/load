@@ -39,7 +39,7 @@ create expression double js:averageTriggerRate(n, m)[
 	else { 0 }
 ];
 
-on levelZeroFM_dynamic(SID!=sid, FMURL like '%PublicGlobal%') as l set sid=l.SID;
+on levelZeroFM_subsys(SID!=sid, FMURL like '%PublicGlobal%') as l set sid=l.SID;
 
 @Verbose(label="delete")
 @Description('populate L1Subrates with EventManagers data for current SessionID')

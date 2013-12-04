@@ -48,4 +48,11 @@ public class Stats {
 		}
 		return max;
 	}
+
+	public static String summarize(String label, Iterable<? extends Number> s) {
+		StringBuilder sb = new StringBuilder(label);
+		sb.append("length: ").append(length(s)).append(", max: ").append(max(s)).append(", min: ").append(min(s)).append(", mean: ").append(mean(s))
+				.append(", total: ").append(sum(s));
+		return sb.toString();
+	}
 }
