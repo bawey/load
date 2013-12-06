@@ -14,11 +14,8 @@ create variable Long lastEVMtimestamp = 0;
 @Description('create for EVM data. Keep only the most recent record per context-lid pair. Also, discard events older than 30 seconds')
 create window L1Subrates.std:unique(url,lid).win:time(30 sec) as (subrate Double, url String, lid String, timestamp Long);
 
-
-create objectarray schema L1RatesSchema as (rate double, timestamp Long);
-
 @Description('Window for all the L1Rates observed over the previous 60 seconds. ')
-create window L1Rates.win:expr(timestamp>max(timestamp)-60000 and current_count<60) as select * from L1RatesSchema;
+create window L1Rates.win:expr(timestamp>max(timestamp)-60000 and current_count<60) as (rate double, timestamp Long);
 
 create variable Double avgTrgRate=null;
 create variable Double indirectAvgTrgRate = null;

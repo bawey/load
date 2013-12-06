@@ -4,10 +4,9 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -17,10 +16,10 @@ import java.util.concurrent.BlockingQueue;
 
 import org.apache.log4j.Logger;
 
+import ch.cern.cms.esper.Trx;
 import ch.cern.cms.load.Load;
 import ch.cern.cms.load.Settings;
 import ch.cern.cms.load.annotations.TimeSource;
-import ch.cern.cms.load.utils.Stats;
 
 import com.espertech.esper.client.EPRuntime;
 import com.espertech.esper.client.time.CurrentTimeSpanEvent;
@@ -217,6 +216,8 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 				// ArrayList<Long> timePushTimes = new ArrayList<Long>(100);
 				// ArrayList<Long> dataPullTimes = new ArrayList<Long>(1000);
 
+				int timestampsCounter = 0;
+
 				while (times.next()) {
 					long start = System.currentTimeMillis();
 					long time = times.getLong(1);
@@ -255,6 +256,9 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 					// dataPushTimes.clear();
 					// timePushTimes.clear();
 					// }
+					if ((++timestampsCounter) % 10000 == 0) {
+						System.out.println("Processed " + timestampsCounter + " timestamps. Last: " + Trx.toDate(time) + ", now: " + new Date().toString());
+					}
 				}
 			} catch (Exception e1) {
 				throw new RuntimeException(e1);

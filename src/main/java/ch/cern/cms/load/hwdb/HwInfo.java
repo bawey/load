@@ -6,6 +6,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -170,16 +171,22 @@ public final class HwInfo implements Serializable {
 		}
 	}
 
-	public static Integer getFedId(String context, int geoSlotOrSlot, int linkOrIo, CmsHw seenByHw) {
-		FED fed = getFed(context, geoSlotOrSlot, linkOrIo, seenByHw);
-		return fed == null ? null : fed.getSrcId();
-	}
+	private static Map<FedDesc, Integer> fedIdCache = new HashMap<FedDesc, Integer>();
 
-	public static Integer getFedId(Object c, Object g, Object l, CmsHw s, String str) {
-		System.out.println("whattahell!");
-		Integer v = getFedId(c, g, l, s);
-		System.out.println(str + "(" + c + ", " + g + ", " + l + ", " + s + ") source id: " + v);
-		return v;
+	public static Integer getFedId(String context, int geoSlotOrSlot, int linkOrIo, CmsHw seenByHw) {
+		FedDesc desc = new FedDesc(linkOrIo, geoSlotOrSlot, context, seenByHw);
+		Integer id = fedIdCache.get(desc);
+		if (id != null) {
+			return id;
+		}
+		FED fed = getFed(context, geoSlotOrSlot, linkOrIo, seenByHw);
+		if (fed != null) {
+			fedIdCache.put(desc, fed.getSrcId());
+			//System.out.println(fedIdCache.size() + " elements in fedId cache: " + fedIdCache.values().toString());
+			//System.out.println(fedIdCache.keySet().toString());
+			return fed.getSrcId();
+		}
+		return null;
 	}
 
 	public void getFRLCratesAndPrintStuff() {

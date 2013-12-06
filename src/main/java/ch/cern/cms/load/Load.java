@@ -188,7 +188,7 @@ public class Load {
 		getResolver().setFieldType("nbProcessed", Long.class);
 		getResolver().setFieldType("bxNumber", Long.class);
 		getResolver().setFieldType("triggerNumber", Long.class);
-		getResolver().setFieldType("FEDSourceId", Integer.class);
+		getResolver().setFieldType("FEDSourceId", Long.class);
 		getResolver().setFieldType("timestamp", Date.class);
 		getResolver().setFieldType("lastEVMtimestamp", Date.class);
 		getResolver().setFieldType("streamNames", String[].class);

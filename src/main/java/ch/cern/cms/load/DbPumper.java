@@ -15,6 +15,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
+import ch.cern.cms.load.taps.flashlist.DataBaseFlashlistEventsTap;
 import ch.cern.cms.load.taps.flashlist.NovemberFlashlistToolkit;
 
 public class DbPumper {
@@ -115,18 +116,25 @@ public class DbPumper {
 
 	private void initDb() throws Exception {
 
-		connect = DriverManager.getConnection("jdbc:mysql://localhost/flashlists?" + "user=root&password=sql48ppf");
+		String dbPath = DataBaseFlashlistEventsTap.getDbPath(Load.getInstance().getSettings());
+
+		connect = DriverManager.getConnection(dbPath);
 
 		addTime = connect.prepareStatement("insert ignore into fetchstamps(`fetchstamp`) values(?)");
 		connect.createStatement().execute(
 				"create table if not exists fetchstamps (fetchstamp BIGINT primary key, index `time_index` (`fetchstamp` ASC)) ENGINE = InnoDb");
+
+		String engine = Load.getInstance().getSettings().getProperty("flashlistDbEngine", "myIsam");
 
 		for (String table : columns.keySet()) {
 			StringBuilder sb = new StringBuilder("create table if not exists ").append(table).append(" ( `fetchstamp` BIGINT");
 			for (int i = 0; i < columns.get(table).length; ++i) {
 				sb.append(", `").append(columns.get(table)[i]).append("` ").append(getDbType(table, columns.get(table)[i]));
 			}
-			sb.append(",INDEX `fetchtime_index` (`fetchstamp` ASC)) ENGINE = MyIsam");
+			if ("true".equalsIgnoreCase(Load.getInstance().getSettings().getProperty("flashlistDbIndexTimestamps"))) {
+				sb.append(",INDEX `fetchtime_index` (`fetchstamp` ASC)");
+			}
+			sb.append(") ENGINE = ").append(engine);
 			try {
 				statement = connect.createStatement();
 				statement.execute(sb.toString());
