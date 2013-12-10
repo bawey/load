@@ -85,8 +85,7 @@ public class EventProcessor {
 
 		epProvider = EPServiceProviderManager.getProvider("myCEPEngine", c);
 		if (load.getSettings().containsKey(Settings.KEY_TIMER_START)) {
-			epProvider.getEPRuntime().sendEvent(
-					new CurrentTimeEvent(Long.parseLong(load.getSettings().getProperty(Settings.KEY_TIMER_START))));
+			epProvider.getEPRuntime().sendEvent(new CurrentTimeEvent(Long.parseLong(load.getSettings().getProperty(Settings.KEY_TIMER_START)) - 1));
 		}
 		epAdmin = epProvider.getEPAdministrator();
 

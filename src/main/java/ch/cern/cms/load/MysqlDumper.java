@@ -6,6 +6,7 @@ import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.IOException;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -18,9 +19,9 @@ import org.apache.log4j.Logger;
 import ch.cern.cms.load.taps.flashlist.DataBaseFlashlistEventsTap;
 import ch.cern.cms.load.taps.flashlist.NovemberFlashlistToolkit;
 
-public class DbPumper {
+public class MysqlDumper {
 
-	private static final Logger logger = Logger.getLogger(DbPumper.class);
+	private static final Logger logger = Logger.getLogger(MysqlDumper.class);
 
 	private java.sql.Connection connect = null;
 	private java.sql.Statement statement = null;
@@ -30,13 +31,19 @@ public class DbPumper {
 	static Settings settings = load.getSettings();
 	List<File> rootDirs = new LinkedList<File>();
 	Map<String, String[]> columns = new HashMap<String, String[]>();
-	java.sql.PreparedStatement addTime = null;
+	PreparedStatement addTime = null;
+	Map<String, PreparedStatement> inserts = new HashMap<String, PreparedStatement>();
 
 	public static void main(String[] args) {
 		try {
-			Class.forName("com.mysql.jdbc.Driver");
-			DbPumper dbp = new DbPumper();
-			dbp.earlySetup(load);
+			String dbType = load.getSettings().getProperty(DataBaseFlashlistEventsTap.KEY_DB_TYPE);
+			if ("mysql".equalsIgnoreCase(dbType)) {
+				Class.forName("com.mysql.jdbc.Driver");
+				MysqlDumper dbp = new MysqlDumper();
+				dbp.earlySetup(load);
+			} else if ("mongo".equalsIgnoreCase(dbType) || "mongodb".equalsIgnoreCase(dbType)) {
+				MongoDumper.main(args);
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -51,7 +58,7 @@ public class DbPumper {
 		for (File dir : rootDirs) {
 			for (File subdir : dir.listFiles(FF_DIRECTORY)) {
 				String eventName = dirToEventName(subdir.getName());
-				System.out.println(eventName);
+				System.out.println("DIR: " + eventName);
 				readStructure(subdir);
 			}
 		}
@@ -71,18 +78,7 @@ public class DbPumper {
 			return;
 		}
 		BufferedReader br = new BufferedReader(new FileReader(f));
-
-		StringBuilder sql = new StringBuilder("insert into ").append(eventName).append("(fetchstamp");
-		for (String field : columns.get(eventName)) {
-			sql.append(", `").append(field).append("`");
-		}
-		sql.append(") values (").append("?");
-		for (int i = 0; i < columns.get(eventName).length; ++i) {
-			sql.append(", ").append("?").append("");
-		}
-		sql.append(")");
-
-		java.sql.PreparedStatement insert = connect.prepareStatement(sql.toString());
+		PreparedStatement insert = inserts.get(eventName);
 
 		String[] tokens = null;
 		while ((tokens = NovemberFlashlistToolkit.getNextValidRow(br, null)) != null) {
@@ -101,10 +97,16 @@ public class DbPumper {
 				for (int i = 1; i < tokens.length; ++i) {
 					insert.setString(i + 1, tokens[i]);
 				}
-				addTime.execute();
-				insert.execute();
+
+				addTime.addBatch();
+				insert.addBatch();
+
+				if (Math.random() < 0.01) {
+					executeBathches();
+				}
+
 			} catch (SQLException e) {
-				logger.error("SQL exception for event: " + eventName + " and query: " + sql);
+				logger.error("SQL exception for event: " + eventName);
 				logger.error(e);
 			} catch (Throwable th) {
 				logger.warn("Something went wrong when parsing " + eventName, th);
@@ -112,19 +114,46 @@ public class DbPumper {
 
 		}
 		br.close();
+		executeBathches();
+	}
+
+	private void prepareStatements() throws SQLException {
+		System.out.println("preparing insert statements");
+		for (String eventName : columns.keySet()) {
+			System.out.println(eventName);
+			StringBuilder sql = new StringBuilder("insert into ").append(eventName).append("(fetchstamp");
+			for (String field : columns.get(eventName)) {
+				sql.append(", `").append(field).append("`");
+			}
+			sql.append(") values (").append("?");
+			for (int i = 0; i < columns.get(eventName).length; ++i) {
+				sql.append(", ").append("?").append("");
+			}
+			sql.append(")");
+
+			inserts.put(eventName, connect.prepareStatement(sql.toString()));
+		}
+	}
+
+	private void executeBathches() throws SQLException {
+		addTime.executeBatch();
+		for (PreparedStatement ps : inserts.values()) {
+			ps.executeBatch();
+		}
 	}
 
 	private void initDb() throws Exception {
 
 		String dbPath = DataBaseFlashlistEventsTap.getDbPath(Load.getInstance().getSettings());
 
+		String engine = Load.getInstance().getSettings().getProperty("flashlistDbEngine", "myIsam");
 		connect = DriverManager.getConnection(dbPath);
 
 		addTime = connect.prepareStatement("insert ignore into fetchstamps(`fetchstamp`) values(?)");
 		connect.createStatement().execute(
-				"create table if not exists fetchstamps (fetchstamp BIGINT primary key, index `time_index` (`fetchstamp` ASC)) ENGINE = InnoDb");
-
-		String engine = Load.getInstance().getSettings().getProperty("flashlistDbEngine", "myIsam");
+		// "create table if not exists fetchstamps (fetchstamp BIGINT primary key, index `time_index` (`fetchstamp` ASC)) ENGINE = " +
+		// engine);
+				"create table if not exists fetchstamps (fetchstamp BIGINT) ENGINE = " + engine);
 
 		for (String table : columns.keySet()) {
 			StringBuilder sb = new StringBuilder("create table if not exists ").append(table).append(" ( `fetchstamp` BIGINT");
@@ -143,9 +172,10 @@ public class DbPumper {
 				throw e;
 			}
 		}
+		prepareStatements();
 	}
 
-	private String dirToEventName(String name) {
+	public static final String dirToEventName(String name) {
 		if (name.contains(":")) {
 			return name.substring(name.lastIndexOf(":") + 1);
 		}
@@ -161,7 +191,7 @@ public class DbPumper {
 		br.close();
 	}
 
-	private static final FileFilter FF_0 = new FileFilter() {
+	public static final FileFilter FF_0 = new FileFilter() {
 		@Override
 		public boolean accept(File pathname) {
 			return pathname.getName().equals("0");

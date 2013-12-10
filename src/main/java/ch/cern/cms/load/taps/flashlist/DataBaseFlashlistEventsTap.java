@@ -6,6 +6,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -57,6 +58,8 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	private Long timespanStart;
 	private Long timespanEnd;
 
+	private Collection<String> flashlistNames;
+
 	/**
 	 * 
 	 * @param load
@@ -74,6 +77,7 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 		fetchstampName = this.controller.getSettings().getProperty(KEY_RETRIEVAL_TIMESTAMP_NAME, "fetchstamp");
 		timespanStart = this.controller.getSettings().getLong(Settings.KEY_TIMER_START, 0l);
 		timespanEnd = this.controller.getSettings().getLong(Settings.KEY_TIMER_END, System.currentTimeMillis());
+		flashlistNames = this.controller.getSettings().getSemicolonSeparatedValues(AbstractFlashlistEventsTap.KEY_FLASHLISTS);
 
 		try {
 			String type = path.split(":")[1];
@@ -88,22 +92,17 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
 			while (rs.next()) {
 				String tableName = rs.getString(1);
-				ResultSet details = conn.createStatement().executeQuery("describe " + tableName);
+				if (flashlistNames.contains(tableName)) {
+					ResultSet details = conn.createStatement().executeQuery("describe " + tableName);
 
-				List<String> headers = new LinkedList<String>();
-				while (details.next()) {
-					headers.add(details.getString(1));
-				}
-				definitions.put(tableName, headers.toArray(new String[headers.size()]));
-			}
-
-			if (controller.getSettings().containsKey(AbstractFlashlistEventsTap.KEY_FLASHLISTS_BLACKLIST)) {
-				for (String blacklisted : this.controller.getSettings().getProperty(AbstractFlashlistEventsTap.KEY_FLASHLISTS_BLACKLIST).split(";")) {
-					if (definitions.keySet().contains(blacklisted)) {
-						definitions.remove(blacklisted);
+					List<String> headers = new LinkedList<String>();
+					while (details.next()) {
+						headers.add(details.getString(1));
 					}
+					definitions.put(tableName, headers.toArray(new String[headers.size()]));
 				}
 			}
+			System.out.println("Gathered definitions: " + definitions.keySet());
 
 		} catch (Exception e) {
 			throw new RuntimeException("Initial setup failed", e);
@@ -210,7 +209,7 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 				}
 
 				ResultSet times = conn.createStatement().executeQuery(
-						"select fetchstamp from fetchstamps where fetchstamp between " + timespanStart + " and " + timespanEnd);
+						"select fetchstamp from fetchstamps where fetchstamp between " + timespanStart + " and " + timespanEnd + " order by fetchstamp asc");
 
 				// ArrayList<Long> dataPushTimes = new ArrayList<Long>(100);
 				// ArrayList<Long> timePushTimes = new ArrayList<Long>(100);
@@ -257,7 +256,7 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 					// timePushTimes.clear();
 					// }
 					if ((++timestampsCounter) % 10000 == 0) {
-						System.out.println("Processed " + timestampsCounter + " timestamps. Last: " + Trx.toDate(time) + ", now: " + new Date().toString());
+						System.out.println("Processed " + timestampsCounter + " timestamps. Last fetchstamp: " + Trx.toDate(time) + ", current local time: " + new Date().toString());
 					}
 				}
 			} catch (Exception e1) {

@@ -49,7 +49,7 @@ public class Load {
 	public static final void main(String[] args) {
 		instance = getInstance();
 		if (instance.settings.getProperty(DataBaseFlashlistEventsTap.KEY_DB_MODE, "read").equalsIgnoreCase("write")) {
-			DbPumper.main(args);
+			MysqlDumper.main(args);
 		} else {
 			instance.defaultSetup();
 		}

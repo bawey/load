@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
@@ -72,6 +73,14 @@ public class Settings extends Properties {
 			super.setProperty(propertyName + "[" + (counter++) + "]", value);
 		}
 		safeAutosave();
+	}
+
+	public Collection<String> getSemicolonSeparatedValues(String propertyName) {
+		String raw = getProperty(propertyName);
+		if (raw != null) {
+			return Arrays.asList(raw.split(";"));
+		}
+		return new LinkedList<String>();
 	}
 
 	public Collection<String> getMany(String propertyName) {

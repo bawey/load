@@ -9,6 +9,9 @@ import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.Load;
 import ch.cern.cms.load.LoadView;
 
+import com.espertech.esper.client.EPServiceProvider;
+import com.espertech.esper.client.EPStatement;
+import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.StatementAwareUpdateListener;
 
 public class ThroughputMonitor implements LoadView {
@@ -20,6 +23,13 @@ public class ThroughputMonitor implements LoadView {
 	private JLabel playbackSpeed = new JLabel();
 	private Long initSystemTime;
 	private Long initEsperTime;
+
+	private StatementAwareUpdateListener dummyUpdateListener = new StatementAwareUpdateListener() {
+		@Override
+		public void update(EventBean[] arg0, EventBean[] arg1, EPStatement arg2, EPServiceProvider arg3) {
+
+		}
+	};
 
 	public ThroughputMonitor() {
 		super();
@@ -46,12 +56,12 @@ public class ThroughputMonitor implements LoadView {
 
 	@Override
 	public StatementAwareUpdateListener getVerboseStatementListener() {
-		return null;
+		return dummyUpdateListener;
 	}
 
 	@Override
 	public StatementAwareUpdateListener getWatchedStatementListener() {
-		return null;
+		return dummyUpdateListener;
 	}
 
 	class EngineTimeSubscriber {
@@ -66,4 +76,5 @@ public class ThroughputMonitor implements LoadView {
 			esperDate.setText("Engine date: " + Trx.toDate(time));
 		}
 	}
+
 }
