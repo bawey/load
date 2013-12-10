@@ -145,7 +145,9 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 		StringBuilder dbUrl = new StringBuilder("jdbc:");
 		dbUrl.append(settings.getProperty(KEY_DB_TYPE)).append("://").append(settings.getProperty(KEY_DB_HOST)).append("/");
 		dbUrl.append(settings.getProperty(KEY_DB_NAME)).append("?user=").append(settings.getProperty(KEY_DB_USER));
-		dbUrl.append("&password=").append(settings.getProperty(KEY_DB_PASS));
+		if (settings.containsKey(KEY_DB_PASS)) {
+			dbUrl.append("&password=").append(settings.getProperty(KEY_DB_PASS));
+		}
 		return dbUrl.toString();
 	}
 
@@ -256,7 +258,8 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 					// timePushTimes.clear();
 					// }
 					if ((++timestampsCounter) % 10000 == 0) {
-						System.out.println("Processed " + timestampsCounter + " timestamps. Last fetchstamp: " + Trx.toDate(time) + ", current local time: " + new Date().toString());
+						System.out.println("Processed " + timestampsCounter + " timestamps. Last fetchstamp: " + Trx.toDate(time) + ", current local time: "
+								+ new Date().toString());
 					}
 				}
 			} catch (Exception e1) {
