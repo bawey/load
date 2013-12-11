@@ -25,7 +25,6 @@ public class MysqlDumper {
 
 	private java.sql.Connection connect = null;
 	private java.sql.Statement statement = null;
-	private List<String> flashBlackList = Arrays.asList(new String[] {});// "l1ts_dbjobs", "l1ts_cell" });
 
 	static Load load = Load.getInstance();
 	static Settings settings = load.getSettings();
@@ -40,7 +39,7 @@ public class MysqlDumper {
 			if ("mysql".equalsIgnoreCase(dbType)) {
 				Class.forName("com.mysql.jdbc.Driver");
 				MysqlDumper dbp = new MysqlDumper();
-				dbp.earlySetup(load);
+				dbp.doItAll(load);
 			} else if ("mongo".equalsIgnoreCase(dbType) || "mongodb".equalsIgnoreCase(dbType)) {
 				MongoDumper.main(args);
 			}
@@ -49,7 +48,7 @@ public class MysqlDumper {
 		}
 	}
 
-	public void earlySetup(Load app) throws Exception {
+	public void doItAll(Load app) throws Exception {
 		rootDirs = new LinkedList<File>();
 		for (String s : app.getSettings().getMany("flashlistForDbDir")) {
 			rootDirs.add(new File(s));
@@ -74,9 +73,6 @@ public class MysqlDumper {
 	}
 
 	private void pushIntoDb(File f, String eventName) throws Exception {
-		if (flashBlackList.contains(eventName)) {
-			return;
-		}
 		BufferedReader br = new BufferedReader(new FileReader(f));
 		PreparedStatement insert = inserts.get(eventName);
 
@@ -185,9 +181,7 @@ public class MysqlDumper {
 	private void readStructure(File dir) throws IOException {
 		BufferedReader br = new BufferedReader(new FileReader(dir.listFiles(FF_0)[0]));
 		String eventName = dirToEventName(dir.getName());
-		if (!flashBlackList.contains(eventName)) {
-			columns.put(eventName, NovemberFlashlistToolkit.timeAndLine(br.readLine())[1].split(","));
-		}
+		columns.put(eventName, NovemberFlashlistToolkit.timeAndLine(br.readLine())[1].split(","));
 		br.close();
 	}
 

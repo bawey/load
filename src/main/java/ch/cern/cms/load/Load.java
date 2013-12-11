@@ -14,12 +14,11 @@ import ch.cern.cms.load.guis.ExpertGui;
 import ch.cern.cms.load.taps.AbstractEventsTap;
 import ch.cern.cms.load.taps.flashlist.DataBaseFlashlistEventsTap;
 import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;
-import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap2;
 import ch.cern.cms.load.timers.SimplePlaybackTimer;
+import ch.cern.cms.load.views.FileSink;
 
 /**
- * Core components, singletons etc. should be initialized here. However, the
- * setup of initial structure should be well separated from the
+ * Core components, singletons etc. should be initialized here. However, the setup of initial structure should be well separated from the
  * configuration-specific actions to enable unit-testing and reconfigurations.
  */
 
@@ -71,6 +70,7 @@ public class Load {
 
 	private Load() {
 		// settings have to go first!
+		Thread.currentThread().setName("Level 0 Anomaly Detective");
 		settings = new Settings();
 		ep = new EventProcessor(this);
 		resolver = new FieldTypeResolver(this);
@@ -138,8 +138,7 @@ public class Load {
 	}
 
 	/**
-	 * Inserts into the list of known taps this should depend on some
-	 * configuration later on or start-up choice
+	 * Inserts into the list of known taps this should depend on some configuration later on or start-up choice
 	 */
 	public void registerTap(AbstractEventsTap tap) {
 		taps.add(tap);

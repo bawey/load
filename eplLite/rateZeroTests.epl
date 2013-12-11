@@ -26,7 +26,6 @@ create schema TrgDistribution as (timestamp Long, groups Long);
 
 
 
-@Verbose(label="L1DR")
 @Description('Store the L1 zero rates and their timestamps as they come and flush whenever a non-zero comes')
 insert into L1DeadRates select distinct * from L1Rates;
 

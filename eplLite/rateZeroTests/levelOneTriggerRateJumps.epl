@@ -41,14 +41,12 @@ create expression double js:averageTriggerRate(n, m)[
 
 on levelZeroFM_subsys(SID!=sid, FMURL like '%PublicGlobal%') as l set sid=l.SID;
 
-@Verbose(label="delete")
 @Description('populate L1Subrates with EventManagers data for current SessionID')
 insert into L1Subrates select deltaN/deltaT as subrate, context as url, lid, timestamp.getTime() as timestamp from EVM where sessionid=sid and deltaT>0;
 
 @Watched(label='lastEVM time')
 on EVM(sessionid=sid) as evm set lastEVMtimestamp=evm.timestamp.getTime();
 
-@Verbose(label="L1Rates", fields={'timestamp','rate'})
 @Description ('Populate L1Rates with subsequently observed sums over the L1Subrates')
 on pattern[every [rateUpdateCoeff] L1Subrates] insert into L1Rates select sum(subrate) as rate, max(timestamp) as timestamp from L1Subrates;
 

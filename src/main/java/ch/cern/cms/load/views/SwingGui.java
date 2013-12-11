@@ -11,6 +11,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 import javax.swing.BoxLayout;
 import javax.swing.GroupLayout;
@@ -38,7 +40,20 @@ import com.espertech.esper.client.StatementAwareUpdateListener;
 import com.espertech.esper.event.WrapperEventBean;
 import com.espertech.esper.event.map.MapEventBean;
 
-public class SwingGui implements LoadView {
+public class SwingGui extends LoadView {
+
+	private class MessageEvnelope {
+		public final String content;
+		public final String console;
+
+		protected MessageEvnelope(String content, String console) {
+			this.content = content;
+			this.console = console;
+		}
+	}
+
+	public final static int CONSOLE_MAX_LINES = 100;
+	public final static int CONSOLE_MAX_LENGTH = 10000;
 
 	private static final Logger logger = Logger.getLogger(SwingGui.class);
 
@@ -52,7 +67,6 @@ public class SwingGui implements LoadView {
 		return watchUpdater;
 	}
 
-	private SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss.SSS");
 	protected JTextArea[] txts = new JTextArea[6];
 
 	protected JFrame frm = new JFrame();
@@ -65,6 +79,132 @@ public class SwingGui implements LoadView {
 	private Map<String, JLabel> watchLabels = new LinkedHashMap<String, JLabel>();
 	private Map<String, JTextArea> consoles = new HashMap<String, JTextArea>();
 	private Map<String, JComponent> alarms = new HashMap<String, JComponent>();
+
+	private final BlockingQueue<MessageEvnelope> msgQueue = new ArrayBlockingQueue<SwingGui.MessageEvnelope>(1000, true);
+	private final BlockingQueue<UpdateEnvelope> watchedUpdates = new ArrayBlockingQueue<UpdateEnvelope>(10000, true);
+	private final BlockingQueue<UpdateEnvelope> verboseUpdates = new ArrayBlockingQueue<UpdateEnvelope>(10000, true);
+
+	private Runnable verboseUpdatesConsumer = new Runnable() {
+
+		@Override
+		public void run() {
+			while (true) {
+				try {
+					UpdateEnvelope ue = verboseUpdates.take();
+
+					VerboseAttributes va = new VerboseAttributes(ue.statement);
+					if (!va.append) {
+						clearConsole(va.label);
+					}
+
+					SwingGui.this.console(va.label, getPrintableUpdate(ue, va).toString());
+
+				} catch (InterruptedException e) {
+					System.out.println("Thread interrupted, see logs");
+					logger.warn(e);
+				}
+
+			}
+		}
+	};
+
+	private Runnable watchedUpdatesConsumer = new Runnable() {
+
+		@Override
+		public void run() {
+			while (true) {
+				try {
+					UpdateEnvelope ue = watchedUpdates.take();
+
+					String label = null;
+					for (Annotation ann : ue.statement.getAnnotations()) {
+						if (ann.annotationType().equals(Watched.class)) {
+							label = ((Watched) ann).label();
+						}
+					}
+					Map<?, ?> props = null;
+					if (ue.newEvents != null && ue.newEvents.length > 0) {
+						Object src = ue.newEvents[0].getUnderlying();
+
+						if (src instanceof WrapperEventBean) {
+							src = ((WrapperEventBean) src).getUnderlyingEvent();
+						}
+
+						if (src instanceof MapEventBean) {
+							props = ((MapEventBean) src).getProperties();
+						} else if (src instanceof Map<?, ?>) {
+							props = (Map<?, ?>) src;
+						} else {
+							console("warning", "received sth strange in watchUpdater");
+						}
+					}
+					if (props != null) {
+						if (props.size() == 1) {
+							Object key = props.keySet().iterator().next();
+							SwingGui.this.watch(label.length() > 0 ? label : key.toString(), props.get(key) != null ? props.get(key).toString() : "null");
+						} else {
+							String[] timeKeys = { "timestamp", "time", "timeStamp", "time_stamp" };
+							String[] labelKeys = { "label" };
+							String[] valueKeys = { "value", "val" };
+							String timestamp = null;
+							String value = null;
+							for (String key : timeKeys) {
+								if (props.containsKey(key)) {
+									timestamp = props.get(key).toString();
+									props.remove(key);
+									break;
+								}
+							}
+							if (label == null || label.length() == 0) {
+								for (String key : labelKeys) {
+									if (props.containsKey(key)) {
+										label = (props.get(key) != null) ? props.get(key).toString() : null;
+										break;
+									}
+								}
+							}
+							for (String key : valueKeys) {
+								if (props.containsKey(key)) {
+									value = (props.get(key) != null) ? props.get(key).toString() : null;
+									break;
+								}
+							}
+
+							SwingGui.this.watch(label, value + (timestamp != null ? " (" + timestamp + ")" : ""));
+						}
+					}
+
+				} catch (InterruptedException e) {
+					System.out.println("Thread interrupted, more details in logs");
+					logger.warn(e);
+				}
+
+			}
+		}
+	};
+
+	private Runnable consoleUpdater = new Runnable() {
+
+		@Override
+		public void run() {
+			while (true) {
+				MessageEvnelope me;
+				try {
+					me = msgQueue.take();
+					JTextArea console = consoles.get(me.console);
+					if (console.getText().length() > CONSOLE_MAX_LENGTH) {
+						StringBuffer txt = new StringBuffer(console.getText());
+						console.setText(txt.substring(txt.indexOf("\n", txt.length() - CONSOLE_MAX_LENGTH / 2) + 1, txt.length()));
+					}
+					console.append(me.content + "\n");
+
+				} catch (InterruptedException e) {
+					logger.warn(e);
+				}
+			}
+		}
+
+	};
 
 	private Runnable updater = new Runnable() {
 		@Override
@@ -144,6 +284,24 @@ public class SwingGui implements LoadView {
 		consoleBox.setPreferredSize(new Dimension(100, 500));
 		frm.getContentPane().add(consoleBox, BorderLayout.PAGE_END);
 
+		new Thread(consoleUpdater) {
+			{
+				setName("SwingGuiConsoleUpdater");
+			}
+		}.start();
+
+		new Thread(verboseUpdatesConsumer) {
+			{
+				setName("Verbose Updates Consumer");
+			}
+		}.start();
+
+		new Thread(watchedUpdatesConsumer) {
+			{
+				setName("Watched Updates Consumer");
+			}
+		}.start();
+
 	}
 
 	protected void console(String title, String message) {
@@ -154,7 +312,12 @@ public class SwingGui implements LoadView {
 			consoles.get(title).setEditable(false);
 			consoleBox.addTab(title, new JScrollPane(consoles.get(title)));
 		}
-		consoles.get(title).setText(consoles.get(title).getText() + message + "\n");
+		try {
+			this.msgQueue.put(new MessageEvnelope(message, title));
+		} catch (InterruptedException e) {
+			logger.warn("Interrupted message proxy", e);
+		}
+
 	}
 
 	protected void clearConsole(String title) {
@@ -198,62 +361,11 @@ public class SwingGui implements LoadView {
 	protected StatementAwareUpdateListener watchUpdater = new StatementAwareUpdateListener() {
 		@Override
 		public void update(EventBean[] newEvents, EventBean[] oldEvents, EPStatement statement, EPServiceProvider epServiceProvider) {
-			String label = null;
-			for (Annotation ann : statement.getAnnotations()) {
-				if (ann.annotationType().equals(Watched.class)) {
-					label = ((Watched) ann).label();
-				}
-			}
-			Map<?, ?> props = null;
-			if (newEvents != null && newEvents.length > 0) {
-				Object src = newEvents[0].getUnderlying();
-
-				if (src instanceof WrapperEventBean) {
-					src = ((WrapperEventBean) src).getUnderlyingEvent();
-				}
-
-				if (src instanceof MapEventBean) {
-					props = ((MapEventBean) src).getProperties();
-				} else if (src instanceof Map<?, ?>) {
-					props = (Map<?, ?>) src;
-				} else {
-					console("warning", "received sth strange in watchUpdater");
-				}
-			}
-			if (props != null) {
-				if (props.size() == 1) {
-					Object key = props.keySet().iterator().next();
-					SwingGui.this.watch(label.length() > 0 ? label : key.toString(), props.get(key) != null ? props.get(key).toString() : "null");
-				} else {
-					String[] timeKeys = { "timestamp", "time", "timeStamp", "time_stamp" };
-					String[] labelKeys = { "label" };
-					String[] valueKeys = { "value", "val" };
-					String timestamp = null;
-					String value = null;
-					for (String key : timeKeys) {
-						if (props.containsKey(key)) {
-							timestamp = props.get(key).toString();
-							props.remove(key);
-							break;
-						}
-					}
-					if (label == null || label.length() == 0) {
-						for (String key : labelKeys) {
-							if (props.containsKey(key)) {
-								label = (props.get(key) != null) ? props.get(key).toString() : null;
-								break;
-							}
-						}
-					}
-					for (String key : valueKeys) {
-						if (props.containsKey(key)) {
-							value = (props.get(key) != null) ? props.get(key).toString() : null;
-							break;
-						}
-					}
-
-					SwingGui.this.watch(label, value + (timestamp != null ? " (" + timestamp + ")" : ""));
-				}
+			try {
+				watchedUpdates.put(new UpdateEnvelope(newEvents, oldEvents, statement, epServiceProvider));
+			} catch (InterruptedException e) {
+				System.out.println("Thread interrupted, check logs");
+				logger.warn(e);
 			}
 		}
 	};
@@ -261,72 +373,12 @@ public class SwingGui implements LoadView {
 	protected StatementAwareUpdateListener consoleLogger = new StatementAwareUpdateListener() {
 		@Override
 		public void update(EventBean[] newEvents, EventBean[] oldEvents, EPStatement statement, EPServiceProvider epServiceProvider) {
-			String label = "default";
-			String[] fields = {};
-			String xtrMsg = null;
-			String[] streamPath = {};
-			boolean append = true;
-			for (Annotation ann : statement.getAnnotations()) {
-				if (ann.annotationType().equals(Verbose.class)) {
-					label = ((Verbose) ann).label();
-					fields = ((Verbose) ann).fields();
-					xtrMsg = ((Verbose) ann).extraNfo();
-					append = ((Verbose) ann).append();
-					streamPath = ((Verbose) ann).streamPath();
-					break;
-				}
+			try {
+				verboseUpdates.put(new UpdateEnvelope(newEvents, oldEvents, statement, epServiceProvider));
+			} catch (InterruptedException e) {
+				System.out.println("Thread interrupted, consult logs");
+				logger.warn(e);
 			}
-			if (!append) {
-				clearConsole(label);
-			}
-			StringBuilder sb = new StringBuilder();
-			for (EventBean eventBean : newEvents) {
-				if (sb.length() > 0) {
-					sb.append("\n");
-				}
-				if (xtrMsg.length() > 0) {
-					sb.append(String.format("%1$-32s", xtrMsg)).append(" | ");
-				}
-				Object bundled = eventBean.getUnderlying();
-				for (String pathElement : streamPath) {
-					try {
-						Method m = bundled.getClass().getMethod("get", Object.class);
-						bundled = m.invoke(bundled, pathElement);
-						// logger.info("descended into " + pathElement + " and fot " + bundled.getClass());
-						if (bundled instanceof EventBean) {
-							// logger.info("excavating further");
-							bundled = ((EventBean) bundled).getUnderlying();
-						}
-
-					} catch (Exception e) {
-						logger.error("Failed to unbundle the stream for path: " + streamPath);
-					}
-				}
-				if (fields != null && fields.length > 0) {
-					for (String field : fields) {
-						for (Class<?> ptype : new Class[] { Object.class, String.class }) {
-							try {
-								Method m = bundled.getClass().getMethod("get", Object.class);
-								Object desired = m.invoke(bundled, field);
-								if (desired instanceof Date) {
-									Date date = (Date) desired;
-									desired = sdf.format(date);
-								}
-								sb.append(String.format("%1$-10s", field + ":") + String.format("%1$-26s", desired != null ? desired.toString() : "null"));
-								break;
-							} catch (Exception e) {
-								logger.error("Ah, failed to invoke the get method using " + ptype + " as parameter type for statement: " + statement.getText());
-								for (StackTraceElement el : e.getStackTrace()) {
-									logger.error(el);
-								}
-							}
-						}
-					}
-				} else {
-					sb.append(bundled.toString());
-				}
-			}
-			SwingGui.this.console(label, sb.toString());
 		}
 	};
 }

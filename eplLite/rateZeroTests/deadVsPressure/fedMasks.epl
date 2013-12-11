@@ -3,6 +3,3 @@ create window FedMask.std:unique(fedId) as select * from FedMaskEvent;
 insert into FedMask select * from FedMaskEvent;
 insert into FedMaskEvent select x.* from levelZeroFM_static[parseFem(FED_ENABLE_MASK)@type(FedMaskEvent)] as x;
 
-@Verbose(label='FedMask.win', append=true)
-select x.* from FedMask as x where x.slinkEnabled or x.ttsEnabled;
-

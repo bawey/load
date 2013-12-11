@@ -132,9 +132,6 @@ select rstream * from FedDeadPressure where fedId not in (select fedId from FedD
 @Watched(label='DeadPressure FEDS#')
 select count(*) from FedDeadPressure;
 
-@Verbose(label='FrlBackpressureStream', fields={'time','fedId','bpFraction'})
-select fedId, date(timestamp) as time, bpFraction from FrlBackpressureStream;
-
 @Watched(label='BPfeds')
 select count(*) from FrlBackpressure;
 

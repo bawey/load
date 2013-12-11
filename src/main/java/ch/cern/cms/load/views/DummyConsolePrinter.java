@@ -13,7 +13,7 @@ import ch.cern.cms.load.LoadView;
  *         This is just a dummy view to verify the concept as working.
  */
 
-public class DummyConsolePrinter implements LoadView {
+public class DummyConsolePrinter extends LoadView {
 
 	@Override
 	public StatementAwareUpdateListener getVerboseStatementListener() {
