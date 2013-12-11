@@ -6,7 +6,7 @@ select * from frlcontrollerLink match_recognize(
 	measures A.linkNumber as prevLink, A.slotNumber as prevSlot, A.context as prevContext, B.slotNumber as newSlot, B.linkNumber as newLink, B.context as newContext, B.FEDSourceId as srcFedId
 	pattern (A B)
 	define
-		B as B.linkNumber!=A.linkNumber or B.context != A.context or B.slotNumber != A.slotNumber
+		B as B.FEDSourceId!=0 and (B.linkNumber!=A.linkNumber or B.context != A.context or B.slotNumber != A.slotNumber)
 );
 
 

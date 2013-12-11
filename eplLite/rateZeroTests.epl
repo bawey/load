@@ -11,7 +11,7 @@ create variable int trgDetailsLimit = 30;
 create variable long prevalentBxn = 0;
 
 @Description('Store the L1 zero rates and their timestamps as they come and flush whenever a non-zero comes')
-create window L1DeadRates.win:expr(newest_event.rate=0) as select * from L1Rates;
+create window L1DeadRates.win:expr(newest_event.rate=0 and (oldest_event.timestamp = timestamp or newest_event.timestamp = timestamp)) as select * from L1Rates;
 
 
 
@@ -20,7 +20,7 @@ create window ZeroRateTimer.win:length(1) as (elapsed long);
 create window PrevalentBxn.win:length(1) as (bxNumber long);
 
 
-create schema BxDistribution as (timestamp Long, groups Long);
+create schema BxDistribution as (timestamp Long, fetchstamp Long, groups Long);
 create schema TrgDistribution as (timestamp Long, groups Long);
 /** LOGIC **/
 
@@ -33,14 +33,13 @@ insert into L1DeadRates select distinct * from L1Rates;
 insert into ZeroRateTimer select (case when count(*)>1 then max(timestamp)-min(timestamp) else 0 end) as elapsed 
 	from pattern[every L1Rates] unidirectional, L1DeadRates;
 
-insert into BxDistribution select distinct count(distinct ctl.bxNumber) as groups, max(ctl.timestamp.getTime()) as timestamp 
+insert into BxDistribution select distinct count(distinct ctl.bxNumber) as groups, max(ctl.timestamp.getTime()) as timestamp, max(ctl.fetchstamp) as fetchstamp
 	from pattern[every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, FrlCtlLnk.std:unique(fedId) as ctl;
 
 
 
 @Priority(10)
 @Description('Prepare the prevalent Bx number')
-@Verbose(label='BxDistribution', extraNfo='inserting into PrevalentBxn window', fields={'bxNumber'})
 insert into PrevalentBxn
 select bxNumber from pattern[every BxDistribution(groups>1)] unidirectional, FrlCtlLnk.std:unique(fedId) group by bxNumber having count(*)=max(count(*)) limit 1;
 
@@ -62,8 +61,8 @@ on PrevalentBxn as bxn set prevalentBxn = bxn.bxNumber;
 
 @Priority(10)
 @Description('First, a message about bx misalignment')
-@Verbose(label='BxDistribution', extraNfo='FEDs BX-misalignment alert!', fields={'time','groups'})
-select date(timestamp) as time, groups from BxDistribution(groups>1);
+@Verbose(label='BxDistribution', extraNfo='FEDs BX-misalignment alert!', fields={'time','groups','fetchtime'})
+select date(timestamp) as time, date(fetchstamp) as fetchtime, groups from BxDistribution(groups>1);
 
 @Priority(9)
 @Description('Second, a limited list of all the groups')
@@ -77,13 +76,17 @@ group by bxNumber limit bxBucketsLimit;
 select fedId, bxNumber, timestamp as time from pattern[every BxDistribution(groups>1)] unidirectional, FrlCtlLnk.std:unique(fedId) 
 where cast(bxNumber,long) not in (select bxNumber from PrevalentBxn)  limit bxDetailsLimit;
 
+@Verbose(label='bxValues', fields={'time','fetchtime', 'bxNumber','support','seenFedIds'})
+select distinct bxNumber, window(ctl.*).aggregate("", (result, row) => result||" "||row.fedId.toString() ) as seenFedIds, count(fedId) as support, date(max(fetchstamp)) as fetchtime, date(max(timestamp.getTime())) as time
+from pattern[every BxDistribution(groups>1)] unidirectional, FrlCtlLnk.std:unique(fedId) as ctl group by bxNumber order by count(fedId) desc;
+
 @Priority(7)
 @Verbose(label='BxDistribution')
 select bxNumber from pattern[every BxDistribution(groups>1)] unidirectional, PrevalentBxn;
 
 
 /** WILD GUESS **/
-
+//create window GrupWin as (bxNumber long, )
 
 
 		
