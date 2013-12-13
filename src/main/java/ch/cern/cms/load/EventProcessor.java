@@ -7,12 +7,12 @@ import org.apache.log4j.Logger;
 
 import ch.cern.cms.esper.Trx;
 import ch.cern.cms.esper.annotations.Conclusion;
+import ch.cern.cms.esper.annotations.DaqStateMask;
 import ch.cern.cms.esper.annotations.Verbose;
 import ch.cern.cms.esper.annotations.Watched;
 import ch.cern.cms.load.eventData.FedMask;
 import ch.cern.cms.load.hwdb.CmsHw;
 import ch.cern.cms.load.hwdb.HwInfo;
-import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;
 
 import com.espertech.esper.client.Configuration;
 import com.espertech.esper.client.ConfigurationOperations;
@@ -113,6 +113,8 @@ public class EventProcessor {
 						for (LoadView view : Load.getInstance().getViews()) {
 							statement.addListener(view.getWatchedStatementListener());
 						}
+					} else if (a.annotationType().equals(DaqStateMask.class)) {
+						StatementsToggler.register(statement, ((DaqStateMask) a).states());
 					}
 				}
 			}

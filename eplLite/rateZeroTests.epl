@@ -94,6 +94,7 @@ select clusters from BxnClustersCountStream;
 
 
 
+
 @Priority(10)
 @Verbose(label='trgoutput', extraNfo='trgNumbers misaligned', fields={'trg.fetchstamp','trg.timestamp','trg.clusters'})
 select trg.clusters, trg.fetchstamp, trg.timestamp from pattern [every trg=TrgClustersCount(clusters>1)];
@@ -116,4 +117,11 @@ select fetchstamp, timestamp from TrgClustersCount match_recognize(
 select clusters from TrgClustersCountStream;
 
 
+@Verbose(label='DAQ_STATE')
+select STATE from levelZeroFM_subsys(SUBSYS='DAQ');
 
+@Priority(1)
+@Name('togglable')
+@DaqStateMask(states={'Configured'})
+@Verbose(label='DAQ_STATE', extraNfo='toggled output')
+select STATE from levelZeroFM_subsys(SUBSYS='DAQ');
