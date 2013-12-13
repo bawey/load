@@ -53,7 +53,7 @@ public class SwingGui extends LoadView {
 	}
 
 	public final static int CONSOLE_MAX_LINES = 100;
-	public final static int CONSOLE_MAX_LENGTH = 14000;
+	public final static int CONSOLE_MAX_LENGTH = 1000000;
 
 	private static final Logger logger = Logger.getLogger(SwingGui.class);
 

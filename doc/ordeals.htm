@@ -317,6 +317,33 @@ on pattern[every DeadL1RateTimer(elapsed>minStuckTime)] insert into DeadL1RateBx
                     </code><br/>
                 </p>
             </li>
+            <li>
+                <h3>Act upon first event or any other with a value different then the previous</h3>
+                <p>
+                    Using window <code>std:firstunique</code> puts whatever comes into the insert stream, even if it doesn't stay within the window. The <code>std:expr</code> window does the same thing. What works is the <code>match_recognize</code> with <code>prev</code> like in the following: <br />
+                    <code>
+                        select * from BxDistribution match_recognize( <br />
+                        measures A.groups as grps <br />
+                        pattern (A)  <br />
+                        define A as prev(A.groups) is null or A.groups != prev(A.groups, 1) <br />
+                        );      
+                    </code>
+                </p>
+            </li>
+            <li>
+                <h3>match_recognize doesn't recognize consecutive events for window of length 1, but works with prev</h3>
+                <p>
+                    <code>
+                        select fetchstamp, timestamp from BxnClustersCount match_recognize( <br />
+    measures B.clusters as clusters, B.fetchstamp as fetchstamp, B.timestamp as timestamp <br />
+    pattern (B) <br />
+    define B as B.clusters<=1 and prev(B.clusters,1)>1 <br />
+); <br />
+                    </code>
+                    <code class="error">pattern (A B)</code> will not work in this case as <code>BxnClustersCount</code> is a window of length 1.
+
+                </p>
+            </li>
         </ul>
 
     </body>
