@@ -97,6 +97,8 @@ public class EventProcessor {
 					for (Annotation atn : statement.getAnnotations()) {
 						if (atn.annotationType().equals(Conclusion.class)) {
 							epl("insert into ConclusionsStream select * from " + ((Conclusion) atn).streamName());
+						} else if (atn.annotationType().equals(DaqStateMask.class)) {
+							StatementsToggler.register(statement, ((DaqStateMask) atn).states());
 						}
 					}
 				}
@@ -113,8 +115,6 @@ public class EventProcessor {
 						for (LoadView view : Load.getInstance().getViews()) {
 							statement.addListener(view.getWatchedStatementListener());
 						}
-					} else if (a.annotationType().equals(DaqStateMask.class)) {
-						StatementsToggler.register(statement, ((DaqStateMask) a).states());
 					}
 				}
 			}

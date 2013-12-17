@@ -18,6 +18,9 @@ create objectarray schema TrgClustersCountStream as (clusters long, timestamp lo
 @Description('Same as BxnClustersCount, but for trg')
 create window TrgClustersCount.std:lastevent() as select * from TrgClustersCountStream;
 
+
+
+
 /** LOGIC **/
 
 
@@ -71,10 +74,14 @@ insert into TrgClustersCountStream select -1l as clusters, null as fetchstamp, t
 
 /** OUTPUTS **/
 
+@Name('bxNumber msialignment - alert only')
+@DaqStateMask(states={'FixingSoftError','RunningSoftErrorDetected','Running','RunningDegraded','Starting','Stopping','Configured','Pausing','Resuming','Paused'})
 @Priority(10)
 @Verbose(label='bxoutput', extraNfo='bxNumbers misaligned', fields={'bxn.fetchstamp','bxn.timestamp','bxn.clusters'})
 select bxn.clusters, bxn.fetchstamp, bxn.timestamp from pattern [every bxn=BxnClustersCount(clusters>1)];
 
+@Name('bxNumber misalignment - details')
+//@DaqStateMask(states={'FixingSoftError','RunningSoftErrorDetected','Running','RunningDegraded','Starting','Stopping','Configured','Pausing','Resuming','Paused'})
 @Priority(1)
 @Verbose(label='bxoutput', fields={'time','fetchtime', 'bxNumber','support','seenFedIds'})
 select bxNumber, window(ctl.*).aggregate("", (result, row) => result||" "||row.fedId.toString() ) as seenFedIds, count(fedId) as support, 
@@ -82,9 +89,9 @@ select bxNumber, window(ctl.*).aggregate("", (result, row) => result||" "||row.f
 	from pattern[every BxnClustersCount(clusters>1)]  unidirectional, FrlCtlLnk.std:unique(fedId) as ctl group by bxNumber order by count(fedId) desc;
 
 
-@Verbose(label='bxoutput', extraNfo='Bx misalignment problem gone', fields={'timestamp', 'fetchstamp'})
-select fetchstamp, timestamp from BxnClustersCount match_recognize(
-	measures B.clusters as clusters, B.fetchstamp as fetchstamp, B.timestamp as timestamp
+@Verbose(label='bxoutput', extraNfo='Bx misalignment problem gone', fields={'time', 'fetchtime'})
+select fetchtime, time from BxnClustersCount match_recognize(
+	measures B.clusters as clusters, date(B.fetchstamp) as fetchtime, date(B.timestamp) as time
 	pattern (B)
 	define B as B.clusters<=1 and prev(B.clusters,1)>1
 );
@@ -94,20 +101,21 @@ select clusters from BxnClustersCountStream;
 
 
 
-
+//@DaqStateMask(states={'FixingSoftError','RunningSoftErrorDetected','Running','RunningDegraded','Starting','Stopping','Configured','Pausing','Resuming','Paused'})
 @Priority(10)
 @Verbose(label='trgoutput', extraNfo='trgNumbers misaligned', fields={'trg.fetchstamp','trg.timestamp','trg.clusters'})
 select trg.clusters, trg.fetchstamp, trg.timestamp from pattern [every trg=TrgClustersCount(clusters>1)];
 
+//@DaqStateMask(states={'FixingSoftError','RunningSoftErrorDetected','Running','RunningDegraded','Starting','Stopping','Configured','Pausing','Resuming','Paused'})
 @Priority(1)
-@Verbose(label='trgoutput', fields={'time','fetchtime', 'trgNumber','support','seenFedIds'})
+@Verbose(label='trgoutput', fields={'time','fetchtime', 'triggerNumber','support','seenFedIds'})
 select triggerNumber, window(ctl.*).aggregate("", (result, row) => result||" "||row.fedId.toString() ) as seenFedIds, count(fedId) as support, 
 	date(max(fetchstamp)) as fetchtime, date(max(timestamp.getTime())) as time
 	from pattern[every TrgClustersCount(clusters>1)]  unidirectional, FrlCtlLnk.std:unique(fedId) as ctl group by triggerNumber order by count(fedId) desc;
 
 
-@Verbose(label='trgoutput', extraNfo='Trg misalignment problem gone', fields={'timestamp', 'fetchstamp'})
-select fetchstamp, timestamp from TrgClustersCount match_recognize(
+@Verbose(label='trgoutput', extraNfo='Trg misalignment problem gone', fields={'time', 'fetchtime'})
+select date(fetchstamp) as fetchtime, date(timestamp) as time from TrgClustersCount match_recognize(
 	measures B.clusters as clusters, B.fetchstamp as fetchstamp, B.timestamp as timestamp
 	pattern (B)
 	define B as B.clusters<=1 and prev(B.clusters,1)>1
@@ -117,11 +125,35 @@ select fetchstamp, timestamp from TrgClustersCount match_recognize(
 select clusters from TrgClustersCountStream;
 
 
-@Verbose(label='DAQ_STATE')
-select STATE from levelZeroFM_subsys(SUBSYS='DAQ');
+create objectarray schema MyrinetLastResyncEvtValues as (value long);
 
-@Priority(1)
-@Name('togglable')
-@DaqStateMask(states={'Configured'})
-@Verbose(label='DAQ_STATE', extraNfo='toggled output')
-select STATE from levelZeroFM_subsys(SUBSYS='DAQ');
+
+insert into MyrinetLastResyncEvtValues
+select count(distinct myrinetLastResyncEvt) as value from 
+	pattern[every MyrinetLastResyncEvtValues(value>1)] unidirectional, frlcontrollerCard.std:unique(context, slotNumber);
+
+@Verbose(label='development')
+select * from MyrinetLastResyncEvtValues(value!=1);
+
+create window XYZ.std:unique(fedId) as (fedId int, myrinetLastResyncEvt long, myrinetResync long);
+
+
+@Priority(10)
+@Verbose(label='development')
+insert into XYZ 
+select lnk.fedId as fedId, crd.myrinetLastResyncEvt as myrinetLastResyncEvt, crd.myrinetResync as myrinetResync from 
+	pattern [every MyrinetLastResyncEvtValues(value!=1)] unidirectional,
+	frlcontrollerCard.std:unique(context, slotNumber) as crd, FrlCtlLnk.std:unique(fedId) as lnk
+		where lnk.context = crd.context and lnk.slotNumber = crd.slotNumber;
+
+@Verbose(label="output-devel", fields={'time','support','myrinetLastResyncEvt','details'})
+@Priority(8)
+select date(current_timestamp()) as time, count(myrinetLastResyncEvt) as support, myrinetLastResyncEvt, 
+	window(x.*).aggregate("", (result, row) => result||row.fedId.toString()||" ") as details
+	from XYZ as x group by myrinetLastResyncEvt;
+
+@Verbose(label="output-devel")
+@Priority(8)
+select count(myrinetResync) as support, myrinetResync, 
+	window(x.*).aggregate("", (result, row) => result||row.fedId.toString()||" ") as details
+	from XYZ as x group by myrinetResync;

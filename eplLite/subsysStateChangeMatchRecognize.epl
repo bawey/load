@@ -14,5 +14,5 @@ select * from levelZeroFM_subsys match_recognize(
 	pattern (A B)
 	define
 		A as A.SUBSYS='DAQ',
-		B as B.STATE != A.STATE
+		B as B.SUBSYS='DAQ' and B.STATE != A.STATE
 );

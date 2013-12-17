@@ -1,6 +1,7 @@
 package ch.cern.cms.load;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -9,11 +10,13 @@ import java.util.Set;
 
 import org.apache.log4j.Logger;
 
+import com.espertech.esper.client.EPServiceProviderIsolated;
 import com.espertech.esper.client.EPStatement;
 
 public class StatementsToggler {
 	private static final Logger logger = Logger.getLogger(StatementsToggler.class);
 	private String lastState = null;
+	private EPServiceProviderIsolated sandbox;
 
 	private static final String[] states = { "running", "stopping", "configured", "configuring", "starting", "standby", "initializing", "halted",
 			"initialized", "halting", "faulty", "connecting", "paused", "error", "pausing", "connected", "", " " };
@@ -37,6 +40,10 @@ public class StatementsToggler {
 		}
 	};
 
+	public StatementsToggler() {
+		sandbox = Load.getInstance().getEventProcessor().getProvider().getEPServiceIsolated("sandbox");
+	}
+
 	public static void register(EPStatement statement, String[] inStates) {
 		Set<String> enabled = new HashSet<String>();
 		for (String inState : inStates) {
@@ -51,7 +58,7 @@ public class StatementsToggler {
 		}
 	}
 
-	public static void handleStateChange(String state) {
+	public void handleStateChange(String state) {
 		if (enablers.get(state.toLowerCase()) == null) {
 			logger.warn("State " + state + " has no associated enablers list");
 			logger.warn("Enablers contain keys: " + enablers.keySet());
@@ -59,13 +66,13 @@ public class StatementsToggler {
 		}
 
 		for (EPStatement statement : enablers.get(state.toLowerCase())) {
-			if (statement.isStopped()) {
-				statement.start();
+			if (!Arrays.asList(sandbox.getEPAdministrator().getStatementNames()).contains(statement.getName())) {
+				sandbox.getEPAdministrator().addStatement(statement);
 			}
 		}
 		for (EPStatement statement : disablers.get(state.toLowerCase())) {
-			if (statement.isStarted()) {
-				statement.stop();
+			if (Arrays.asList(sandbox.getEPAdministrator().getStatementNames()).contains(statement.getName())) {
+				sandbox.getEPAdministrator().removeStatement(statement);
 			}
 		}
 	}

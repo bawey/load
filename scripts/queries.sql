@@ -13,7 +13,6 @@ create index fbo_fetchstamp on fbo(fetchstamp);
 create index fetchstamps_fetchstamp on fetchstamps(fetchstamp);
 create index frlBxHisto_fetchstamp on frlBxHisto(fetchstamp);
 create index frlWcHisto_fetchstamp on frlWcHisto(fetchstamp);
-create index frlcontrollerCard_fetchstamp on frlcontrollerCard(fetchstamp);
 create index frlcontrollerStatus_fetchstamp on frlcontrollerStatus(fetchstamp);
 create index frllinkdbmondata_fetchstamp on frllinkdbmondata(fetchstamp);
 create index gmt_cell_mon_fetchstamp on gmt_cell_mon(fetchstamp);

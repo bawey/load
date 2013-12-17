@@ -192,6 +192,10 @@ public class Load {
 		getResolver().setFieldType("lastEVMtimestamp", Date.class);
 		getResolver().setFieldType("streamNames", String[].class);
 		getResolver().setFieldType("ratePerStream", Double[].class);
+
+		getResolver().setFieldType("myrinetLastResyncEvt", Long.class);
+		getResolver().setFieldType("myrinetResync", Long.class);
+
 	}
 
 	private Object instantiateComponent(String type, String id) {
