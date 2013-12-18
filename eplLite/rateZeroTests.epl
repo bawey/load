@@ -35,7 +35,6 @@ insert into ZeroRateTimer select (case when count(*)>1 then max(timestamp)-min(t
 
 /** PART OF LOGIC RELATED TO BxMisalignment **/
 
-@Verbose(label='BxClustersDetected')
 @Name('BxnClustersCounting')
 @Description('Update bxClusters count upon ZeroRateTimer update')
 insert into BxnClustersCountStream select count(distinct ctl.bxNumber) as clusters, max(ctl.timestamp.getTime()) as timestamp, max(ctl.fetchstamp) as fetchstamp
@@ -125,35 +124,48 @@ select date(fetchstamp) as fetchtime, date(timestamp) as time from TrgClustersCo
 select clusters from TrgClustersCountStream;
 
 
-create objectarray schema MyrinetLastResyncEvtValues as (value long);
 
-
-insert into MyrinetLastResyncEvtValues
-select count(distinct myrinetLastResyncEvt) as value from 
-	pattern[every MyrinetLastResyncEvtValues(value>1)] unidirectional, frlcontrollerCard.std:unique(context, slotNumber);
-
-@Verbose(label='development')
-select * from MyrinetLastResyncEvtValues(value!=1);
+/** A MESSY PART FOR RESYNC NUMBER CHECKING **/
 
 create window XYZ.std:unique(fedId) as (fedId int, myrinetLastResyncEvt long, myrinetResync long);
 
-
+@Description('When rate has been zero for long enough, count the clusters of myrinetLastResyncEvt values')
 @Priority(10)
-@Verbose(label='development')
 insert into XYZ 
 select lnk.fedId as fedId, crd.myrinetLastResyncEvt as myrinetLastResyncEvt, crd.myrinetResync as myrinetResync from 
-	pattern [every MyrinetLastResyncEvtValues(value!=1)] unidirectional,
+	pattern[every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional,
 	frlcontrollerCard.std:unique(context, slotNumber) as crd, FrlCtlLnk.std:unique(fedId) as lnk
 		where lnk.context = crd.context and lnk.slotNumber = crd.slotNumber;
 
-@Verbose(label="output-devel", fields={'time','support','myrinetLastResyncEvt','details'})
-@Priority(8)
-select date(current_timestamp()) as time, count(myrinetLastResyncEvt) as support, myrinetLastResyncEvt, 
-	window(x.*).aggregate("", (result, row) => result||row.fedId.toString()||" ") as details
-	from XYZ as x group by myrinetLastResyncEvt;
 
-@Verbose(label="output-devel")
+@Verbose(label="output", fields={'time','support','myrinetLastResyncEvt','details'}, extraNfo="myrinetLastResyncEvt discrepancy" )
 @Priority(8)
-select count(myrinetResync) as support, myrinetResync, 
+select date(current_timestamp()) as time, count(fedId) as support, myrinetLastResyncEvt, 
 	window(x.*).aggregate("", (result, row) => result||row.fedId.toString()||" ") as details
-	from XYZ as x group by myrinetResync;
+	from pattern[every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, 
+	XYZ as x where (select count(distinct myrinetLastResyncEvt) from XYZ)>1 group by myrinetLastResyncEvt
+	order by count(fedId) desc;
+
+
+@Verbose(label="output", fields={'time','support','myrinetResync','details'}, extraNfo="myrinetResync discrepancy")
+@Priority(8)
+select date(current_timestamp()) as time, count(fedId) as support, myrinetResync, 
+	window(x.*).aggregate("", (result, row) => result||row.fedId.toString()||" ") as details
+	from pattern[every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, 
+	XYZ as x where (select count(distinct myrinetResync) from XYZ)>1 group by myrinetResync
+	order by count(fedId) desc;
+
+
+@Watched(label='distinctMyrinetR')
+select count(distinct myrinetLastResyncEvt) from XYZ;
+
+@Watched(label='distinctMyrinetR')
+select count(distinct myrinetResync) from XYZ;
+
+/** ANOTHER MESSY CHUNK - FEDS STUCK @ ERROR, WARNING etc AND  **/
+
+@Verbose(label='output-devel', fields={'time','b.fedId','b.bpFraction'}, extraNfo='Stuck with Backpressure at zero rate')
+select b.fedId, date(b.timestamp) as time, b.bpFraction from pattern [every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, FrlBackpressure as b;
+
+@Verbose(label='output-devel', fields={'time','b.fedId','b.dtFraction'}, extraNfo='Stuck with Deadtime at zero rate')
+select b.fedId, date(b.timestamp) as time, b.dtFraction from pattern [every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, FrlDeadtime as b;
