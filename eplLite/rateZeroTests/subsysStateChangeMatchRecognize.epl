@@ -1,3 +1,5 @@
+create objectarray schema DaqStateChangeStream as (time Date, fromState String, toState String);
+
 @Verbose(label='output', fields={'time', 'subsys', 'fromState', 'toState'}, extraNfo = 'Subsystem changed state')
 select * from levelZeroFM_subsys match_recognize(
 	partition by SUBSYS
@@ -7,12 +9,16 @@ select * from levelZeroFM_subsys match_recognize(
 		B as B.STATE != A.STATE and B.STATE.toUpperCase() in ('ERROR','RUNNING_DEGRADED','RUNNING_SOFT_ERROR_DETECTED','PAUSING','PAUSED','RESUMING')
 );
 
-@Verbose(label='output', fields={'time', 'fromState', 'toState'}, extraNfo = 'DAQ changed state')
-select * from levelZeroFM_subsys match_recognize(
+insert into DaqStateChangeStream
+select time, fromState, toState from levelZeroFM_subsys match_recognize(
 	partition by SUBSYS
-	measures A.STATE as fromState, B.STATE as toState, B.timestamp as time, A.SUBSYS as subsys
+	measures A.STATE as fromState, B.STATE as toState, B.timestamp as time
 	pattern (A B)
 	define
 		A as A.SUBSYS='DAQ',
 		B as B.SUBSYS='DAQ' and B.STATE != A.STATE
 );
+
+
+@Verbose(label='output', fields={'time', 'fromState', 'toState'}, extraNfo = 'DAQ changed state')
+select time, fromState, toState from DaqStateChangeStream;

@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
+import ch.cern.cms.esper.StatementsLifecycleManager;
 import ch.cern.cms.esper.Trx;
 import ch.cern.cms.esper.annotations.Conclusion;
 import ch.cern.cms.esper.annotations.DaqStateMask;
@@ -76,6 +77,8 @@ public class EventProcessor {
 		c.addPlugInSingleRowFunction("in_array", Trx.class.getCanonicalName(), "inArray");
 		c.addPlugInSingleRowFunction("tuple", Trx.class.getCanonicalName(), "tuple");
 		c.addPlugInSingleRowFunction("is_nonvariant", Trx.class.getCanonicalName(), "isNonvariant");
+		c.addPlugInSingleRowFunction("suspend", StatementsLifecycleManager.class.getCanonicalName(), "suspend");
+		c.addPlugInSingleRowFunction("resume", StatementsLifecycleManager.class.getCanonicalName(), "resume");
 
 		// this might be a nice way to define the timestamps relationship
 		// c.addPlugInPatternGuard(namespace, name, guardFactoryClass)
@@ -97,8 +100,6 @@ public class EventProcessor {
 					for (Annotation atn : statement.getAnnotations()) {
 						if (atn.annotationType().equals(Conclusion.class)) {
 							epl("insert into ConclusionsStream select * from " + ((Conclusion) atn).streamName());
-						} else if (atn.annotationType().equals(DaqStateMask.class)) {
-							StatementsToggler.register(statement, ((DaqStateMask) atn).states());
 						}
 					}
 				}
@@ -115,6 +116,8 @@ public class EventProcessor {
 						for (LoadView view : Load.getInstance().getViews()) {
 							statement.addListener(view.getWatchedStatementListener());
 						}
+					} else if (a.annotationType().equals(DaqStateMask.class)) {
+						StatementsToggler.register(statement, ((DaqStateMask) a).states());
 					}
 				}
 			}

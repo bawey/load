@@ -67,12 +67,12 @@ public class StatementsToggler {
 
 		for (EPStatement statement : enablers.get(state.toLowerCase())) {
 			if (!Arrays.asList(sandbox.getEPAdministrator().getStatementNames()).contains(statement.getName())) {
-				sandbox.getEPAdministrator().addStatement(statement);
+				//sandbox.getEPAdministrator().addStatement(statement);
 			}
 		}
 		for (EPStatement statement : disablers.get(state.toLowerCase())) {
 			if (Arrays.asList(sandbox.getEPAdministrator().getStatementNames()).contains(statement.getName())) {
-				sandbox.getEPAdministrator().removeStatement(statement);
+				//sandbox.getEPAdministrator().removeStatement(statement);
 			}
 		}
 	}
