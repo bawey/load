@@ -1,87 +1,183 @@
+#include "fedMasks.epl"
+#include "deadtimeAndBackpressure.epl"
+#include "level1TriggerRate.epl"
+#include "subsystemsStateChanges.epl"
+
 /** STRUCTURE **/
 @Description('')
 create variable long deadRateTimeout=10000;
 
-create variable int bxBucketsLimit = 10;
-create variable int bxDetailsLimit = 30;
 
-create variable int trgBucketsLimit = 10;
-create variable int trgDetailsLimit = 30;
-
-create variable long prevalentBxn = 0;
-
-@Description('Store the L1 zero rates and their timestamps as they come and flush whenever a non-zero comes')
-create window L1DeadRates.win:expr(newest_event.rate=0) as select * from L1Rates;
-
-
-
+@Description('Window to store the oldest and newest from a series of zero-rate events')
+create window L1ZeroRates.win:expr(newest_event.rate=0 and (oldest_event.timestamp = timestamp or newest_event.timestamp = timestamp)) as select * from L1Rates;
+@Description('Window to hold the most recent value of time measured while rate is stuck at 0')
 create window ZeroRateTimer.win:length(1) as (elapsed long);
 
-create window PrevalentBxn.win:length(1) as (bxNumber long);
+@Description('Stream for the current number bxNumbers clusters. Might contain series of identical values')
+create objectarray schema BxnClustersCountStream as (clusters long, timestamp long, fetchstamp long);
+@Description('A window holding the current value of bxNumbers clusters count. Not supposed to accept two subsequent events with the same value.')
+create window BxnClustersCount.std:lastevent() as select * from BxnClustersCountStream;
+
+@Description('Same as BxnClustersCountStream, but for trg')
+create objectarray schema TrgClustersCountStream as (clusters long, timestamp long, fetchstamp long);
+@Description('Same as BxnClustersCount, but for trg')
+create window TrgClustersCount.std:lastevent() as select * from TrgClustersCountStream;
 
 
-create objectarray schema BxDistribution as (timestamp Long, groups Long);
-create objectarray schema TrgDistribution as (timestamp Long, groups Long);
+
+
 /** LOGIC **/
 
 
-
-@Verbose(label="L1DR")
-@Description('Store the L1 zero rates and their timestamps as they come and flush whenever a non-zero comes')
-insert into L1DeadRates select distinct * from L1Rates;
+@Description('Insert all the rates into L1ZeroRates. Retention policy does the trick')
+insert into L1ZeroRates select distinct * from L1Rates;
 
 @Watched(label='deadRateElapsed')
+@Description('On each update on L1ZeroRates, update the measurement of time spent with rates stuck at 0 ')
 insert into ZeroRateTimer select (case when count(*)>1 then max(timestamp)-min(timestamp) else 0 end) as elapsed 
-	from pattern[every L1Rates] unidirectional, L1DeadRates;
+	from pattern[every L1Rates] unidirectional, L1ZeroRates;
 
-insert into BxDistribution select distinct count(distinct ctl.bxNumber) as groups, max(ctl.timestamp.getTime()) as timestamp 
+
+/** PART OF LOGIC RELATED TO BxMisalignment **/
+
+/** Count current number of BXNumber values. Insert -1 if the count makes no sense and filter out any identical values directly following each other **/
+
+@Name('BxnClustersCounting')
+@Description('Update bxClusters count upon ZeroRateTimer update')
+insert into BxnClustersCountStream select count(distinct ctl.bxNumber) as clusters, max(ctl.timestamp.getTime()) as timestamp, max(ctl.fetchstamp) as fetchstamp
 	from pattern[every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, FrlCtlLnk.std:unique(fedId) as ctl;
 
+@Description('Allow only the first event into the window and each subsequent')
+insert into BxnClustersCount select clusters, fetchstamp, timestamp from BxnClustersCountStream match_recognize(
+	measures A.clusters as clusters, A.fetchstamp as fetchstamp, A.timestamp as timestamp
+	pattern (A)	
+	define A as prev(A.clusters, 1) is null or A.clusters != prev(A.clusters, 1) 
+);
+
+@Description('As the rate rises back, insert -1 to indicate pointlessness of analysis')
+insert into BxnClustersCountStream select -1l as clusters, null as fetchstamp, timestamp as timestamp from L1Rates match_recognize(
+	measures A.timestamp as timestamp
+	pattern (A B)
+	define A as A.rate = 0, B as B.rate >0
+);
+
+/** Same counting as for BXNumbers, but for Trigger Number. **/
+
+insert into TrgClustersCountStream select distinct count(distinct ctl.triggerNumber) as clusters, max(ctl.timestamp.getTime()) as timestamp, max(ctl.fetchstamp) as fetchstamp
+	from pattern[every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, FrlCtlLnk.std:unique(fedId) as ctl;
+
+@Verbose(label='TrgClustersCount')
+insert into TrgClustersCount select clusters, fetchstamp, timestamp from TrgClustersCountStream match_recognize(
+	measures A.clusters as clusters, A.fetchstamp as fetchstamp, A.timestamp as timestamp
+	pattern (A)	
+	define A as prev(A.clusters, 1) is null or A.clusters != prev(A.clusters, 1) 
+);
+
+insert into TrgClustersCountStream select -1l as clusters, null as fetchstamp, timestamp as timestamp from BxnClustersCountStream(clusters=-1);
+
+
+/** PART OF LOGIC RELATED TO TrgMisalignment **/
+
+
+/** OUTPUTS **/
+
+
+@Name('bxnMisalignment.headline')
+@Priority(10)
+@Verbose(label='bxoutput', extraNfo='bxNumbers misaligned', fields={'bxn.fetchstamp','bxn.timestamp','bxn.clusters'})
+select bxn.clusters, bxn.fetchstamp, bxn.timestamp from pattern [every bxn=BxnClustersCount(clusters>1)];
+
+@Name('bxNumber misalignment - details')
+@Priority(1)
+@Verbose(label='bxoutput', fields={'time','fetchtime', 'bxNumber','support','seenFedIds'})
+select bxNumber, window(ctl.*).aggregate("", (result, row) => result||" "||row.fedId.toString() ) as seenFedIds, count(fedId) as support, 
+	date(max(fetchstamp)) as fetchtime, date(max(timestamp.getTime())) as time
+	from pattern[every BxnClustersCount(clusters>1)]  unidirectional, FrlCtlLnk.std:unique(fedId) as ctl group by bxNumber order by count(fedId) desc;
+
+
+@Verbose(label='bxoutput', extraNfo='Bx misalignment problem gone', fields={'time', 'fetchtime'})
+select fetchtime, time from BxnClustersCount match_recognize(
+	measures B.clusters as clusters, date(B.fetchstamp) as fetchtime, date(B.timestamp) as time
+	pattern (B)
+	define B as B.clusters<=1 and prev(B.clusters,1)>1
+);
+
+@Watched(label='bxnClustersCount')
+select clusters from BxnClustersCountStream;
+
+
 
 @Priority(10)
-@Description('Prepare the prevalent Bx number')
-@Verbose(label='BxDistribution', extraNfo='inserting into PrevalentBxn window', fields={'bxNumber'})
-insert into PrevalentBxn
-select bxNumber from pattern[every BxDistribution(groups>1)] unidirectional, FrlCtlLnk.std:unique(fedId) group by bxNumber having count(*)=max(count(*)) limit 1;
+@Verbose(label='trgoutput', extraNfo='trgNumbers misaligned', fields={'trg.fetchstamp','trg.timestamp','trg.clusters'})
+select trg.clusters, trg.fetchstamp, trg.timestamp from pattern [every trg=TrgClustersCount(clusters>1)];
 
+
+@Priority(1)
+@Verbose(label='trgoutput', fields={'time','fetchtime', 'triggerNumber','support','seenFedIds'})
+select triggerNumber, window(ctl.*).aggregate("", (result, row) => result||" "||row.fedId.toString() ) as seenFedIds, count(fedId) as support, 
+	date(max(fetchstamp)) as fetchtime, date(max(timestamp.getTime())) as time
+	from pattern[every TrgClustersCount(clusters>1)]  unidirectional, FrlCtlLnk.std:unique(fedId) as ctl group by triggerNumber order by count(fedId) desc;
+
+
+@Verbose(label='trgoutput', extraNfo='Trg misalignment problem gone', fields={'time', 'fetchtime'})
+select date(fetchstamp) as fetchtime, date(timestamp) as time from TrgClustersCount match_recognize(
+	measures B.clusters as clusters, B.fetchstamp as fetchstamp, B.timestamp as timestamp
+	pattern (B)
+	define B as B.clusters<=1 and prev(B.clusters,1)>1
+);
+
+@Watched(label='trgClustersCount')
+select clusters from TrgClustersCountStream;
+
+
+
+/** A MESSY PART FOR RESYNC NUMBER CHECKING **/
+
+create window FedResyncInfo.std:unique(fedId) as (fedId int, myrinetLastResyncEvt long, myrinetResync long);
+
+@Description('When rate has been zero for long enough, count the clusters of myrinetLastResyncEvt values')
 @Priority(10)
-@Verbose(label='BxDistribution')
-on PrevalentBxn as bxn set prevalentBxn = bxn.bxNumber;
-
-//not sure if this is actually needed
-//@Description('reset the bx and trg distributions to n/a when rate > 0')
-//on pattern[every a = L1Rates(rate>0)] 
-//	insert into BxDistribution select a.timestamp as timestamp, -1 as groups
-//	insert into TrgDistrubution select a.timestamp as timestamp, -1 as groups
-//output all;
+insert into FedResyncInfo 
+select lnk.fedId as fedId, crd.myrinetLastResyncEvt as myrinetLastResyncEvt, crd.myrinetResync as myrinetResync from 
+	pattern[every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional,
+	frlcontrollerCard.std:unique(context, slotNumber) as crd, FrlCtlLnk.std:unique(fedId) as lnk
+		where lnk.context = crd.context and lnk.slotNumber = crd.slotNumber;
 
 
-/** OUTPUT **/
-
-
-@Priority(10)
-@Description('First, a message about bx misalignment')
-@Verbose(label='BxDistribution', extraNfo='FEDs BX-misalignment alert!', fields={'time','groups'})
-select date(timestamp) as time, groups from BxDistribution(groups>1);
-
-@Priority(9)
-@Description('Second, a limited list of all the groups')
-@Verbose(label='BxDistribution', extraNfo='BX number groups', fields={'time','bxNumber','support'})
-select bxNumber, count(fedId) as support, max(timestamp) as time from pattern[every BxDistribution(groups>1)] unidirectional, FrlCtlLnk.std:unique(fedId) 
-group by bxNumber limit bxBucketsLimit;
-
+@Verbose(label="output", fields={'time','support','myrinetLastResyncEvt','details'}, extraNfo="myrinetLastResyncEvt discrepancy" )
 @Priority(8)
-@Description("Third, a limited list of misaligned feds")
-@Verbose(label='BxDistribution', extraNfo='BX-misaligned FEDs', fields={'time','bxNumber','fedId'})
-select fedId, bxNumber, timestamp as time from pattern[every BxDistribution(groups>1)] unidirectional, FrlCtlLnk.std:unique(fedId) 
-where cast(bxNumber,long) not in (select bxNumber from PrevalentBxn)  limit bxDetailsLimit;
-
-@Priority(7)
-@Verbose(label='BxDistribution')
-select bxNumber from pattern[every BxDistribution(groups>1)] unidirectional, PrevalentBxn;
+select date(current_timestamp()) as time, count(fedId) as support, myrinetLastResyncEvt, 
+	window(x.*).aggregate("", (result, row) => result||row.fedId.toString()||" ") as details
+	from pattern[every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, 
+	FedResyncInfo as x where (select count(distinct myrinetLastResyncEvt) from FedResyncInfo)>1 group by myrinetLastResyncEvt
+	order by count(fedId) desc;
 
 
+@Verbose(label="output", fields={'time','support','myrinetResync','details'}, extraNfo="myrinetResync discrepancy")
+@Priority(8)
+select date(current_timestamp()) as time, count(fedId) as support, myrinetResync, 
+	window(x.*).aggregate("", (result, row) => result||row.fedId.toString()||" ") as details
+	from pattern[every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, 
+	FedResyncInfo as x where (select count(distinct myrinetResync) from FedResyncInfo)>1 group by myrinetResync
+	order by count(fedId) desc;
 
 
+@Watched(label='distinctMyrinetR')
+select count(distinct myrinetLastResyncEvt) from FedResyncInfo;
 
-		
+@Watched(label='distinctMyrinetR')
+select count(distinct myrinetResync) from FedResyncInfo;
+
+/** ANOTHER MESSY CHUNK - FEDS STUCK @ ERROR, WARNING etc AND  **/
+
+@Verbose(label='output-devel', fields={'time','b.fedId','b.bpFraction'}, extraNfo='FED stuck with Backpressure at zero rate')
+select b.fedId, date(b.timestamp) as time, b.bpFraction from pattern [every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, FrlBackpressure as b;
+
+@Verbose(label='output-devel', fields={'time','b.fedId','b.dtFraction'}, extraNfo='FED stuck with Deadtime at zero rate')
+select b.fedId, date(b.timestamp) as time, b.dtFraction from pattern [every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, FmmDeadtime as b;
+
+/** STATEMENTS TOGGLING **/
+
+insert into SuspendedStatements select 'bxnMisalignment.headline' as name from pattern[every DaqStateChangeStream(toState in ('Configured', 'Halted', 'Initial', 'Initializing', 'Configuring'))];
+	
+on pattern[every DaqStateChangeStream(toState='Starting')] delete from SuspendedStatements where name ="bxnMisalignment.headline";

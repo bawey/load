@@ -1,0 +1,10 @@
+/**
+@Verbose(label='DAQ_STATE')
+select STATE from levelZeroFM_subsys(SUBSYS='DAQ');
+
+@Priority(1)
+@Name('togglable')
+@DaqStateMask(states={'Configured'})
+@Verbose(label='DAQ_STATE', extraNfo='toggled output')
+select STATE from levelZeroFM_subsys(SUBSYS='DAQ');
+**/

@@ -1,0 +1,481 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"L1",
+				"L1RatesSchema"
+			],
+			[
+				"FED",
+				"FEDSourceId"
+			],
+			[
+				"link",
+				"linkNumber"
+			],
+			[
+				"pre",
+				"prevalentBxn"
+			],
+			[
+				"Pre",
+				"PrevalentBxn"
+			],
+			[
+				"rate",
+				"rateUpdateCoeff"
+			],
+			[
+				"BxN",
+				"PrevalentBxn"
+			],
+			[
+				"preva",
+				"prevalentBx"
+			],
+			[
+				"dead",
+				"deadRateTimeout"
+			],
+			[
+				"deadRate",
+				"deadRateTimeout"
+			],
+			[
+				"de",
+				"deadRateElaplsed"
+			],
+			[
+				"Frl",
+				"FrlCtlLnk"
+			],
+			[
+				"De",
+				"Default"
+			],
+			[
+				"St",
+				"StorageManagerPerformance"
+			],
+			[
+				"stream",
+				"streamNames"
+			],
+			[
+				"is",
+				"isBp"
+			],
+			[
+				"FrlBack",
+				"FrlBackpressure"
+			],
+			[
+				"bp",
+				"bpBound"
+			],
+			[
+				"sty",
+				"font-style"
+			],
+			[
+				"B",
+				"FedBackpressure"
+			],
+			[
+				"fract",
+				"fractionWarning"
+			],
+			[
+				"frac",
+				"fractionWarning"
+			],
+			[
+				"fra",
+				"fractionWarning"
+			],
+			[
+				"FedDead",
+				"FedDeadimeStream"
+			],
+			[
+				"BxMis",
+				"BxMismatch"
+			],
+			[
+				"cou",
+				"countOf"
+			],
+			[
+				"Fr",
+				"FrlCtlLnk"
+			],
+			[
+				"Bx",
+				"BxMismatch"
+			],
+			[
+				"fed",
+				"fedId"
+			],
+			[
+				"F",
+				"FrlCtlLnk"
+			],
+			[
+				"in",
+				"into"
+			],
+			[
+				"bxN",
+				"bxNumber"
+			],
+			[
+				"BxMisma",
+				"BxMismatches"
+			],
+			[
+				"min",
+				"minStuckTime"
+			],
+			[
+				"h",
+				"h3	Tag"
+			],
+			[
+				"L1Re",
+				"RecentL1Rates"
+			],
+			[
+				"Rece",
+				"RecentL1Rates"
+			],
+			[
+				"uni",
+				"unique"
+			],
+			[
+				"bxNu",
+				"bxNumbers"
+			],
+			[
+				"long",
+				"Long"
+			],
+			[
+				"strea",
+				"streamNames"
+			],
+			[
+				"FrlBa",
+				"FrlBackpressureStream"
+			],
+			[
+				"Ctl",
+				"FrlCtlLnk"
+			],
+			[
+				"fi",
+				"fifoAlmostFullCnt"
+			],
+			[
+				"Fed",
+				"FedBackpressureTemp"
+			],
+			[
+				"FrlCtlLnk",
+				"FrlCtlLink"
+			],
+			[
+				"FR",
+				"FrlBackpressure"
+			],
+			[
+				"time",
+				"timestamp"
+			],
+			[
+				"m",
+				"msec"
+			],
+			[
+				"dt",
+				"dtFraction"
+			],
+			[
+				"main",
+				"mainFedIds"
+			],
+			[
+				"Frlbacp",
+				"FrlBackpressureStream"
+			],
+			[
+				"FrlCtl",
+				"FrlCtlLnk"
+			],
+			[
+				"DeadP",
+				"FedDeadPressure"
+			],
+			[
+				"FRACT",
+				"fractionWarning"
+			],
+			[
+				"mainFed",
+				"mainFedIds"
+			],
+			[
+				"Deadtime",
+				"DeadtimeRecoveredFedId"
+			],
+			[
+				"FB",
+				"FrlBackpressurePositive"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "/home/bawey/Workspace/LOAD/eplLite/rateZeroTests.epl",
+			"settings":
+			{
+				"buffer_size": 3405,
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "",
+	"command_palette":
+	{
+		"height": 392.0,
+		"selected_items":
+		[
+		],
+		"width": 392.0
+	},
+	"console":
+	{
+		"height": 0.0
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"file_history":
+	[
+		"/home/bawey/Desktop/log1",
+		"/home/bawey/Desktop/log0",
+		"/home/bawey/Workspace/LOAD/eplTest/dummy.epl",
+		"/home/bawey/Workspace/LOAD/eplTest/timerTest.epl",
+		"/home/bawey/Workspace/LOAD/doc/ordeals.htm",
+		"/home/bawey/Workspace/LOAD/epl/messageOnRunStart.epl",
+		"/home/bawey/Workspace/LOAD/epl/messageOnRunStop.epl",
+		"/home/bawey/Workspace/LOAD/epl/performers.epl",
+		"/home/bawey/Workspace/LOAD/epl/rateZeroTests/levelOneTriggerRateJumps.epl",
+		"/home/bawey/Workspace/LOAD/epl/fedIdConsistency.epl",
+		"/home/bawey/Workspace/LOAD/epl/streamARate.epl",
+		"/home/bawey/Workspace/LOAD/epl/rateZeroTests.epl",
+		"/home/bawey/Workspace/LOAD/eplLite/rateZeroTests.epl",
+		"/home/bawey/Workspace/LOAD/eplLite/rateZeroTests/deadVsPressure.epl",
+		"/home/bawey/Workspace/LOAD/epl/rateZeroBackup.epl.old",
+		"/home/bawey/Workspace/LOAD/epl/rateZeroTests/deadVsPressure.epl",
+		"/home/bawey/Workspace/LOAD/epl/rateZeroTests/system.epl",
+		"/home/bawey/Workspace/LOAD/epl/daqStateChanges.epl",
+		"/home/bawey/Workspace/LOAD/epl/templates/SSYS_stateChange.epl",
+		"/home/bawey/Workspace/LOAD/epl/subsysStateChangeMatchRecognize.epl",
+		"/home/bawey/Workspace/LOAD/epl/deadVsPressure2.epl",
+		"/home/bawey/Workspace/LOAD/eplLite/fedIdConsistency.epl",
+		"/home/bawey/Workspace/LOAD/epl/subsystemsStateChange.epl",
+		"/home/bawey/Workspace/LOAD/epl/rateZeroTests/2deadVsPressure.epl",
+		"/home/bawey/.config/sublime-text-2/Packages/User/Default (Linux).sublime-keymap",
+		"/home/bawey/Workspace/LOAD/epl/rateZeroTests/deadVsPressure2.epl",
+		"/home/bawey/Workspace/LOAD/epl/templates/SSYS_stateChange.sh",
+		"/home/bawey/Workspace/LOAD/epl/deadVsPressure.epl",
+		"/home/bawey/Workspace/LOAD/epl/deadVsPressure/fedMasks.epl",
+		"/home/bawey/Workspace/LOAD/eplTest/progbar/progbar.epl",
+		"/home/bawey/Workspace/LOAD/epl/EPL.sublime-project",
+		"/home/bawey/Workspace/LOAD/epl/EPL.sublime-workspace",
+		"/home/bawey/.config/sublime-text-2/Packages/User/SQL.sublime-settings",
+		"/home/bawey/.config/sublime-text-2/Packages/User/Preferences.sublime-settings",
+		"/home/bawey/.config/sublime-text-2/Packages/Default/Preferences.sublime-settings"
+	],
+	"find":
+	{
+		"height": 35.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"FrlCtlLnk",
+			"select fedId, timestamp, date(fetchstamp) as fetchstamp, timestamp.getTime() as rawtimestamp, fetchstamp as rawfetchstamp from FrlCtlLnk]",
+			"levelZeroFM_dynamic",
+			"SID",
+			"dynamic",
+			"state",
+			"timer",
+			"3",
+			"\n@",
+			"[]\n",
+			"ConsecutiveZeroL1Rates",
+			"L1DeadRates",
+			"></",
+			"label=\\'bxNumber",
+			"label='bxNumber",
+			"l1rates",
+			"msec",
+			"trgRateTolerance",
+			"RATES",
+			"rates",
+			"subrates",
+			"jump",
+			"jumps",
+			"\n@",
+			"FrlCtlLink",
+			"BackpressureStream",
+			"some_stream",
+			"some stream",
+			" \n",
+			"output",
+			"\n/**@",
+			"Descr",
+			"\n",
+			"on",
+			"FedDeadPressure",
+			"lastev",
+			"td",
+			"XYZ",
+			"FrlBackpressure",
+			"FrlBackpressurePositive"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+			"L1DeadRates",
+			"rateJumpMargin",
+			"L1Rates",
+			"L1Subrates",
+			"FrlBackpressure",
+			"FrlBackpressureStream",
+			"XYZ"
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 0,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "/home/bawey/Workspace/LOAD/eplLite/rateZeroTests.epl",
+					"settings":
+					{
+						"buffer_size": 3405,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								287,
+								287
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/SQL/SQL.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 51.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 0.0
+	},
+	"input":
+	{
+		"height": 33.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"replace":
+	{
+		"height": 64.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 500.0,
+		"selected_items":
+		[
+		],
+		"width": 380.0
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 250.0,
+	"status_bar_visible": true
+}

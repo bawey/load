@@ -1,0 +1,4 @@
+/**
+@Verbose(label="jobctl")
+select * from jobcontrol;
+**/

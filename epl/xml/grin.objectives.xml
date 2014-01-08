@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<?xml-stylesheet type="text/xsl" href="objectives.template.xsl" xmlns="http://www.w3.org/1999/xhtml"?>
+<objectives>
+<objectives_group name="General">
+	<objective>
+		<overview>Define severity-specific behaviors for produced results!</overview>
+	</objective>
+</objectives_group>
+<objectives_group name="Running">
+	<objective severity="info">
+		<overview>Message on Run Start giving: Run NR, SID, Detectors in, (*)Feds in per detector</overview>
+		<details></details>
+		<solution></solution>
+		<epl></epl>
+	</objective>
+
+	<objective severity="info">
+		<overview>Message on Run Stop giving: Run Nr, SID, Detectors in, (*)Feds in per detector, avg L1 rate, avg stream A rate, avg dead time (from trigger LAS), duration</overview>
+		<details></details>
+		<solution></solution>
+		<epl></epl>
+		<notes>SMPerformance StreamNames ratePerStream "A" sum over SMs</notes>
+	</objective>
+
+	<objective severity="info" status="done">
+		<overview>Message on L1 trigger rate jump > 10%</overview>
+		<details></details>
+		<solution>EPL file creates some windows and streams useful for performing other loigic. A javascript method needs to be raplaced with a case statement</solution>
+		<epl>level1TriggerRate.epl</epl>
+	</objective>
+
+	<objective severity="info" status="done">
+		<overview>Message on subsys going to {ERROR, RUNNING_DEGRADED, RUNNING_SOFT_ERROR_DETECTED, PAUSING, PAUSED, RESUMING}</overview>
+		<details></details>
+		<solution></solution>
+		<epl>subsystemsStateChanges.epl</epl>
+	</objective>
+	<objective severity="alarm" status="done">
+		<overview>Message on any state change of DAQ</overview>
+		<details></details>
+		<solution></solution>
+		<epl>subsystemsStateChanges.epl</epl>
+	</objective>
+	<objective severity="alarm">
+		<overview>Message on jobcontrol flashlist not being updated after 1 minute</overview>
+		<details></details>
+		<solution></solution>
+		<epl>jobcontrolNotUpdated.epl</epl>
+		<notes>did the machine crash?</notes>
+	</objective>
+	<objective severity="alarm" status="done">
+		<overview>FED dead-time > 1% </overview>
+		<details></details>
+		<solution></solution>
+		<epl>deadtimeAndBackpressure.epl</epl>
+		<notes>investigate backpressure on the same FED or its main FED</notes>
+	</objective>
+	<objective severity="alarm" status="done">
+		<overview>Backpressure > 1%</overview>
+		<details></details>
+		<solution></solution>
+		<epl>deadtimeAndBackpressure.epl</epl>
+	</objective>
+	<objective severity="alarm" status="fixed">
+		<overview>Message on stream A > 500 Hz</overview>
+		<details></details>
+		<solution></solution>
+		<epl>streamARate.epl</epl>
+		<notes>Simplified, does not satisfy: after 10 seconds, repeat message every 10 seconds</notes>
+	</objective>
+</objectives_group>
+
+<objectives_group name="Rate 0 for > 10 seconds">
+	<objective status="fixed">
+		<overview> Check Bx alignment and print message if not aligned repeat after 10 seconds</overview>
+		<details></details>
+		<solution></solution>
+		<epl>rateZeroTests.epl</epl>
+		<notes>Fails to repeat the message every 10 seconds if the problem persists</notes>
+	</objective>
+	<objective status="fixed">
+		<overview>Check triggers(events) alignment + print message if not aligned repeat after 10 seconds</overview>
+		<overview></overview>
+		<details></details>
+		<solution></solution>
+		<epl>rateZeroTests.epl</epl>
+		<notes>Fails to repeat the message every 10 seconds if the problem persists</notes>
+	</objective>
+	<objective status="question">
+		<overview>FEDs stuck in ERROR/OOS/WARNING/BUSY(anything not READY)</overview>
+		<details></details>
+		<solution></solution>
+		<notes>where to check these states? frlcontrollerCard.substatus does not exist. 
+			"select distinct subState from frlcontrollerCard": yields only inactive, undefined, myrinet error, synch lost.
+			myrinetState from frlcontrollerCard holds more hope though.
+			"Stuck" in BUSY/WARNING ERROR just means fractionBusy etc = 1.0.
+		</notes>
+		<epl>rateZeroTests.epl</epl>
+	</objective>
+	<objective status="done">
+		<overview>List FEDs with backpressure or deadtime</overview>
+		<details></details>
+		<solution></solution>
+		<epl>rateZeroTests.epl</epl>
+	</objective>
+	<objective status="done">
+		<overview>check if number of resyncs and the last resync event number is the same in all FEDs? </overview>
+		<details></details>
+		<solution></solution>
+		<epl>rateZeroTests.epl</epl>
+		<notes>Check if the number of resyncs is the same and check if the last event (the resync was seen for) is the same. myrinetResync - number of resync events, myrinetLastResyncEvt - last event that the resync was seen for.</notes>
+	</objective>
+</objectives_group>
+
+
+<objectives_group name="Continuous display">
+	<objective severity="info" status="question">
+		<overview>Stream A rate</overview>
+		<details></details>
+		<solution></solution>
+		<notes>Sum over storage managers? Cannot find more than one in StorageManagerPerformance (select streamNames, ratePerStream from StorageManagerPerformance limit 1;)</notes>
+		<epl></epl>
+	</objective>
+	<objective severity="info" status="done">
+		<overview>rate</overview>
+		<details></details>
+		<solution></solution>		
+		<notes>Done for level one trigger rate.</notes>
+		<epl>level1TriggerRate.epl</epl>
+	</objective>
+	<objective severity="info">
+		<overview>resync rate + # of resyncs</overview>
+		<details></details>
+		<solution></solution>
+		<epl></epl>
+		<notes>for fed 812 (trigger fed).r</notes>
+	</objective>
+		<objective severity="info" status="question">
+		<overview>event processing rate per group (group= nFOS=nMicroslots)</overview>
+		<details></details>
+		<solution></solution>
+		<notes>How exatcly to obtain these groups?</notes>
+		<epl></epl>
+	</objective>
+		<objective severity="info" status="question">
+		<overview>CPU utilization per group (as above)</overview>
+		<details></details>
+		<solution></solution>
+		<notes>How exatcly to obtain these groups?</notes>
+		<epl></epl>
+	</objective>
+	<objective status="question">
+			<overview>deadTime (from trigger LAS)</overview>
+			<notes>Where to obtain that from?</notes>
+	</objective>
+</objectives_group>
+
+<!-- 
+<objective>
+	<overview></overview>
+	<details></details>
+	<solution></solution>
+	<epl></epl>
+</objective>
+-->
+
+</objectives>

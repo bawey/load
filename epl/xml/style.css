@@ -1,0 +1,80 @@
+body {
+	font-family: sans-serif;
+	font-size: 10pt;
+	background-color: #eaeaea;
+}
+
+div{
+	margin-left: auto;
+	margin-right: auto;
+	text-align: center;
+	vertical-align: middle;
+	padding: 2px;
+	border-radius: 5px;
+	border-width: 1px;
+	border-color: black;
+	border-style: solid;
+	margin-top: 3px;
+	margin-bottom: 3px;
+}
+
+.wrapper{
+	margin-bottom: 40px;
+	margin-top: 40px;
+	border-color: #eaeaea;
+}
+
+div .objectives{
+	font-family: serif;
+	font-size: 1.2em;
+	border-style: none;
+}
+
+div .objective{
+	background-color: #f5bbbd;
+	margin-top: 10px;
+	margin-bottom: 10px;
+	padding: 3px;
+}
+
+div .notes{
+	padding: 1px;
+	font-family: monospace;
+	background-color: white;
+}
+
+div .details{
+
+}
+
+div .solution{
+;
+}
+
+div .done{
+	background-color: #7dff6f;
+}
+
+div .fixed{
+	background-color: #dfffdf;	
+}
+
+div .epl{
+	border-style: none;	
+}
+
+div .heading{
+	border-style: none;
+	display: inline-block;
+	float: left;
+	font-style: italic;
+}
+
+div .content{
+	border-style: none;
+	display: inline-block;
+}
+
+div .question{
+	background-color: orange;
+}
