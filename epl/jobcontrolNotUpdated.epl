@@ -1,4 +1,3 @@
-/**
-@Verbose(label="jobctl")
-select * from jobcontrol;
-**/
+@Verbose(label="jobctl", fields={'msg'})
+create variable int jobcontrolTimeout = 60;
+select "job control not updated within "||jobcontrolTimeout.toString()||" seconds" as msg from pattern[every jobcontrol -> (timer:interval(jobcontrolTimeout sec) and not jobcontrol)];

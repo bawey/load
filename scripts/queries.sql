@@ -20,12 +20,8 @@ create index gmt_cell_scalers_act_fetchstamp on gmt_cell_scalers_act(fetchstamp)
 create index gmt_cell_scalers_pas_fetchstamp on gmt_cell_scalers_pas(fetchstamp);
 create index gmt_cell_status_fetchstamp on gmt_cell_status(fetchstamp);
 create index gt_cell_general_fetchstamp on gt_cell_general(fetchstamp);
-create index gt_cell_lumiseg_fetchstamp on gt_cell_lumiseg(fetchstamp);
 create index gt_cell_trigger_table_fetchstamp on gt_cell_trigger_table(fetchstamp);
 create index gt_cell_ttcpartitions_fetchstamp on gt_cell_ttcpartitions(fetchstamp);
-create index hltCpuUsage_fetchstamp on hltCpuUsage(fetchstamp);
-create index hostInfo_fetchstamp on hostInfo(fetchstamp);
-create index jobcontrol_fetchstamp on jobcontrol(fetchstamp);
 create index l1ts_cell_fetchstamp on l1ts_cell(fetchstamp);
 create index l1ts_dbjobs_fetchstamp on l1ts_dbjobs(fetchstamp);
 create index levelZeroFM_dynamic_fetchstamp on levelZeroFM_dynamic(fetchstamp);

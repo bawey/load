@@ -73,18 +73,13 @@ insert into TrgClustersCountStream select -1l as clusters, null as fetchstamp, t
 
 /** OUTPUTS **/
 
-insert into SuspendedStatements select 'bxnMisalignment.headline' as name from pattern[every DaqStateChangeStream(toState in ('Configured', 'Halted', 'Initial', 'Initializing', 'Configuring'))];
-on pattern[every DaqStateChangeStream(toState='Starting')] delete from SuspendedStatements where name ="bxnMisalignment.headline";
-
 
 @Name('bxnMisalignment.headline')
-//@DaqStateMask(states={'FixingSoftError','RunningSoftErrorDetected','Running','RunningDegraded','Starting','Stopping','Configured','Pausing','Resuming','Paused'})
 @Priority(10)
 @Verbose(label='bxoutput', extraNfo='bxNumbers misaligned', fields={'bxn.fetchstamp','bxn.timestamp','bxn.clusters'})
 select bxn.clusters, bxn.fetchstamp, bxn.timestamp from pattern [every bxn=BxnClustersCount(clusters>1)];
 
 @Name('bxNumber misalignment - details')
-//@DaqStateMask(states={'FixingSoftError','RunningSoftErrorDetected','Running','RunningDegraded','Starting','Stopping','Configured','Pausing','Resuming','Paused'})
 @Priority(1)
 @Verbose(label='bxoutput', fields={'time','fetchtime', 'bxNumber','support','seenFedIds'})
 select bxNumber, window(ctl.*).aggregate("", (result, row) => result||" "||row.fedId.toString() ) as seenFedIds, count(fedId) as support, 
@@ -173,3 +168,9 @@ select b.fedId, date(b.timestamp) as time, b.bpFraction from pattern [every Zero
 
 @Verbose(label='output-devel', fields={'time','b.fedId','b.dtFraction'}, extraNfo='Stuck with Deadtime at zero rate')
 select b.fedId, date(b.timestamp) as time, b.dtFraction from pattern [every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, FmmDeadtime as b;
+
+/** STATEMENTS TOGGLING **/
+
+insert into SuspendedStatements select 'bxnMisalignment.headline' as name from pattern[every DaqStateChangeStream(toState in ('Configured', 'Halted', 'Initial', 'Initializing', 'Configuring'))];
+	
+on pattern[every DaqStateChangeStream(toState='Starting')] delete from SuspendedStatements where name ="bxnMisalignment.headline";

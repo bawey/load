@@ -122,13 +122,15 @@ public class Trx {
 		}
 		return map;
 	}
-
+	
+	
 	public static final boolean isNonvariant(Object o) {
 		System.out.println(o.getClass());
 		System.out.println(o.toString());
 		return false;
 	}
 
+	
 	public static final class FakeMap extends HashMap<Object, Object> {
 		private static final long serialVersionUID = 1L;
 
@@ -141,4 +143,6 @@ public class Trx {
 		}
 	}
 
+	
+	
 }

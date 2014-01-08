@@ -344,6 +344,15 @@ on pattern[every DeadL1RateTimer(elapsed>minStuckTime)] insert into DeadL1RateBx
 
                 </p>
             </li>
+            <li>
+                <h3>Issues with context</h3>
+                <p>
+                    Context is a reserved keyword and: <br />
+                    <code>select context as trololo from EventProcessorStatus;</code> - OK<br />
+                    <code class="error">select context.substring(0,1) as trololo from EventProcessorStatus;</code><br />
+                    complains about reserved keyword. Use `` :)
+                </p>
+            </li>
         </ul>
 
     </body>

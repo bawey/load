@@ -1,0 +1,31 @@
+/** EVENT PROCESSING RATES PER GROUP **/
+
+create objectarray schema ProcessorYields as (kontext String, lid String, units long, rate double);
+
+insert into ProcessorYields select * from EventProcessorStatus match_recognize(
+	partition by context, lid
+	measures A.context as kontext, A.lid as lid, A.epMicroStateInt.length() as units, (B.nbProcessed - A.nbProcessed)/((B.timestamp.getTime()-A.timestamp.getTime())/1000.0) as rate
+	pattern (A B)
+	define B as B.context = B.context
+);
+
+create window LatestProcessorYields.std:unique(kontext, lid).win:time(1 sec) as select * from ProcessorYields;
+insert into LatestProcessorYields select * from ProcessorYields;
+
+@Watched
+select sum(rate) as value, units.toString()||"u events per sec" as label 
+	from pattern [every timer:interval(333 msec)] unidirectional, LatestProcessorYields group by units;
+
+/** CPU USE PER GROUP **/
+
+/** created so that it would be possible to group by units in the subsequent query **/
+create window EventProcessorStatusSnapshot.std:unique(kontext) as (kontext String, units int);
+	insert into EventProcessorStatusSnapshot select context as kontext, epMicroStateInt.length() as units from EventProcessorStatus;
+
+/** 58 - colon on UTF-16, couldn't pass simple char **/
+@Watched
+select avg(hi.cpuUsage) as value, eps.units.toString()||"u: CPU usage" as label 
+from pattern[every timer:interval(1 sec)] unidirectional, EventProcessorStatusSnapshot as eps, hostInfo.std:unique(context) as hi
+where eps.`kontext`.substring(0,`kontext`.lastIndexOf(58)) = hi.`context`.substring(0,`context`.lastIndexOf(58))
+group by eps.units;
+

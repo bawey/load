@@ -41,6 +41,7 @@ div .notes{
 	padding: 1px;
 	font-family: monospace;
 	background-color: white;
+	color: black;
 }
 
 div .details{
@@ -77,4 +78,9 @@ div .content{
 
 div .question{
 	background-color: orange;
+}
+
+div .broken{
+	background-color: black;
+	color: white;
 }

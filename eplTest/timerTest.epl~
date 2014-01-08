@@ -1,2 +1,0 @@
-@Watched(label='Ngine Time')
-select current_timestamp() from pattern[every timer:interval(333 msec)];

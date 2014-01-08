@@ -1,0 +1,3 @@
+#include "deadtimeAndBackpressure.epl"
+@Watched(label='resync rate')
+select lnk.fedId from FrlCtlLnk.std:unique(fedId) as lnk, frlcontrollerCard. as crd where crd.lid=lnk.lid and crd.slotNumber=lnk.slotNumber and crd.context=lnk.context and lnk.fedId='812';

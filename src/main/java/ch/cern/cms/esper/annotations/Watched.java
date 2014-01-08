@@ -11,4 +11,11 @@ public @interface Watched {
 	 * Optional label to print the value with. Overrides the label from statement result.
 	 */
 	String label() default "";
+	
+	/**
+	 * Indicates the name of a column containing label value 
+	 */
+	String labelName() default "";
+	
+	
 }

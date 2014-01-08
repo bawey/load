@@ -117,9 +117,15 @@ public class SwingGui extends LoadView {
 					UpdateEnvelope ue = watchedUpdates.take();
 
 					String label = null;
+					String labelName = "label";
 					for (Annotation ann : ue.statement.getAnnotations()) {
 						if (ann.annotationType().equals(Watched.class)) {
-							label = ((Watched) ann).label();
+							Watched watched = (Watched) ann;
+							if (watched.labelName().equals("")) {
+								label = watched.label();
+							} else {
+								labelName = watched.labelName();
+							}
 						}
 					}
 					Map<?, ?> props = null;
@@ -144,7 +150,7 @@ public class SwingGui extends LoadView {
 							SwingGui.this.watch(label.length() > 0 ? label : key.toString(), props.get(key) != null ? props.get(key).toString() : "null");
 						} else {
 							String[] timeKeys = { "timestamp", "time", "timeStamp", "time_stamp" };
-							String[] labelKeys = { "label" };
+							String[] labelKeys = { labelName };
 							String[] valueKeys = { "value", "val" };
 							String timestamp = null;
 							String value = null;

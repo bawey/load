@@ -195,6 +195,7 @@ public class Load {
 
 		getResolver().setFieldType("myrinetLastResyncEvt", Long.class);
 		getResolver().setFieldType("myrinetResync", Long.class);
+		getResolver().setFieldType("cpuUsage", Double.class);
 
 	}
 
