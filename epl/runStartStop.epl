@@ -1,0 +1,36 @@
+create objectarray schema RunStart as (daqState String);
+create objectarray schema RunStop as (daqState String);
+
+create variable boolean isRunOn = false;
+/** initialize when the expert starts **/
+on pattern[p=levelZeroFM_subsys(SUBSYS='DAQ')] set isRunOn=p.STATE.equals('Running');
+on pattern[every RunStart] set isRunOn=true;
+on pattern[every RunStop] set isRunOn=false;
+
+@Watched(label='Running')
+select isRunOn from pattern[every timer:interval(333 msec)];
+
+insert into RunStop select p.toState as daqState from 
+	pattern[every p=DaqStateChangeStream(toState in (
+		'Configured', 'Halted', 'Resetting', 'Paused'
+	))] where isRunOn=true;
+
+insert into RunStart select p.toState as daqState from
+	pattern[every p=DaqStateChangeStream(
+		toState='Running'
+	)] where isRunOn=false;
+
+
+/** some information to present upon the end of the run **/
+create variable long runStartTime=current_timestamp();
+
+on RunStart set runStartTime = current_timestamp();
+
+//Message on Run Start giving: Run NR, SID, Detectors in, (*)Feds in per detectoroverview
+@Verbose(label='output-start-stop', extraNfo="RunStart", fields={'sid'})
+select sid from pattern [every RunStart] unidirectional;
+
+//Message on Run Stop giving: Run Nr, SID, Detectors in, (*)Feds in per detector, avg L1 rate, avg stream A rate, avg dead time (from trigger LAS), duration
+@Verbose(label='output-start-stop', extraNfo="Run Stop", fields={'sid'})
+select sid from pattern [every RunStop] unidirectional;
+

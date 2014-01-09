@@ -196,7 +196,12 @@ public class Load {
 		getResolver().setFieldType("myrinetLastResyncEvt", Long.class);
 		getResolver().setFieldType("myrinetResync", Long.class);
 		getResolver().setFieldType("cpuUsage", Double.class);
-
+		getResolver().setFieldType("timeTag", Long.class);
+		getResolver().setFieldType("integralTimeBusy", Long.class);
+		getResolver().setFieldType("integralTimeError", Long.class);
+		getResolver().setFieldType("integralTimeOOS", Long.class);
+		getResolver().setFieldType("integralTimeWarning", Long.class);
+		getResolver().setFieldType("integralTimeReady", Long.class);
 	}
 
 	private Object instantiateComponent(String type, String id) {

@@ -112,8 +112,6 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	@Override
 	public void registerEventTypes(Load expert) {
 		for (String eventName : definitions.keySet()) {
-			System.out.println("Registering event: " + eventName);
-
 			// as Object[]
 			// Object[] types = new Object[columns.get(eventName).length];
 			// types[0] = Long.class;
@@ -131,6 +129,7 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 					type = controller.getResolver().getFieldType(fieldName, eventName);
 				}
 				types.put(fieldName, type);
+				logger.debug("event: "+eventName+", field: "+fieldName);
 			}
 			controller.getEventProcessor().getAdministrator().getConfiguration().addEventType(eventName, types);
 		}

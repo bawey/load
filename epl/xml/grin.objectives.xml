@@ -7,15 +7,16 @@
 	</objective>
 </objectives_group>
 <objectives_group name="Running">
-	<objective severity="info">
+	<objective severity="info" status="question">
 		<overview>Message on Run Start giving: Run NR, SID, Detectors in, (*)Feds in per detector</overview>
+		<notes>Where is the run number? Where are detectors 'in'? How to resolve FEDs per detector? (like this? frl.getTTCPartition().getSubSystem())</notes>
 		<details></details>
 		<solution></solution>
 		<epl></epl>
 	</objective>
-
-	<objective severity="info">
+	<objective severity="info" status="question">
 		<overview>Message on Run Stop giving: Run Nr, SID, Detectors in, (*)Feds in per detector, avg L1 rate, avg stream A rate, avg dead time (from trigger LAS), duration</overview>
+		<notes>Same as for run start, but also: get avg L1 rate, avg stream A rate, avg dead time from trigger LAS, the duration</notes>
 		<details></details>
 		<solution></solution>
 		<epl></epl>
@@ -41,7 +42,7 @@
 		<solution></solution>
 		<epl>subsystemsStateChanges.epl</epl>
 	</objective>
-	<objective severity="alarm">
+	<objective severity="alarm" status="done">
 		<overview>Message on jobcontrol flashlist not being updated after 1 minute</overview>
 		<details></details>
 		<solution></solution>
@@ -61,16 +62,18 @@
 		<solution></solution>
 		<epl>deadtimeAndBackpressure.epl</epl>
 	</objective>
-	<objective severity="alarm">
+	<objective severity="alarm" status="done">
 		<overview>Message on stream A > 500 Hz</overview>
 		<details></details>
 		<solution></solution>
 		<epl>streamARate.epl</epl>
 		<notes>Simplified, does not satisfy: after 10 seconds, repeat message every 10 seconds. Need to sum the last-per-context values.</notes>
 	</objective>
-	<objective severity="warning">
+	<objective severity="warning" status="done">
 		<overview>FEDs fraction other</overview>
-		<notes>fractions (busy+warning+error+ready+oos) must add up to one, otherwise FED spends some time in an illegal (other) state. This fact should be reported and using integrals is preffered for calculations to avoid floating point numbers comparison</notes>
+		<solution>A FedFractions stream is constantly filled with derivatives computed for each subsequently arriving pair of FmmInput events with the same fedId.</solution>
+		<notes>fractions (busy+warning+error+ready+oos) must add up to one, otherwise FED spends some time in an illegal (other) state. This fact should be reported and using integrals is preffered for calculations to avoid floating point numbers comparison. Why does it report negative fractions at the beginning? (As well as negative dTime). Never tested on positives.</notes>
+		<epl>fedFractions.epl</epl>
 	</objective>
 </objectives_group>
 
@@ -90,12 +93,13 @@
 		<epl>rateZeroTests.epl</epl>
 		<notes>Fails to repeat the message every 10 seconds if the problem persists</notes>
 	</objective>
-	<objective>
+	<objective status="broken">
 		<overview>FEDs stuck in ERROR/OOS/WARNING/BUSY(anything not READY)</overview>
 		<details></details>
-		<solution></solution>
+		<solution>Written, running, never seen working yet. Using the FedFractions stream to find events of interest and SuspendedStatements window to suspend/resume the statement
+		</solution>
 		<notes>
-			ERROR/OOS/WARNING/BUSY have their corresponding fractions on FMMInput. Stuck means fraction = 1. A FED might also be stuck in an other state. Use the integrals from two consecutive events to determine that.
+			ERROR/OOS/WARNING/BUSY have their corresponding fractions on FMMInput. Stuck means fraction = 1. A FED might also be stuck in an other state. Use the integrals from two consecutive events to determine that. Needs to work ONLY at rate 0!
 		</notes>
 		<epl>rateZeroTests.epl</epl>
 	</objective>
@@ -130,12 +134,12 @@
 		<notes>Done for level one trigger rate.</notes>
 		<epl>level1TriggerRate.epl</epl>
 	</objective>
-	<objective severity="info">
+	<objective severity="info" status="done">
 		<overview>resync rate + # of resyncs</overview>
 		<details></details>
-		<solution></solution>
-		<epl></epl>
-		<notes>for fed 812 (trigger fed).r</notes>
+		<solution>Done on the assumption that frlcontrollerCard is associated with multiple frlcontrollerLinks via context and slotNumber equity. Displaying in Hz the rate of resyncs of fed 812 (d(myrinetResync)/d(timestamp) for two consecutive events ,never seen a value > 0 though). For the resync number simply the myrinetResync value is displayed.</solution>
+		<epl>resyncRate.epl</epl>
+		<notes>for fed 812 (trigger fed)</notes>
 	</objective>
 		<objective severity="info" status="done">
 		<overview>event processing rate per group (group= nFOS=nMicroslots)</overview>

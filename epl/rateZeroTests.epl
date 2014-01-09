@@ -2,6 +2,8 @@
 #include "deadtimeAndBackpressure.epl"
 #include "level1TriggerRate.epl"
 #include "subsystemsStateChanges.epl"
+#include "runStartStop.epl"
+#include "fedFractions.epl"
 
 /** STRUCTURE **/
 @Description('')
@@ -176,8 +178,18 @@ select b.fedId, date(b.timestamp) as time, b.bpFraction from pattern [every Zero
 @Verbose(label='output-devel', fields={'time','b.fedId','b.dtFraction'}, extraNfo='FED stuck with Deadtime at zero rate')
 select b.fedId, date(b.timestamp) as time, b.dtFraction from pattern [every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, FmmDeadtime as b;
 
+/** feds stuck in sth else than ready **/
+
+@Name("stuckFeds")
+@Verbose(label="output", fields={'timestamp','fedId', 'dOos','dBusy','dWarning','dError','dIllegal', 'dTime'}, extraNfo='FED stuck')
+select timestamp, fedId, dTime, dTime-(dBusy+dWarning+dError+dOos+dReady) as dIllegal, dWarning, dError, dOos, dBusy from FedFractions
+where dTime>0 and (dBusy=dTime or dWarning=dTime or dError = dTime or dOos = dTime or (dBusy+dWarning+dError+dOos+dReady)=0);
+
+
 /** STATEMENTS TOGGLING **/
 
-insert into SuspendedStatements select 'bxnMisalignment.headline' as name from pattern[every DaqStateChangeStream(toState in ('Configured', 'Halted', 'Initial', 'Initializing', 'Configuring'))];
-	
-on pattern[every DaqStateChangeStream(toState='Starting')] delete from SuspendedStatements where name ="bxnMisalignment.headline";
+insert into SuspendedStatements select 'bxnMisalignment.headline' as name from pattern[every RunStop];
+on pattern[every RunStart] delete from SuspendedStatements where name="bxnMisalignment.headline";
+
+insert into SuspendedStatements select 'stuckFeds' as name from pattern[every RunStop];
+on pattern[every RunStart] delete from SuspendedStatements where name="stuckFeds";

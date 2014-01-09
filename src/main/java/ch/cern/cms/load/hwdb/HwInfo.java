@@ -182,8 +182,8 @@ public final class HwInfo implements Serializable {
 		FED fed = getFed(context, geoSlotOrSlot, linkOrIo, seenByHw);
 		if (fed != null) {
 			fedIdCache.put(desc, fed.getSrcId());
-			//System.out.println(fedIdCache.size() + " elements in fedId cache: " + fedIdCache.values().toString());
-			//System.out.println(fedIdCache.keySet().toString());
+			// System.out.println(fedIdCache.size() + " elements in fedId cache: " + fedIdCache.values().toString());
+			// System.out.println(fedIdCache.keySet().toString());
 			return fed.getSrcId();
 		}
 		return null;
@@ -249,5 +249,18 @@ public final class HwInfo implements Serializable {
 			}
 		}
 		return ids.toArray(new Integer[ids.size()]);
+	}
+
+	public static FRL getFRL(String context, Object slot) {
+		HwInfo hi = getInstance();
+		return hi.eqs.getFRLCrateByHostName(context).getFRLbyGeoSlot(slot instanceof Integer ? (Integer) slot : Integer.parseInt(slot.toString()));
+		
+	}
+
+	public static void voidd() {
+		HwInfo hi = getInstance();
+		FRL frl = null;
+		//frl.get
+
 	}
 }

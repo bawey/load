@@ -1,0 +1,18 @@
+#include "deadtimeAndBackpressure.epl"
+
+create objectarray schema FedFractions as (fedId long, dBusy long, dWarning long, dOos long, dError long, dReady long, dTime long, timestamp Date);
+
+insert into FedFractions select * from FmmInput match_recognize(
+	partition by fedId
+	measures B.timeTag - A.timeTag as dTime, A.fedId as fedId, B.integralTimeBusy-A.integralTimeBusy as dBusy, B.integralTimeError-A.integralTimeError as dError,
+				B.integralTimeOOS-A.integralTimeOOS as dOos, B.integralTimeWarning-A.integralTimeWarning as dWarning, B.integralTimeReady-A.integralTimeReady as dReady,
+				B.timestamp as timestamp
+	pattern (A B)
+	/** seems like you cannot omit the define part so a placeholder is used **/
+	define A as A is not null, B as B is not null
+);
+
+//If the flashlist is fine there should be no nulls appearing here. Yet, there are.
+@Verbose(label="output", fields={'timestamp','fedId', 'dIllegal', 'dTime'}, extraNfo='FED in illegal state')
+select timestamp, fedId, dTime, dTime-(dBusy+dWarning+dError+dOos+dReady) as dIllegal from FedFractions((dBusy+dWarning+dError+dOos+dReady)=0 
+	and dBusy is not null and dError is not null and dWarning is not null and dOos is not null and dReady is not null and dTime is not null and dTime >0);
