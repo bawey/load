@@ -79,7 +79,9 @@ public class EventProcessor {
 		c.addPlugInSingleRowFunction("is_nonvariant", Trx.class.getCanonicalName(), "isNonvariant");
 		c.addPlugInSingleRowFunction("suspend", StatementsLifecycleManager.class.getCanonicalName(), "suspend");
 		c.addPlugInSingleRowFunction("resume", StatementsLifecycleManager.class.getCanonicalName(), "resume");
-
+		c.addPlugInSingleRowFunction("fedsForSubsysMap", HwInfo.class.getCanonicalName(), "getSubsystemToFEDsMap");
+		
+		
 		// this might be a nice way to define the timestamps relationship
 		// c.addPlugInPatternGuard(namespace, name, guardFactoryClass)
 

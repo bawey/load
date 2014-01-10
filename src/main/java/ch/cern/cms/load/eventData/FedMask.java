@@ -1,6 +1,11 @@
 package ch.cern.cms.load.eventData;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class FedMask {
+
+	private static Map<Integer, FedMask> registry = new HashMap<Integer, FedMask>();
 
 	private final int fedId;
 
@@ -64,6 +69,9 @@ public class FedMask {
 		FedMask[] fedMasks = new FedMask[fedStrings.length];
 		for (int i = 0; i < fedStrings.length; ++i) {
 			fedMasks[i] = new FedMask(fedStrings[i]);
+			synchronized (FedMask.class) {
+				registry.put(fedMasks[i].getFedId(), fedMasks[i]);
+			}
 		}
 		return fedMasks;
 	}
@@ -99,5 +107,10 @@ public class FedMask {
 
 	public boolean isTtsEnabled() {
 		return hasTts && !ttsMasked;
+	}
+
+	public static boolean isFedActive(int fedId) {
+		FedMask foi = registry.get(fedId);
+		return foi != null && (foi.isTtsEnabled() || foi.isSlinkEnabled());
 	}
 }

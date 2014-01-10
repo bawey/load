@@ -93,10 +93,10 @@
 		<epl>rateZeroTests.epl</epl>
 		<notes>Fails to repeat the message every 10 seconds if the problem persists</notes>
 	</objective>
-	<objective status="broken">
+	<objective status="done">
 		<overview>FEDs stuck in ERROR/OOS/WARNING/BUSY(anything not READY)</overview>
 		<details></details>
-		<solution>Written, running, never seen working yet. Using the FedFractions stream to find events of interest and SuspendedStatements window to suspend/resume the statement
+		<solution>Written, running, never seen working yet. Using the FedFractions stream to find events of interest and SuspendedStatements window to suspend/resume the statement upon reception of RateStuckAtZeroEvent or RateFineEvent defined in the same source file as a way to broadcast the message that the expert enters a state where the run is ongoing but the rate has been 0 for long enough or that the rate is fine and experiment is running.
 		</solution>
 		<notes>
 			ERROR/OOS/WARNING/BUSY have their corresponding fractions on FMMInput. Stuck means fraction = 1. A FED might also be stuck in an other state. Use the integrals from two consecutive events to determine that. Needs to work ONLY at rate 0!

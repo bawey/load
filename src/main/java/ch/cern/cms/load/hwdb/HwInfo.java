@@ -9,6 +9,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -26,8 +28,10 @@ import rcms.utilities.hwcfg.eq.FMMCrate;
 import rcms.utilities.hwcfg.eq.FMMFMMLink;
 import rcms.utilities.hwcfg.eq.FRL;
 import rcms.utilities.hwcfg.eq.FRLCrate;
+import rcms.utilities.hwcfg.eq.TTCPartition;
 import ch.cern.cms.esper.Trx;
 import ch.cern.cms.load.Load;
+import ch.cern.cms.load.eventData.FedMask;
 
 public final class HwInfo implements Serializable {
 
@@ -254,13 +258,30 @@ public final class HwInfo implements Serializable {
 	public static FRL getFRL(String context, Object slot) {
 		HwInfo hi = getInstance();
 		return hi.eqs.getFRLCrateByHostName(context).getFRLbyGeoSlot(slot instanceof Integer ? (Integer) slot : Integer.parseInt(slot.toString()));
-		
+
 	}
 
 	public static void voidd() {
 		HwInfo hi = getInstance();
 		FRL frl = null;
-		//frl.get
+		// frl.get
 
+	}
+
+	public static Map<String, List<Long>> getSubsystemToFEDsMap() {
+		Map<String, List<Long>> m = new HashMap<String, List<Long>>();
+		HwInfo hi = HwInfo.getInstance();
+		// some are probably out...
+		for (TTCPartition ttcp : hi.eqs.getTTCPartitions().values()) {
+			List<Long> list = new LinkedList<Long>();
+			for (FED fed : ttcp.getFEDs().values()) {
+				if (FedMask.isFedActive((int) fed.getId()));
+				list.add(fed.getId());
+			}
+			if (!list.isEmpty()) {
+				m.put(ttcp.getSubSystem().getName(), list);
+			}
+		}
+		return m;
 	}
 }

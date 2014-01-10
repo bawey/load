@@ -1,3 +1,5 @@
+#include "fedMasks.epl"
+
 create objectarray schema RunStart as (daqState String);
 create objectarray schema RunStop as (daqState String);
 
@@ -34,3 +36,7 @@ select sid from pattern [every RunStart] unidirectional;
 @Verbose(label='output-start-stop', extraNfo="Run Stop", fields={'sid'})
 select sid from pattern [every RunStop] unidirectional;
 
+
+
+@Verbose(label="highly not ready", fields={'content'})
+select fedsForSubsysMap() as content from pattern[every (RunStart or RunStop )] unidirectional;
