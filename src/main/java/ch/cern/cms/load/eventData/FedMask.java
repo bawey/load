@@ -110,7 +110,7 @@ public class FedMask {
 	}
 
 	public static boolean isFedActive(int fedId) {
-		FedMask foi = registry.get(fedId);
-		return foi != null && (foi.isTtsEnabled() || foi.isSlinkEnabled());
+		FedMask fedOfInterest = registry.get(fedId);
+		return fedOfInterest != null && (fedOfInterest.isTtsEnabled() || fedOfInterest.isSlinkEnabled());
 	}
 }

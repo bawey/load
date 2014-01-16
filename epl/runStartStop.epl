@@ -28,15 +28,17 @@ create variable long runStartTime=current_timestamp();
 
 on RunStart set runStartTime = current_timestamp();
 
+create expression subsystems { (select concat(SUBSYS) from levelZeroFM_subsys.std:unique(SUBSYS) where INOUT='In') } ;
+create expression runNumber { (select RUN_NUMBER from levelZeroFM_static.win:length(10).std:unique(SID) where SID=sid) } ;
+
 //Message on Run Start giving: Run NR, SID, Detectors in, (*)Feds in per detectoroverview
-@Verbose(label='output-start-stop', extraNfo="RunStart", fields={'sid'})
-select sid from pattern [every RunStart] unidirectional;
+@Verbose(label='output-start-stop', extraNfo="RunStart", fields={'systime','sid','runNumber','detectors','fedsPerSubsystem'})
+select sid, date(current_timestamp()) as systime, runNumber() as runNumber, fedsForSubsysMap() as fedsPerSubsystem, subsystems() as detectors from pattern [every RunStart] unidirectional;
 
 //Message on Run Stop giving: Run Nr, SID, Detectors in, (*)Feds in per detector, avg L1 rate, avg stream A rate, avg dead time (from trigger LAS), duration
-@Verbose(label='output-start-stop', extraNfo="Run Stop", fields={'sid'})
-select sid from pattern [every RunStop] unidirectional;
+@Verbose(label='output-start-stop', extraNfo="Run Stop", fields={'systime','sid','runNumber','detectors', 'fedsPerSubsystem'})
+select date(current_timestamp()) as systime, sid, subsystems() as detectors, runNumber() as runNumber, fedsForSubsysMap() as fedsPerSubsystem from pattern [every RunStop] unidirectional;
 
 
 
-@Verbose(label="highly not ready", fields={'content'})
-select fedsForSubsysMap() as content from pattern[every (RunStart or RunStop )] unidirectional;
+

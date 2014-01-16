@@ -358,7 +358,25 @@ on pattern[every DeadL1RateTimer(elapsed>minStuckTime)] insert into DeadL1RateBx
                 <p>on Event as sth but on pattern[sth=Event]</p>
                 <p>typename sometimes before (variables), sometimes after identifier</p>
             </li>
+			<li>
+				I wanted to use custom aggregation methods for preparing comma separated lists and found out something disturbing.
+
+For a query like this:
+expression subsystems { (select concat(SUBSYS) from levelZeroFM_subsys.std:unique(SUBSYS) where INOUT='In') } select sid, subsystems() as subsys from pattern [every RunStop] unidirectional;
+
+The grouping method turns out to be ran thousands of times without any output being produced (lack of output is in this case desired). For the latter the from pattern [...] unidirectional works fine as a trigger, yet under the hood it seems to be doing lots of unnecessary processing.
+
+This is quite strange for me, as I really would expect Esper only to perform the window updating continuously with accessing and grouping performed in a more "on-demand" manner.
+Some long time ago I also hoped it does not create duplicate objects for the inline defined windows like SomeWindow:std.unique(id), but now I am increasingly afraid it is not so and I should actually keep track of all windows and their respective contents to reuse where possible. Not that I have not tried, but machine would probably do such things much better.|
+		
+			</li>
         </ul>
+
+			
+
+		
+
+
 
     </body>
 </html>

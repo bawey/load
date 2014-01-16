@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
+import ch.cern.cms.esper.CustomConcatFactory;
 import ch.cern.cms.esper.StatementsLifecycleManager;
 import ch.cern.cms.esper.Trx;
 import ch.cern.cms.esper.annotations.Conclusion;
@@ -45,7 +46,7 @@ public class EventProcessor {
 
 	protected EventProcessor() {
 		Load load = Load.getInstance();
-		
+
 		Configuration c = new Configuration();
 		c.getEngineDefaults().getExecution().setPrioritized(true);
 
@@ -82,8 +83,10 @@ public class EventProcessor {
 		c.addPlugInSingleRowFunction("suspend", StatementsLifecycleManager.class.getCanonicalName(), "suspend");
 		c.addPlugInSingleRowFunction("resume", StatementsLifecycleManager.class.getCanonicalName(), "resume");
 		c.addPlugInSingleRowFunction("fedsForSubsysMap", HwInfo.class.getCanonicalName(), "getSubsystemToFEDsMap");
-		
-		
+
+		//c.addPlugInAggregationFunctionFactory("concat", CustomConcatFunction.class.getCanonicalName());
+		c.addPlugInAggregationFunctionFactory("concat", CustomConcatFactory.class.getCanonicalName());
+
 		// this might be a nice way to define the timestamps relationship
 		// c.addPlugInPatternGuard(namespace, name, guardFactoryClass)
 
