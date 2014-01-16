@@ -43,7 +43,9 @@ public class EventProcessor {
 
 	private final static Logger logger = Logger.getLogger(EventProcessor.class);
 
-	protected EventProcessor(Load load) {
+	protected EventProcessor() {
+		Load load = Load.getInstance();
+		
 		Configuration c = new Configuration();
 		c.getEngineDefaults().getExecution().setPrioritized(true);
 

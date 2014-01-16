@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
@@ -45,6 +46,7 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	public static final String KEY_DB_USER = "flashlistDbUser";
 	public static final String KEY_DB_PASS = "flashlistDbPass";
 	public static final String KEY_RETRIEVAL_TIMESTAMP_NAME = "retrievalTimestampName";
+	public static final boolean USE_MAPS = false;
 
 	private Connection conn;
 	private Statement statement;
@@ -59,6 +61,7 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	private Long timespanEnd;
 
 	private Collection<String> flashlistNames;
+	private Map<String, Set<String>> blacklists;
 
 	/**
 	 * 
@@ -78,6 +81,7 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 		timespanStart = this.controller.getSettings().getLong(Settings.KEY_TIMER_START, 0l);
 		timespanEnd = this.controller.getSettings().getLong(Settings.KEY_TIMER_END, System.currentTimeMillis());
 		flashlistNames = this.controller.getSettings().getSemicolonSeparatedValues(AbstractFlashlistEventsTap.KEY_FLASHLISTS);
+		blacklists = new HashMap<String, Set<String>>();
 
 		try {
 			String type = path.split(":")[1];
@@ -92,14 +96,20 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
 			while (rs.next()) {
 				String tableName = rs.getString(1);
-				if (flashlistNames.contains(tableName)) {
-					ResultSet details = conn.createStatement().executeQuery("describe " + tableName);
 
-					List<String> headers = new LinkedList<String>();
-					while (details.next()) {
-						headers.add(details.getString(1));
+				blacklists.put(tableName, expert.getSettings().getBlacklistedFields(tableName));
+
+				if (flashlistNames.contains(tableName)) {
+					ResultSet tableDescription = conn.createStatement().executeQuery("describe " + tableName);
+
+					List<String> columnNamesList = new LinkedList<String>();
+					while (tableDescription.next()) {
+						String fieldName = tableDescription.getString(1);
+						if (blacklists.get(tableName) == null || !blacklists.get(tableName).contains(fieldName)) {
+							columnNamesList.add(fieldName);
+						}
 					}
-					definitions.put(tableName, headers.toArray(new String[headers.size()]));
+					definitions.put(tableName, columnNamesList.toArray(new String[columnNamesList.size()]));
 				}
 			}
 			System.out.println("Gathered definitions: " + definitions.keySet());
@@ -112,26 +122,28 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 	@Override
 	public void registerEventTypes(Load expert) {
 		for (String eventName : definitions.keySet()) {
-			// as Object[]
-			// Object[] types = new Object[columns.get(eventName).length];
-			// types[0] = Long.class;
-			// for (int i = 1; i < types.length; ++i) {
-			// types[i] = controller.getResolver().getFieldType(eventName, columns.get(eventName)[i]);
-			// }
-			// controller.getEventProcessor().getAdministrator().getConfiguration().addEventType(eventName, columns.get(eventName), types);
-
-			Map<String, Object> types = new HashMap<String, Object>();
-			for (String fieldName : definitions.get(eventName)) {
-				Class<?> type = String.class;
-				if (fieldName.equals(fetchstampName)) {
-					type = Long.class;
-				} else {
-					type = controller.getResolver().getFieldType(fieldName, eventName);
+			if (USE_MAPS) {
+				Map<String, Object> types = new HashMap<String, Object>();
+				for (String fieldName : definitions.get(eventName)) {
+					Class<?> type = String.class;
+					if (fieldName.equals(fetchstampName)) {
+						type = Long.class;
+					} else {
+						type = controller.getResolver().getFieldType(fieldName, eventName);
+					}
+					types.put(fieldName, type);
+					logger.debug("event: " + eventName + ", field: " + fieldName);
 				}
-				types.put(fieldName, type);
-				logger.debug("event: "+eventName+", field: "+fieldName);
+				controller.getEventProcessor().getAdministrator().getConfiguration().addEventType(eventName, types);
+			} else {
+				// as Object[]
+				Object[] fieldTypes = new Object[definitions.get(eventName).length];
+				fieldTypes[0] = Long.class;
+				for (int i = 1; i < fieldTypes.length; ++i) {
+					fieldTypes[i] = controller.getResolver().getFieldType(definitions.get(eventName)[i], eventName);
+				}
+				controller.getEventProcessor().getAdministrator().getConfiguration().addEventType(eventName, definitions.get(eventName), fieldTypes);
 			}
-			controller.getEventProcessor().getAdministrator().getConfiguration().addEventType(eventName, types);
 		}
 	}
 
@@ -182,7 +194,11 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 						EventEnvelope ee = queue.take();
 						long start = System.currentTimeMillis();
 						if (ee.name != null) {
-							rt.sendEvent(ee.map(), ee.name);
+							if (USE_MAPS) {
+								rt.sendEvent(ee.map(), ee.name);
+							} else {
+								rt.sendEvent(ee.array(), ee.name);
+							}
 						} else {
 							rt.sendEvent(ee.event);
 						}
@@ -223,28 +239,38 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 					long time = times.getLong(1);
 					queue.put(new EventEnvelope(null, new CurrentTimeSpanEvent(time)));
 					// timePushTimes.add(System.currentTimeMillis() - start);
-					for (String table : definitions.keySet()) {
-						selects.get(table).setLong(1, time);
+					for (String eventName : definitions.keySet()) {
+						selects.get(eventName).setLong(1, time);
 						start = System.currentTimeMillis();
-						ResultSet fetched = selects.get(table).executeQuery();
+						ResultSet fetched = selects.get(eventName).executeQuery();
 						// dataPullTimes.add(System.currentTimeMillis() - start);
 						start = System.currentTimeMillis();
-						String[] columnsArray = definitions.get(table);
+						String[] columnsArray = definitions.get(eventName);
+						Set<String> blacklist = blacklists.get(eventName);
 						while (fetched.next()) {
-
-							// as Object[]?
-							// Object[] event = new Object[columnsArray.length];
-							// event[0] = fetched.getLong(1);
-							// for (int i = 1; i < event.length; ++i) {
-							// event[i] = controller.getResolver().convert(fetched.getString(i + 1), columnsArray[i], table);
-							// }
-
-							Map<String, Object> event = new HashMap<String, Object>();
-							event.put(columnsArray[0], fetched.getLong(1));
-							for (int i = 1; i < columnsArray.length; ++i) {
-								event.put(columnsArray[i], controller.getResolver().convert(fetched.getString(i + 1), columnsArray[i], table));
+							if (USE_MAPS) {
+								Map<String, Object> event = new HashMap<String, Object>();
+								event.put(columnsArray[0], fetched.getLong(1));
+								for (int i = 1; i < fetched.getMetaData().getColumnCount(); ++i) {
+									String columnName = fetched.getMetaData().getColumnName(i+1);
+									if (blacklist == null || !blacklist.contains(columnName)) {
+										event.put(columnName, controller.getResolver().convert(fetched.getString(i + 1), columnName, eventName));
+									}
+								}
+								queue.put(new EventEnvelope(eventName, event));
+							} else {
+								// as Object[]?
+								Object[] event = new Object[columnsArray.length];
+								event[0] = fetched.getLong(1);
+								int valids = 1;
+								for (int i = 1; i < fetched.getMetaData().getColumnCount(); ++i) {
+									String columnName = fetched.getMetaData().getColumnName(i+1);
+									if (blacklist == null || !blacklist.contains(columnName)) {
+										event[valids++] = controller.getResolver().convert(fetched.getString(i + 1), columnName, eventName);
+									}
+								}
+								queue.put(new EventEnvelope(eventName, event));
 							}
-							queue.put(new EventEnvelope(table, event));
 						}
 						// dataPushTimes.add(System.currentTimeMillis() - start);
 					}

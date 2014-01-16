@@ -9,7 +9,7 @@
 <objectives_group name="Running">
 	<objective severity="info" status="question">
 		<overview>Message on Run Start giving: Run NR, SID, Detectors in, (*)Feds in per detector</overview>
-		<notes>Where is the run number? Where are detectors 'in'? How to resolve FEDs per detector? (like this? frl.getTTCPartition().getSubSystem())</notes>
+		<notes>Where is the run number(frlcontrollerCard.runNumber)? Where are detectors 'in'? How to resolve FEDs per detector? (like this? frl.getTTCPartition().getSubSystem())</notes>
 		<details></details>
 		<solution></solution>
 		<epl></epl>

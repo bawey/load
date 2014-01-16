@@ -7,9 +7,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
 
@@ -27,6 +28,8 @@ public class Settings extends Properties {
 	public static final String KEY_TIMER_STEP = "timerStep";
 	public static final String KEY_TIMER_END = "timerEnd";
 	public static final String KEY_TIMER_OFFSET = "timerOffset";
+
+	public static final String PREFIX_BLACKLIST = "blacklist_";
 
 	private static final Logger logger = Logger.getLogger(Settings.class);
 
@@ -209,4 +212,15 @@ public class Settings extends Properties {
 		}
 	}
 
+	public Set<String> getBlacklistedFields(String flashlistName) {
+		if (this.containsKey(PREFIX_BLACKLIST + flashlistName)) {
+			String[] tokens = this.getProperty(PREFIX_BLACKLIST + flashlistName).split(";");
+			Set<String> set = new HashSet<String>();
+			for (String s : tokens) {
+				set.add(s);
+			}
+			return set;
+		}
+		return null;
+	}
 }

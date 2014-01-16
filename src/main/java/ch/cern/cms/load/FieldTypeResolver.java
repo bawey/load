@@ -23,9 +23,11 @@ public final class FieldTypeResolver extends HashMap<String, Class<?>> {
 
 	private int dateTrimLength;
 
-	protected FieldTypeResolver(Load load) {
+	protected FieldTypeResolver() {
+		this.load = Load.getInstance();
 		dateTrimLength = load.getSettings().getProperty("dateFormat").replace("'", "").length();
-		this.load = load;
+		crudeSetup();
+		System.out.println("producing resolver!");
 	}
 
 	private static final long serialVersionUID = 1L;
@@ -35,8 +37,8 @@ public final class FieldTypeResolver extends HashMap<String, Class<?>> {
 	}
 
 	public Class<?> getFieldType(String fieldName, String listName) {
-		Class<?> result = containsKey(listName + "." + fieldName) ? get(listName + "." + fieldName) : null;
-		result = result != null ? result : get(fieldName);
+		Class<?> result = this.containsKey(listName + "." + fieldName) ? this.get(listName + "." + fieldName) : null;
+		result = result != null ? result : this.get(fieldName);
 		return result != null ? result : String.class;
 	}
 
@@ -103,5 +105,37 @@ public final class FieldTypeResolver extends HashMap<String, Class<?>> {
 	public boolean isRolled(String propertyName, String eventName) {
 		return false;
 		// return propertyName.equals("streamNames") || propertyName.equals("ratePerStream");
+	}
+
+	private void crudeSetup() {
+		setFieldType("deltaT", Double.class);
+		setFieldType("deltaN", Double.class);
+		setFieldType("fifoAlmostFullCnt", Long.class);
+		setFieldType("fractionBusy", Double.class);
+		setFieldType("fractionWarning", Double.class);
+		setFieldType("clockCount", Double.class);
+		setFieldType("linkNumber", Integer.class);
+		setFieldType("slotNumber", Integer.class);
+		setFieldType("geoslot", Integer.class);
+		setFieldType("io", Integer.class);
+		setFieldType("epMacroStateInt", List.class);
+		setFieldType("nbProcessed", Long.class);
+		setFieldType("bxNumber", Long.class);
+		setFieldType("triggerNumber", Long.class);
+		setFieldType("FEDSourceId", Long.class);
+		setFieldType("timestamp", Date.class);
+		setFieldType("lastEVMtimestamp", Date.class);
+		setFieldType("streamNames", String[].class);
+		setFieldType("ratePerStream", Double[].class);
+
+		setFieldType("myrinetLastResyncEvt", Long.class);
+		setFieldType("myrinetResync", Long.class);
+		setFieldType("cpuUsage", Double.class);
+		setFieldType("timeTag", Long.class);
+		setFieldType("integralTimeBusy", Long.class);
+		setFieldType("integralTimeError", Long.class);
+		setFieldType("integralTimeOOS", Long.class);
+		setFieldType("integralTimeWarning", Long.class);
+		setFieldType("integralTimeReady", Long.class);
 	}
 }

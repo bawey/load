@@ -35,7 +35,12 @@ public class Load {
 		if (instance == null) {
 			synchronized (Load.class) {
 				if (instance == null) {
+					System.out.println("getting new LOAD instance for "+Thread.currentThread().getName());
 					instance = new Load();
+					
+					instance.ep = new EventProcessor();
+					instance.resolver = new FieldTypeResolver();
+					instance.settings.put(Settings.KEY_RESOLVER, instance.resolver);
 				}
 			}
 		}
@@ -46,6 +51,7 @@ public class Load {
 	 * @param args
 	 */
 	public static final void main(String[] args) {
+		Thread.currentThread().setName("Level 0 Anomaly Detective");
 		instance = getInstance();
 		if (instance.settings.getProperty(DataBaseFlashlistEventsTap.KEY_DB_MODE, "read").equalsIgnoreCase("write")) {
 			MysqlDumper.main(args);
@@ -56,13 +62,13 @@ public class Load {
 
 	private final Settings settings;
 
-	private final EventProcessor ep;
+	private EventProcessor ep;
 
 	private final Set<ExpertGui> guis = new HashSet<ExpertGui>();
 
 	private final Set<AbstractEventsTap> taps = new HashSet<AbstractEventsTap>();
 
-	private final FieldTypeResolver resolver;
+	private FieldTypeResolver resolver;
 
 	private final Set<LoadView> views = new HashSet<LoadView>();
 
@@ -70,11 +76,8 @@ public class Load {
 
 	private Load() {
 		// settings have to go first!
-		Thread.currentThread().setName("Level 0 Anomaly Detective");
+		System.out.println("producing LOAD");
 		settings = new Settings();
-		ep = new EventProcessor(this);
-		resolver = new FieldTypeResolver(this);
-		settings.put(Settings.KEY_RESOLVER, resolver);
 		setUpSOCKSProxy();
 	}
 
@@ -105,8 +108,6 @@ public class Load {
 		// looks stupid - calls every known component to perform its setup
 		// depending on the config file's contents
 		// place for dependency injection??
-
-		temporaryMethodToSetUpResolverTypes();
 
 		// register the views
 		this.setUpViews();
@@ -170,38 +171,6 @@ public class Load {
 				timer.setStepSize(Long.parseLong(settings.getProperty(Settings.KEY_TIMER_STEP)));
 			}
 		}
-	}
-
-	private void temporaryMethodToSetUpResolverTypes() {
-		getResolver().setFieldType("deltaT", Double.class);
-		getResolver().setFieldType("deltaN", Double.class);
-		getResolver().setFieldType("fifoAlmostFullCnt", Long.class);
-		getResolver().setFieldType("fractionBusy", Double.class);
-		getResolver().setFieldType("fractionWarning", Double.class);
-		getResolver().setFieldType("clockCount", Double.class);
-		getResolver().setFieldType("linkNumber", Integer.class);
-		getResolver().setFieldType("slotNumber", Integer.class);
-		getResolver().setFieldType("geoslot", Integer.class);
-		getResolver().setFieldType("io", Integer.class);
-		getResolver().setFieldType("epMacroStateInt", List.class);
-		getResolver().setFieldType("nbProcessed", Long.class);
-		getResolver().setFieldType("bxNumber", Long.class);
-		getResolver().setFieldType("triggerNumber", Long.class);
-		getResolver().setFieldType("FEDSourceId", Long.class);
-		getResolver().setFieldType("timestamp", Date.class);
-		getResolver().setFieldType("lastEVMtimestamp", Date.class);
-		getResolver().setFieldType("streamNames", String[].class);
-		getResolver().setFieldType("ratePerStream", Double[].class);
-
-		getResolver().setFieldType("myrinetLastResyncEvt", Long.class);
-		getResolver().setFieldType("myrinetResync", Long.class);
-		getResolver().setFieldType("cpuUsage", Double.class);
-		getResolver().setFieldType("timeTag", Long.class);
-		getResolver().setFieldType("integralTimeBusy", Long.class);
-		getResolver().setFieldType("integralTimeError", Long.class);
-		getResolver().setFieldType("integralTimeOOS", Long.class);
-		getResolver().setFieldType("integralTimeWarning", Long.class);
-		getResolver().setFieldType("integralTimeReady", Long.class);
 	}
 
 	private Object instantiateComponent(String type, String id) {
