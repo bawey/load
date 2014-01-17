@@ -83,8 +83,10 @@ public class EventProcessor {
 		c.addPlugInSingleRowFunction("suspend", StatementsLifecycleManager.class.getCanonicalName(), "suspend");
 		c.addPlugInSingleRowFunction("resume", StatementsLifecycleManager.class.getCanonicalName(), "resume");
 		c.addPlugInSingleRowFunction("fedsForSubsysMap", HwInfo.class.getCanonicalName(), "getSubsystemToFEDsMap");
+		c.addPlugInSingleRowFunction("formatMs", Trx.class.getCanonicalName(), "formatMs");
+		c.addPlugInSingleRowFunction("regExtract", Trx.class.getCanonicalName(), "regExtract");
 
-		//c.addPlugInAggregationFunctionFactory("concat", CustomConcatFunction.class.getCanonicalName());
+		// c.addPlugInAggregationFunctionFactory("concat", CustomConcatFunction.class.getCanonicalName());
 		c.addPlugInAggregationFunctionFactory("concat", CustomConcatFactory.class.getCanonicalName());
 
 		// this might be a nice way to define the timestamps relationship

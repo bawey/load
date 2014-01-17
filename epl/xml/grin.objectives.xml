@@ -7,19 +7,19 @@
 	</objective>
 </objectives_group>
 <objectives_group name="Running">
-	<objective severity="info" status="question">
+	<objective severity="info" status="done">
 		<overview>Message on Run Start giving: Run NR, SID, Detectors in, (*)Feds in per detector</overview>
-		<notes>Where is the run number(frlcontrollerCard.runNumber)? Where are detectors 'in'? How to resolve FEDs per detector? (like this? frl.getTTCPartition().getSubSystem())</notes>
+		<notes>Is the run number in frlcontrollerCard.runNumber? The detectors in are in levelZeroFM_subsys. How to resolve FEDs per detector? (like this? frl.getTTCPartition().getSubSystem())</notes>
 		<details></details>
-		<solution></solution>
-		<epl></epl>
+		<solution>Subsystems in uses a custom aggretaion method that turns out to be running all the time (and not on demand)</solution>
+		<epl>runStartStop.epl</epl>
 	</objective>
-	<objective severity="info" status="question">
+	<objective severity="info" status="fixed">
 		<overview>Message on Run Stop giving: Run Nr, SID, Detectors in, (*)Feds in per detector, avg L1 rate, avg stream A rate, avg dead time (from trigger LAS), duration</overview>
 		<notes>Same as for run start, but also: get avg L1 rate, avg stream A rate, avg dead time from trigger LAS, the duration</notes>
 		<details></details>
-		<solution></solution>
-		<epl></epl>
+		<solution>Requires using a context initiated when a run starts and terminated when it ends. Turns out a named expression cannot contain a subquery using context, so the values are being kept and constantly updated as variables.</solution>
+		<epl>runStartStop.epl</epl>
 		<notes>SMPerformance StreamNames ratePerStream "A" sum over SMs</notes>
 	</objective>
 
@@ -156,9 +156,11 @@
 		<notes>Group is determined like above. CPU usage per context (ports will differ from the EventProcessorStatus.context) can be found in hostInfo and hltCpuUsage flashlists.</notes>
 		<epl>rateAndCpuPerGroup.epl</epl>
 	</objective>
-	<objective status="question">
+	<objective status="done">
 			<overview>deadTime (from trigger LAS)</overview>
 			<notes>Check the DAQ Doctor for details...</notes>
+			<solution>Uses a regexp to extract the number from gt_cell_lumiseg table.GtPartition0DeadtimeRatio.DeadtimeBeamActive</solution>
+			<epl>triggerLasDeadtime.epl</epl>
 	</objective>
 </objectives_group>
 

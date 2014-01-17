@@ -276,7 +276,7 @@ public final class HwInfo implements Serializable {
 			List<Long> list = new LinkedList<Long>();
 			for (FED fed : ttcp.getFEDs().values()) {
 				if (FedMask.isFedActive((int) fed.getId()));
-				list.add(fed.getId());
+				list.add((long)fed.getSrcId());
 			}
 			if (!list.isEmpty()) {
 				m.put(ttcp.getSubSystem().getName(), list);

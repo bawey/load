@@ -1,0 +1,6 @@
+create objectarray schema TriggerLasDtStream as (dt double);
+
+insert into TriggerLasDtStream select double(regExtract(GtPartition0DeadtimeRatio,"(\\[\"DeadtimeBeamActive\",)(.+?)(])",2)) as dt from gt_cell_lumiseg;
+
+@Watched(label='TRG LAS DT')
+select dt from TriggerLasDtStream;

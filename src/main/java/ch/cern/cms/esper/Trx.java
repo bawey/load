@@ -2,12 +2,12 @@ package ch.cern.cms.esper;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.log4j.Logger;
 
@@ -122,15 +122,13 @@ public class Trx {
 		}
 		return map;
 	}
-	
-	
+
 	public static final boolean isNonvariant(Object o) {
 		System.out.println(o.getClass());
 		System.out.println(o.toString());
 		return false;
 	}
 
-	
 	public static final class FakeMap extends HashMap<Object, Object> {
 		private static final long serialVersionUID = 1L;
 
@@ -143,6 +141,22 @@ public class Trx {
 		}
 	}
 
-	
-	
+	public static final String formatMs(long ms) {
+		StringBuilder sb = new StringBuilder();
+
+		Integer msec = (int) (ms % 1000);
+		Integer sec = (int) ((ms / 1000) % 60);
+		Integer mins = (int) (ms / 1000 / 60) % 60;
+		Integer hours = (int) (ms / 1000 / 60 / 60);
+
+		return sb.append(hours.toString()).append(":").append(mins.toString()).append(":").append(sec.toString()).append(".").append(msec.toString())
+				.toString();
+	}
+
+	public static final String regExtract(String src, String regexp, int groupNo) {
+		Pattern p = Pattern.compile(regexp);
+		Matcher matcher = p.matcher(src);
+		matcher.find();
+		return matcher.group(groupNo);
+	}
 }
