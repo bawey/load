@@ -370,6 +370,13 @@ This is quite strange for me, as I really would expect Esper only to perform the
 Some long time ago I also hoped it does not create duplicate objects for the inline defined windows like SomeWindow:std.unique(id), but now I am increasingly afraid it is not so and I should actually keep track of all windows and their respective contents to reuse where possible. Not that I have not tried, but machine would probably do such things much better.|
 		
 			</li>
+            <li>
+                select avgTrgRate as average, a.rate as last, date(lastEVMtimestamp) as srctime, date(current_timestamp()) as systime 
+    from pattern[every a=L1Rates(rate>(avgTrgRate*(1+rateJumpMargin)) or rate < (avgTrgRate*(1-rateJumpMargin)))]
+    output first every 1 seconds;
+
+        ADDING 'output...' prevents anything else from being displayed :O
+            </li>
         </ul>
 
 			

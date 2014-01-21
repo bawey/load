@@ -61,12 +61,9 @@ public class FileSink extends LoadView {
 				while (true) {
 					try {
 						UpdateEnvelope e = queue.take();
-
 						if (e.newEvents == null) {
-							logger.warn("Null new events for " + e.statement.getText());
 							continue;
 						}
-
 						VerboseAttributes va = new VerboseAttributes(e.statement);
 						if (!writers.containsKey(va.label)) {
 							writers.put(va.label, new BufferedWriter(new FileWriter(new File(output, va.label))));

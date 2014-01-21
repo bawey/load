@@ -42,6 +42,10 @@ public abstract class LoadView {
 			va = new VerboseAttributes(ue.statement);
 		}
 
+		if (ue == null || ue.newEvents == null) {
+			return null;
+		}
+
 		StringBuilder sb = new StringBuilder();
 		for (EventBean eventBean : ue.newEvents) {
 			if (sb.length() > 0) {

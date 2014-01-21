@@ -1,18 +1,18 @@
-create objectarray schema DaqStateChangeStream as (time Date, fromState String, toState String);
+create objectarray schema DaqStateChangeStream as (srctime Date, systime Date, fromState String, toState String);
 
-@Verbose(label='output', fields={'time', 'subsys', 'fromState', 'toState'}, extraNfo = 'Subsystem changed state')
+@Verbose(label='output', fields={'systime', 'subsys', 'fromState', 'toState', 'srctime'}, extraNfo = 'Subsystem changed state')
 select * from levelZeroFM_subsys match_recognize(
 	partition by SUBSYS
-	measures A.STATE as fromState, B.STATE as toState, B.timestamp as time, A.SUBSYS as subsys
+	measures A.STATE as fromState, B.STATE as toState, B.timestamp as srctime, A.SUBSYS as subsys, date(B.fetchstamp) as systime
 	pattern (A B)
 	define
 		B as B.STATE != A.STATE and B.STATE.toUpperCase() in ('ERROR','RUNNING_DEGRADED','RUNNING_SOFT_ERROR_DETECTED','PAUSING','PAUSED','RESUMING')
 );
 
 insert into DaqStateChangeStream
-select time, fromState, toState from levelZeroFM_subsys match_recognize(
+select srctime, systime, fromState, toState from levelZeroFM_subsys match_recognize(
 	partition by SUBSYS
-	measures A.STATE as fromState, B.STATE as toState, B.timestamp as time
+	measures A.STATE as fromState, B.STATE as toState, B.timestamp as srctime, date(B.fetchstamp) as systime
 	pattern (A B)
 	define
 		A as A.SUBSYS='DAQ',
@@ -20,5 +20,5 @@ select time, fromState, toState from levelZeroFM_subsys match_recognize(
 );
 
 
-@Verbose(label='output', fields={'time', 'fromState', 'toState'}, extraNfo = 'DAQ changed state')
-select time, fromState, toState from DaqStateChangeStream;
+@Verbose(label='output', fields={'systime', 'fromState', 'toState', 'srctime'}, extraNfo = 'DAQ changed state')
+select systime, srctime, fromState, toState from DaqStateChangeStream;

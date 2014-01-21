@@ -48,11 +48,11 @@ context CurrentRun insert into RunDuration select max(current_timestamp())-min(c
 context CurrentRun insert into RunAvgTrgLasDt select avg(dt) as dt from TriggerLasDtStream;
 
 /** Message on Run Start giving: Run NR, SID, Detectors in, (*)Feds in per detectoroverview **/
-@Verbose(label='output-start-stop', extraNfo="RunStart", fields={'systime','sid','runNumber','detectors','fedsPerSubsystem'})
+@Verbose(label='output', extraNfo="RunStart", fields={'systime','sid','runNumber','detectors','fedsPerSubsystem'})
 select sid, date(current_timestamp()) as systime, runNumber() as runNumber, fedsForSubsysMap() as fedsPerSubsystem, subsystems() as detectors from pattern [every RunStart] unidirectional;
 
 /** Message on Run Stop giving: Run Nr, SID, Detectors in, (*)Feds in per detector, avg L1 rate, avg stream A rate, avg dead time (from trigger LAS), duration **/
-@Verbose(label='output-start-stop', extraNfo="Run Stop", fields={'systime','sid','runNumber','runDuration','avgRunRate','avgStreamARate', 'avgTrgLasDt', 'detectors', 'fedsPerSubsystem'})
+@Verbose(label='output', extraNfo="Run Stop", fields={'systime','sid','runNumber','runDuration','avgRunRate','avgStreamARate', 'avgTrgLasDt', 'detectors', 'fedsPerSubsystem'})
 select date(current_timestamp()) as systime, sid, subsystems() as detectors, runNumber() as runNumber, fedsForSubsysMap() as fedsPerSubsystem, 
 	runAvgRate() as avgRunRate, runAvgARate() as avgStreamARate, formatMs(runDuration()) as runDuration, avgTrgLasDt() as avgTrgLasDt
 	from pattern [every RunStop] unidirectional;

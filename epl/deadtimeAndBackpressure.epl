@@ -109,18 +109,18 @@ insert into FmmInput select * from AllFmmInput as x
 /****** DECLARE ADDITIONAL OUTPUT STATEMENTS ******/
 
 @Description('Backpressure > 1%, alarm')
-@Verbose(label='output', fields={'time','fedId','bp','timestamp'}, extraNfo='FED Backpressure:')
-select date(x.timestamp) as time, x.timestamp as timestamp, fedId, x.bpFraction as bp from FrlBackpressure as x where x.bpFraction > 0.01;
+@Verbose(label='output', fields={'systime','fedId','bp','srctime'}, extraNfo='FED Backpressure:')
+select date(x.timestamp) as srctime, date(current_timestamp()) as systime, fedId, x.bpFraction as bp from FrlBackpressure as x where x.bpFraction > 0.01;
 
 @Description('FED dead-time > 1%')
-@Verbose(label='output',fields={'time','fedId','dt','timestamp'}, extraNfo='FED Dead-time   :')
-select date(fmm.timestamp) as time, fmm.timestamp as timestamp, fedId, fmm.dtFraction as dt from FmmDeadtime as fmm;
+@Verbose(label='output',fields={'systime','fedId','dt','src'}, extraNfo='FED Dead-time   :')
+select date(fmm.timestamp) as srctime, date(current_timestamp()) as systime, fedId, fmm.dtFraction as dt from FmmDeadtime as fmm;
 
-@Verbose(label='output', extraNfo='FED BP gone', fields={'date', 'fedId', 'bpFraction'})
-select date(timestamp) as date, fedId, bpFraction from FedBpGone;
+@Verbose(label='output', extraNfo='FED BP gone', fields={'systime', 'fedId', 'bpFraction', 'srctime'})
+select date(timestamp) as srctime, date(current_timestamp()) as systime, fedId, bpFraction from FedBpGone;
 
-@Verbose(label='output', extraNfo='FED DT gone', fields={'date', 'fedId', 'dtFraction'})
-select date(timestamp) as date, fedId, dtFraction from FedDtGone;
+@Verbose(label='output', extraNfo='FED DT gone', fields={'systime', 'fedId', 'dtFraction', 'srctime'})
+select date(timestamp) as srctime, date(current_timestamp()) as systime, fedId, dtFraction from FedDtGone;
 
 @Verbose(label='output', extraNfo='FED with BP+DT', fields={'dtTime','bpTime','fedId','dtFraction','bpFraction'})
 select date(dtTime) as dtTime, date(bpTime) as bpTime, dtFraction, bpFraction, fedId from FedDeadPressure;
@@ -160,7 +160,7 @@ select * from SomeStream;
 on pattern[every timer:interval(330 msec)] select fdp.* from FedDeadPressure as fdp;
 
 
-@Verbose(label='output-devel')
+@Verbose(label='output')
 select date(b.timestamp) as bpTime, d.timestamp as dtTime, b.bpFraction as bpFraction, d.fractionBusy+d.fractionWarning as deadtime, fedId(b.kontext, b.slotNumber, b.linkNumber, CmsHw.FRL) as fedId 
     from pattern[every-distinct(d.timestamp, b.timestamp) ((timer:interval(deadPressureOffset msec) or (d=FmmInput((fractionWarning + fractionBusy) > 0.01) and b=FrlBackpressure)))]
     where b is not null and d is not null and dtRelevantFedIds(d.context, d.geoslot, d.io).contains(fedId(b.kontext, b.slotNumber, b.linkNumber, CmsHw.FRL))
@@ -168,7 +168,7 @@ select date(b.timestamp) as bpTime, d.timestamp as dtTime, b.bpFraction as bpFra
 
 
 
-@Verbose(label='output-devel2')
+@Verbose(label='output2')
 select date(b.timestamp) as bpTime, d.timestamp as dtTime, b.bpFraction as bpFraction, d.fractionBusy+d.fractionWarning as deadtime, HwInfo.getInstance().getFedId(b.kontext, b.slotNumber, b.linkNumber, CmsHw.FRL) as fedId
     from pattern[every-distinct(d.timestamp, b.timestamp)
 	(
@@ -180,13 +180,13 @@ select date(b.timestamp) as bpTime, d.timestamp as dtTime, b.bpFraction as bpFra
 ;
 
 // this never seems to work. some evaluation seems to take place upon the b arrival, while the d is null ergo NPE
-@Verbose(label='output-devel')
+@Verbose(label='output')
 select date(b.timestamp) as bpTime, d.timestamp as dtTime, b.bpFraction as bpFraction, d.fractionBusy+d.fractionWarning as deadtime, fedId(b.kontext, b.slotNumber, b.linkNumber, CmsHw.FRL) as fedId 
     from pattern[every d=FmmInput((fractionWarning + fractionBusy) > 0.01) and every b=FrlBackpressure]
     where b is not null and d is not null and dtRelevantFedIds(d.context, d.geoslot, d.io).contains(fedId(b.kontext, b.slotNumber, b.linkNumber, CmsHw.FRL)) and time_span(d.timestamp.getTime(), b.timestamp) < deadPressureSpan;
 
 //this looks fine, but consult the manual on the performance (perhaps a pattern guard has to be put in place)
-@Verbose(label='output-devel2')
+@Verbose(label='output2')
 select date(b.timestamp) as bpTime, d.timestamp as dtTime, b.bpFraction as bpFraction, d.fractionBusy+d.fractionWarning as deadtime, HwInfo.getInstance().getFedId(b.kontext, b.slotNumber, b.linkNumber, CmsHw.FRL) as fedId
     from pattern[every
 	(

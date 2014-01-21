@@ -91,6 +91,9 @@ public class SwingGui extends LoadView {
 			while (true) {
 				try {
 					UpdateEnvelope ue = verboseUpdates.take();
+					if (ue == null || ue.newEvents == null) {
+						continue;
+					}
 
 					VerboseAttributes va = new VerboseAttributes(ue.statement);
 					if (!va.append) {
