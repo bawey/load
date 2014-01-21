@@ -3,7 +3,7 @@
 create variable int rateUpdateCoeff = 2;
 
 @Description('Schema to pass the number of subrateSources through')
-create schema SubrateSrcNo as (cnt long);
+create objectarray schema SubrateSrcNo as (cnt long);
 
 @Description('variable to keep the current Session ID')
 create variable String sid = '';
@@ -14,8 +14,12 @@ create variable Long lastEVMtimestamp = 0;
 @Description('create for EVM data. Keep only the most recent record per context-lid pair. Also, discard events older than 30 seconds')
 create window L1Subrates.std:unique(url,lid).win:time(30 sec) as (subrate Double, url String, lid String, timestamp Long);
 
+
+create objectarray schema L1RatesStream as (rate double, timestamp Long);
+
 @Description('Window for all the L1Rates observed over the previous 60 seconds. ')
-create window L1Rates.win:expr(timestamp>max(timestamp)-60000 and current_count<60) as (rate double, timestamp Long);
+create window L1Rates.win:expr(timestamp>max(timestamp)-60000 and current_count<60) as select * from L1RatesStream;
+insert into L1Rates select * from L1RatesStream;
 
 create variable Double avgTrgRate=null;
 create variable Double indirectAvgTrgRate = null;
@@ -48,7 +52,7 @@ insert into L1Subrates select deltaN/deltaT as subrate, context as url, lid, tim
 on EVM(sessionid=sid) as evm set lastEVMtimestamp=evm.timestamp.getTime();
 
 @Description ('Populate L1Rates with subsequently observed sums over the L1Subrates')
-on pattern[every [rateUpdateCoeff] L1Subrates] insert into L1Rates select sum(subrate) as rate, max(timestamp) as timestamp from L1Subrates;
+on pattern[every [rateUpdateCoeff] L1Subrates] insert into L1RatesStream select sum(subrate) as rate, max(timestamp) as timestamp from L1Subrates;
 
 @Description('Updates the average rate value for the last (up to) 60 seconds. Uses a chain of variables to avoid Math.round(null) call.')
 on pattern[every r=L1Rates] set lastEverRate = r.rate, indirectAvgTrgRate = (select avg(rate) as rate from L1Rates).rate, avgTrgRate = Math.round(averageTriggerRate(indirectAvgTrgRate,lastEverRate));

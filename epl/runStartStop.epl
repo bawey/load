@@ -7,8 +7,7 @@ create objectarray schema RunStart as (daqState String);
 create objectarray schema RunStop as (daqState String);
 
 create variable boolean isRunOn = false;
-/** initialize when the expert starts and knows not the current state**/
-on pattern[p=levelZeroFM_subsys(SUBSYS='DAQ')] set isRunOn=p.STATE.equals('Running');
+
 on pattern[every RunStart] set isRunOn=true;
 on pattern[every RunStop] set isRunOn=false;
 
@@ -25,9 +24,12 @@ insert into RunStart select p.toState as daqState from
 		toState='Running'
 	)] where isRunOn=false;
 
+/** initialize when the expert starts and knows not the current state**/
+insert into RunStart select p.STATE as daqState from pattern[p=levelZeroFM_subsys(SUBSYS='DAQ')] where p.STATE.equals('Running');
 
 /** some information to present upon the end of the run **/
-create context CurrentRun initiated by pattern[every(RunStart or levelZeroFM_subsys(SUBSYS='DAQ', STATE='Running'))] terminated by pattern [every RunStop];
+@Priority(0)
+create context CurrentRun start RunStart end RunStop;
 
 
 create objectarray schema RunAvgRate as (rate double);
@@ -42,8 +44,9 @@ create expression subsystems {(select concat(SUBSYS) from levelZeroFM_subsys.std
 create expression runNumber {(select RUN_NUMBER from levelZeroFM_static.win:length(10).std:unique(SID) where SID=sid)};
 create expression avgTrgLasDt {(select dt from RunAvgTrgLasDt.win:length(1))};
 
+
 context CurrentRun insert into RunAvgARate select avg(rate) as rate from StreamRates where name='A';
-context CurrentRun insert into RunAvgRate select avg(rate) as rate from L1Rates;
+context CurrentRun insert into RunAvgRate select avg(rate) as rate from L1RatesStream;
 context CurrentRun insert into RunDuration select max(current_timestamp())-min(current_timestamp()) as mili from pattern [every timer:interval(100msec)];
 context CurrentRun insert into RunAvgTrgLasDt select avg(dt) as dt from TriggerLasDtStream;
 
@@ -52,6 +55,7 @@ context CurrentRun insert into RunAvgTrgLasDt select avg(dt) as dt from TriggerL
 select sid, date(current_timestamp()) as systime, runNumber() as runNumber, fedsForSubsysMap() as fedsPerSubsystem, subsystems() as detectors from pattern [every RunStart] unidirectional;
 
 /** Message on Run Stop giving: Run Nr, SID, Detectors in, (*)Feds in per detector, avg L1 rate, avg stream A rate, avg dead time (from trigger LAS), duration **/
+@Priority(10)
 @Verbose(label='output', extraNfo="Run Stop", fields={'systime','sid','runNumber','runDuration','avgRunRate','avgStreamARate', 'avgTrgLasDt', 'detectors', 'fedsPerSubsystem'})
 select date(current_timestamp()) as systime, sid, subsystems() as detectors, runNumber() as runNumber, fedsForSubsysMap() as fedsPerSubsystem, 
 	runAvgRate() as avgRunRate, runAvgARate() as avgStreamARate, formatMs(runDuration()) as runDuration, avgTrgLasDt() as avgTrgLasDt
