@@ -144,7 +144,7 @@ public class SwingGui extends LoadView {
 						} else if (src instanceof Map<?, ?>) {
 							props = (Map<?, ?>) src;
 						} else {
-							console("warning", "received sth strange in watchUpdater");
+							console("warning", "received sth strange in watchUpdater..." + src);
 						}
 					}
 					if (props != null) {

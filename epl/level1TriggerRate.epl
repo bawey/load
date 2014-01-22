@@ -30,7 +30,6 @@ create variable double rateJumpMargin = 0.1;
 
 /** DEFINE LOGIC **/
 
-@Watched(label="SubrateSrcNo")
 insert into SubrateSrcNo select count(distinct lid) as cnt from EVM.win:expr(sessionid=sid); 
 
 @Watched(label='rateUpdateCoeff')

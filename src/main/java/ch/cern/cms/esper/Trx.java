@@ -159,4 +159,9 @@ public class Trx {
 		matcher.find();
 		return matcher.group(groupNo);
 	}
+
+	public static final String testest(String meat) {
+		System.out.println(meat + " received");
+		return "whola!";
+	}
 }

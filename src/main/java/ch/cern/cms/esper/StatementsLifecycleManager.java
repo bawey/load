@@ -19,6 +19,10 @@ public class StatementsLifecycleManager {
 	private EPServiceProviderIsolated jail;
 	private Map<String, EPStatement> suspended = new HashMap<String, EPStatement>();
 
+	static {
+		getInstance();
+	}
+
 	private StatementsLifecycleManager() {
 		jail = Load.getInstance().getEventProcessor().getProvider().getEPServiceIsolated("jail");
 	}
@@ -34,68 +38,71 @@ public class StatementsLifecycleManager {
 		return instance;
 	}
 
-	public static final void suspend(String statementName) {
-		suspend(statementName, false);
+	public static final String suspendAll(String... names) {
+		StringBuilder sb = new StringBuilder("Suspended statements: ");
+		for (String name : names) {
+			EPStatement statement = Load.getInstance().getEventProcessor().getAdministrator().getStatement(name);
+			sb.append(name);
+			// ensures a statement is suspended
+			if (!getInstance().suspend(statement)) {
+				sb.append(" (suspended already)");
+			}
+			sb.append(name).append(", ");
+		}
+		sb.setLength(sb.lastIndexOf(", "));
+		sb.trimToSize();
+		return sb.toString();
 	}
 
-	public static final void suspend(String statementName, boolean reset) {
-		EPStatement statement = Load.getInstance().getEventProcessor().getAdministrator().getStatement(statementName);
-		boolean success = true;
-		if (reset) {
-			logger.warn("Great, no idea how to reset that thing. Recreate statement?");
-			Load.getInstance().getEventProcessor().getRuntime()
-					.sendEvent(new String[] { "Great, no idea how to reset that thing. Recreate statement?" }, "DebugMsg");
-		} else {
-			synchronized (StatementsLifecycleManager.class) {
-				String[] jailedNames = getInstance().jail.getEPAdministrator().getStatementNames();
-				for (String jailed : jailedNames) {
-					if (jailed.equals(statementName)) {
-						success = false;
-						break;
-					}
-				}
-				if (success) {
-					instance.suspended.put(statementName, statement);
-				}
-			}
-			if (success) {
-				instance.jail.getEPAdministrator().addStatement(statement);
-				Load.getInstance().getEventProcessor().getRuntime().sendEvent(new String[] { "Statement " + statementName + " suspended" }, "DebugMsg");
+	public static final String resumeAll(String... names) {
+		StringBuilder sb = new StringBuilder("Resumed statements: ");
+		for (String name : names) {
+			EPStatement statement = Load.getInstance().getEventProcessor().getAdministrator().getStatement(name);
+			sb.append(name);
+			// if (!getInstance().resume(statement)) {
+			// sb.append(" (already running)");
+			// }
+			sb.append(name).append(", ");
+		}
+		sb.setLength(sb.lastIndexOf(", "));
+		sb.trimToSize();
+		return sb.toString();
+	}
+
+	public synchronized boolean suspend(EPStatement statement) {
+		synchronized (this) {
+			if (suspended.containsKey(statement.getName())) {
+				return false;
 			} else {
-				Load.getInstance().getEventProcessor().getRuntime().sendEvent(new String[] { "Statement " + statementName + " already suspended" }, "DebugMsg");
+				suspended.put(statement.getName(), statement);
 			}
 		}
+		jail.getEPAdministrator().addStatement(statement);
+		return true;
 	}
 
-	public static final void resume(String statementName) {
-		EPStatement statement = getInstance().suspended.get(statementName);
-		boolean success = false;
-		synchronized (StatementsLifecycleManager.class) {
-			if (instance.suspended.containsKey(statementName)) {
-				instance.suspended.remove(statementName);
-				success = true;
-			}
-		}
-		if (success) {
-			instance.jail.getEPAdministrator().removeStatement(statement);
-			Load.getInstance().getEventProcessor().getRuntime().sendEvent(new String[] { "Statement " + statementName + " resumed" }, "DebugMsg");
+	public synchronized boolean resume(EPStatement statement) {
+		if (suspended.containsKey(statement.getName())) {
+			suspended.remove(statement.getName());
+			jail.getEPAdministrator().removeStatement(statement);
+			return true;
 		} else {
-			Load.getInstance().getEventProcessor().getRuntime().sendEvent(new String[] { "Statement " + statementName + " already running" }, "DebugMsg");
+			return false;
 		}
-	}
 
-	public static final class SubscriberSuspender {
-		public void update(Map<?, ?> map) {
-			System.out.println("suspending: " + map.toString());
-			StatementsLifecycleManager.suspend(map.get("name").toString(), false);
-		}
 	}
-
-	public static final class SubscriberResumer {
-		public void update(Map<?, ?> map) {
-			System.out.println("resuming: " + map.toString());
-			StatementsLifecycleManager.resume(map.get("name").toString());
-		}
-	}
-
+	// public static final String resume(EPStatement statement) {
+	// boolean success = false;
+	// // synchronized (StatementsLifecycleManager.class) {
+	// // if (instance.suspended.containsKey(statementName)) {
+	// // instance.suspended.remove(statementName);
+	// // success = true;
+	// // }
+	// // }
+	// // if (success) {
+	// // instance.jail.getEPAdministrator().removeStatement(statement);
+	// // } else {
+	// // }
+	// return "olaboga";
+	// }
 }

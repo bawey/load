@@ -4,6 +4,7 @@ create objectarray schema DaqStateChangeStream as (srctime Date, systime Date, f
 select * from levelZeroFM_subsys match_recognize(
 	partition by SUBSYS
 	measures A.STATE as fromState, B.STATE as toState, B.timestamp as srctime, A.SUBSYS as subsys, date(B.fetchstamp) as systime
+	after match skip to current row
 	pattern (A B)
 	define
 		B as B.STATE != A.STATE and B.STATE.toUpperCase() in ('ERROR','RUNNING_DEGRADED','RUNNING_SOFT_ERROR_DETECTED','PAUSING','PAUSED','RESUMING')
@@ -13,6 +14,7 @@ insert into DaqStateChangeStream
 select srctime, systime, fromState, toState from levelZeroFM_subsys match_recognize(
 	partition by SUBSYS
 	measures A.STATE as fromState, B.STATE as toState, B.timestamp as srctime, date(B.fetchstamp) as systime
+	after match skip to current row
 	pattern (A B)
 	define
 		A as A.SUBSYS='DAQ',

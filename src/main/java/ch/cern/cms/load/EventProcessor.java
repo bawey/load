@@ -10,8 +10,10 @@ import ch.cern.cms.esper.StatementsLifecycleManager;
 import ch.cern.cms.esper.Trx;
 import ch.cern.cms.esper.annotations.Conclusion;
 import ch.cern.cms.esper.annotations.DaqStateMask;
+import ch.cern.cms.esper.annotations.Deferred;
 import ch.cern.cms.esper.annotations.Verbose;
 import ch.cern.cms.esper.annotations.Watched;
+import ch.cern.cms.load.eplProviders.BasicStructEplProvider;
 import ch.cern.cms.load.eventData.FedMask;
 import ch.cern.cms.load.hwdb.CmsHw;
 import ch.cern.cms.load.hwdb.HwInfo;
@@ -80,12 +82,12 @@ public class EventProcessor {
 		c.addPlugInSingleRowFunction("in_array", Trx.class.getCanonicalName(), "inArray");
 		c.addPlugInSingleRowFunction("tuple", Trx.class.getCanonicalName(), "tuple");
 		c.addPlugInSingleRowFunction("is_nonvariant", Trx.class.getCanonicalName(), "isNonvariant");
-		c.addPlugInSingleRowFunction("suspend", StatementsLifecycleManager.class.getCanonicalName(), "suspend");
-		c.addPlugInSingleRowFunction("resume", StatementsLifecycleManager.class.getCanonicalName(), "resume");
 		c.addPlugInSingleRowFunction("fedsForSubsysMap", HwInfo.class.getCanonicalName(), "getSubsystemToFEDsMap");
 		c.addPlugInSingleRowFunction("formatMs", Trx.class.getCanonicalName(), "formatMs");
 		c.addPlugInSingleRowFunction("regExtract", Trx.class.getCanonicalName(), "regExtract");
-
+		c.addPlugInSingleRowFunction("suspend", StatementsLifecycleManager.class.getCanonicalName(), "suspendAll");
+		c.addPlugInSingleRowFunction("resume", StatementsLifecycleManager.class.getCanonicalName(), "resumeAll");
+		
 		// c.addPlugInAggregationFunctionFactory("concat", CustomConcatFunction.class.getCanonicalName());
 		c.addPlugInAggregationFunctionFactory("concat", CustomConcatFactory.class.getCanonicalName());
 
@@ -127,6 +129,8 @@ public class EventProcessor {
 						}
 					} else if (a.annotationType().equals(DaqStateMask.class)) {
 						StatementsToggler.register(statement, ((DaqStateMask) a).states());
+					} else if (a.annotationType().equals(Deferred.class)) {
+						StatementsLifecycleManager.getInstance().suspend(statement);
 					}
 				}
 			}

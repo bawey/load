@@ -98,19 +98,19 @@ insert into TrgClustersCountStream select -1l as clusters, null as fetchstamp, t
 
 /** OUTPUTS **/
 
-
+@Deferred
 @Name('bxnMisalignment.headline')
 @Priority(10)
 @Verbose(label='output', extraNfo='bxNumbers misaligned', fields={'systime','bxn.clusters', 'srctime'})
 select bxn.clusters, date(bxn.fetchstamp) as systime, bxn.timestamp as srctime from pattern [every bxn=BxnClustersCount(clusters>1)];
 
+@Deferred
 @Name('bxNumber misalignment - details')
 @Priority(1)
 @Verbose(label='output', fields={'systime', 'bxNumber','support','seenFedIds','srctime'}, extraNfo='bxNumbers misalignment - det.')
 select bxNumber, window(ctl.*).aggregate("", (result, row) => result||" "||row.fedId.toString() ) as seenFedIds, count(fedId) as support, 
 	date(current_timestamp()) as systime, date(max(timestamp.getTime())) as srctime
 	from pattern[every BxnClustersCount(clusters>1)]  unidirectional, FrlCtlLnk.std:unique(fedId) as ctl group by bxNumber order by count(fedId) desc;
-
 
 @Verbose(label='output', extraNfo='Bx misalignment problem gone', fields={'systime', 'srctime'})
 select fetchtime as systime, time as srctime from BxnClustersCount match_recognize(
@@ -203,21 +203,31 @@ where dTime>0 and (dBusy=dTime or dWarning=dTime or dError = dTime or dOos = dTi
 
 /** STATEMENTS TOGGLING: would be cool to write insert from ('A','B','C') etc. Possible?**/
 
-@Verbose(label='debug', extraNfo='SuspendingStatement', fields={'name'})
-insert into SuspendedStatements select 'bxnMisalignment.headline' as name from pattern[every RunStop];
+//@Verbose(label='debug', extraNfo='SuspendingStatement', fields={'name'})
+//insert into SuspendedStatements select '' as name from pattern[every RunStop];
 
-@Verbose(label='debug', extraNfo='ResumingStatement', fields={'name'})
-on pattern[every RunStart] delete from SuspendedStatements where name="bxnMisalignment.headline";
+//@Verbose(label='debug', extraNfo='ResumingStatement', fields={'name'})
+//on pattern[every RunStart] delete from SuspendedStatements where name="bxnMisalignment.headline";
 
-@Verbose(label='debug', extraNfo='SuspendingStatement', fields={'name'})
-insert into SuspendedStatements select 'stuckFeds' as name from pattern[every RateStuckAtZeroEvent];
+//@Verbose(label='debug', extraNfo='SuspendingStatement', fields={'name'})
+//insert into SuspendedStatements select 'PopulateZeroRateTimer' as name from pattern[every RunStop];
 
-@Verbose(label='debug', extraNfo='ResumingStatement', fields={'name'})
-on pattern[every RateFineEvent] delete from SuspendedStatements where name="stuckFeds";
+//@Verbose(label='debug', extraNfo='ResumingStatement', fields={'name'})
+//on pattern[every RunStart] delete from SuspendedStatements where name="PopulateZeroRateTimer";
 
-@Verbose(label='debug', extraNfo='SuspendingStatement', fields={'name'})
-insert into SuspendedStatements select 'PopulateZeroRateTimer' as name from pattern[every RunStop];
 
-@Verbose(label='debug', extraNfo='ResumingStatement', fields={'name'})
-on pattern[every RunStart] delete from SuspendedStatements where name="PopulateZeroRateTimer";
+@Name("Suspending when RunStops")
+insert into DebugMsg select suspend({"bxnMisalignment.headline", "PopulateZeroRateTimer"}) as message from pattern [every RunStop];
+@Name("Resuming when RunStarts")
+insert into DebugMsg select resume({"bxnMisalignment.headline", "PopulateZeroRateTimer"}) as message from pattern [every RunStart];
+
+
+@Name("Suspending when rates are zero")
+insert into DebugMsg select suspend({"stuckFeds"}) as message from pattern[every RateStuckAtZeroEvent];
+@Name("Resuming when rates are fine")
+insert into DebugMsg select resume({"stuckFeds"}) as message from pattern[every RateFineEvent];
+
+
+//@Verbose(label='debug', extraNfo='SuspendingStatement', fields={'name'})
+//insert into SuspendedStatements select 'stuckFeds' as name from pattern[every RateStuckAtZeroEvent];
 
