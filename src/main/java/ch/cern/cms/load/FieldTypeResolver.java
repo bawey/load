@@ -119,6 +119,7 @@ public final class FieldTypeResolver extends HashMap<String, Class<?>> {
 		setFieldType("geoslot", Integer.class);
 		setFieldType("io", Integer.class);
 		setFieldType("epMacroStateInt", List.class);
+		setFieldType("epMicroStateInt", List.class);
 		setFieldType("nbProcessed", Long.class);
 		setFieldType("bxNumber", Long.class);
 		setFieldType("triggerNumber", Long.class);

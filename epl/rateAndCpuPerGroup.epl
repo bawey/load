@@ -4,7 +4,7 @@ create objectarray schema ProcessorYields as (kontext String, lid String, units 
 
 insert into ProcessorYields select * from EventProcessorStatus match_recognize(
 	partition by context, lid
-	measures A.context as kontext, A.lid as lid, A.epMicroStateInt.length() as units, (B.nbProcessed - A.nbProcessed)/((B.timestamp.getTime()-A.timestamp.getTime())/1000.0) as rate
+	measures A.context as kontext, A.lid as lid, A.epMicroStateInt.size() as units, (B.nbProcessed - A.nbProcessed)/((B.timestamp.getTime()-A.timestamp.getTime())/1000.0) as rate
 	pattern (A B)
 	define B as B.context = B.context
 );
@@ -20,7 +20,7 @@ select sum(rate) as value, units.toString()||"u events per sec" as label
 
 /** created so that it would be possible to group by units in the subsequent query **/
 create window EventProcessorStatusSnapshot.std:unique(kontext) as (kontext String, units int);
-	insert into EventProcessorStatusSnapshot select context as kontext, epMicroStateInt.length() as units from EventProcessorStatus;
+	insert into EventProcessorStatusSnapshot select context as kontext, epMicroStateInt.size() as units from EventProcessorStatus;
 
 /** 58 - colon on UTF-16, couldn't pass simple char **/
 @Watched

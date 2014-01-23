@@ -1,0 +1,47 @@
+#include "level1TriggerRate.epl"
+#include "runStartStop.epl"
+
+@Description('')
+create variable long deadRateTimeout=10000;
+
+
+@Description('Window to store the oldest and newest from a series of zero-rate events')
+create window L1ZeroRates.win:expr(newest_event.rate=0 and (oldest_event.timestamp = timestamp or newest_event.timestamp = timestamp)) as select * from L1Rates;
+@Description('Window to hold the most recent value of time measured while rate is stuck at 0')
+create window ZeroRateTimer.win:length(1) as (elapsed long);
+
+
+@Deferred
+@Name("l1ZeroRates.populate")
+@Description('Insert all the rates into L1ZeroRates. Retention policy does the trick')
+insert into L1ZeroRates select distinct * from L1Rates;
+
+
+@Deferred
+@Name('zeroRateTimer.populate')
+@Watched(label='deadRateElapsed')
+@Description('On each update on L1ZeroRates, update the measurement of time spent with rates stuck at 0 ')
+insert into ZeroRateTimer select (case when count(*)>1 then max(timestamp)-min(timestamp) else 0 end) as elapsed 
+	from pattern[every L1Rates] unidirectional, L1ZeroRates output last every 10 seconds;
+
+/** Streams to broadcast the 'StuckAtRate0'/'RateFine' states information **/
+create objectarray schema RateStuckAtZeroEvent as (engineTimestamp long);
+create objectarray schema RateFineEvent as (engineTimestamp long);
+
+insert into RateStuckAtZeroEvent select timestamp as engineTimestamp from ZeroRateTimer match_recognize(
+	measures current_timestamp() as timestamp
+	pattern (A)
+	define A as A.elapsed>deadRateTimeout and (prev(A.elapsed) is null or prev(A.elapsed)<=deadRateTimeout)
+);
+
+insert into RateFineEvent select timestamp as engineTimestamp from ZeroRateTimer match_recognize(
+	measures current_timestamp() as timestamp
+	pattern (A)
+	define A as A.elapsed<=deadRateTimeout and (prev(A.elapsed) is null or prev(A.elapsed)>=deadRateTimeout)
+);
+
+@Verbose(label='debug', fields={'msg'}, extraNfo="RunStart resumed stmts")
+select resume({"l1ZeroRates.populate", "zeroRateTimer.populate"}) as msg from pattern [every RunStart];
+
+@Verbose(label='debug', fields={'msg'}, extraNfo="RunStart suspended stmts")
+select suspend({"l1ZeroRates.populate", "zeroRateTimer.populate"}) as msg from pattern [every RunStop];

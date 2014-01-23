@@ -135,7 +135,6 @@ select count(*) from FedDeadPressure;
 @Watched(label='BPfeds')
 select count(*) from FrlBackpressure;
 
-
 /** TESTS **/
 
 /**

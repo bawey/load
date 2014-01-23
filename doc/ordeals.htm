@@ -377,6 +377,20 @@ Some long time ago I also hoped it does not create duplicate objects for the inl
 
         ADDING 'output...' prevents anything else from being displayed :O
             </li>
+            <li>
+                <p>Pure selects don't get executed</p>
+                <code>
+                    //@Verbose(label='debug', fields={'msg'})
+select resume({"InRunTimer"})||", "||suspend({"OutRunTimer"}) as msg from pattern[every RunStart];
+
+//@Verbose(label='debug', fields={'msg'})
+select resume({"OutRunTimer"})||", "||suspend({"InRunTimer"}) as msg from pattern[every RunStop];
+                </code>
+                <p>
+                    Excerpt misses a hooked listener or something to insert into
+                </p>
+
+            </li>
         </ul>
 
 			

@@ -2,6 +2,7 @@
 #include "streamARate.epl"
 #include "level1TriggerRate.epl"
 #include "triggerLasDeadtime.epl"
+#include "subsystemsStateChanges.epl"
 
 create objectarray schema RunStart as (daqState String, systime Date, srctime Date);
 create objectarray schema RunStop as (daqState String, systime Date, srctime Date);

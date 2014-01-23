@@ -1,10 +1,19 @@
-/**
-@Verbose(label='DAQ_STATE')
-select STATE from levelZeroFM_subsys(SUBSYS='DAQ');
+#include "runStartStop.epl"
+/** THIS FILE CONTAINS ONLY STATEMENTS INTENDED TO TEST STATEMENTS TOGGLING **/
 
-@Priority(1)
-@Name('togglable')
-@DaqStateMask(states={'Configured'})
-@Verbose(label='DAQ_STATE', extraNfo='toggled output')
-select STATE from levelZeroFM_subsys(SUBSYS='DAQ');
-**/
+@Deferred
+@Watched(label='in-Run timer')
+@Name("InRunTimer")
+select date(current_timestamp()) from pattern[every timer:interval(333msec)];
+
+@Deferred
+@Watched(label="out-Run timer")
+@Name("OutRunTimer")
+select date(current_timestamp()) from pattern[every timer:interval(333msec)];
+
+
+//@Verbose(label='debug', fields={'msg'})
+select resume({"InRunTimer"})||", "||suspend({"OutRunTimer"}) as msg from pattern[every RunStart];
+
+//@Verbose(label='debug', fields={'msg'})
+select resume({"OutRunTimer"})||", "||suspend({"InRunTimer"}) as msg from pattern[every RunStop];
