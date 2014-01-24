@@ -36,13 +36,6 @@ create window TrgClustersCount.std:lastevent() as select * from TrgClustersCount
 insert into BxnClustersCountStream select count(distinct ctl.bxNumber) as clusters, max(ctl.timestamp.getTime()) as timestamp, max(ctl.fetchstamp) as fetchstamp
 	from pattern[every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, FrlCtlLnk.std:unique(fedId) as ctl;
 
-@Description('Allow only the first event into the window and each subsequent')
-insert into BxnClustersCount select clusters, fetchstamp, timestamp from BxnClustersCountStream match_recognize(
-	measures A.clusters as clusters, A.fetchstamp as fetchstamp, A.timestamp as timestamp
-	pattern (A)	
-	define A as prev(A.clusters, 1) is null or A.clusters != prev(A.clusters, 1) 
-);
-
 @Description('As the rate rises back, insert -1 to indicate pointlessness of analysis')
 insert into BxnClustersCountStream select -1l as clusters, current_timestamp() as fetchstamp, timestamp as timestamp from L1Rates match_recognize(
 	measures A.timestamp as timestamp
@@ -50,12 +43,19 @@ insert into BxnClustersCountStream select -1l as clusters, current_timestamp() a
 	define A as A.rate = 0, B as B.rate >0
 );
 
+@Description('Allow only the first event into the window and each subsequent')
+insert into BxnClustersCount select clusters, timestamp as timestamp, fetchstamp as fetchstamp from BxnClustersCountStream match_recognize(
+	measures A.clusters as clusters, A.fetchstamp as fetchstamp, A.timestamp as timestamp
+	pattern (A)	
+	define A as prev(A.clusters, 1) is null or A.clusters != prev(A.clusters, 1) 
+);
+
 /** Same counting as for BXNumbers, but for Trigger Number. **/
 
 insert into TrgClustersCountStream select distinct count(distinct ctl.triggerNumber) as clusters, max(ctl.timestamp.getTime()) as timestamp, max(ctl.fetchstamp) as fetchstamp
 	from pattern[every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, FrlCtlLnk.std:unique(fedId) as ctl;
 
-insert into TrgClustersCount select clusters, fetchstamp, timestamp from TrgClustersCountStream match_recognize(
+insert into TrgClustersCount select clusters, timestamp, fetchstamp from TrgClustersCountStream match_recognize(
 	measures A.clusters as clusters, A.fetchstamp as fetchstamp, A.timestamp as timestamp
 	pattern (A)	
 	define A as prev(A.clusters, 1) is null or A.clusters != prev(A.clusters, 1) 
@@ -78,7 +78,7 @@ select bxn.clusters, date(bxn.fetchstamp) as systime, date(bxn.timestamp) as src
 @Deferred
 @Name('bxnMisalignment.details')
 @Priority(1)
-@Verbose(label='output', fields={'systime', 'bxNumber','support','seenFedIds','srctime'}, extraNfo='bxNumbers misalignment - det.')
+@Verbose(label='output-side', fields={'systime', 'bxNumber','support','seenFedIds','srctime'}, extraNfo='bxNumbers misalignment - det.')
 select bxNumber, window(ctl.*).aggregate("", (result, row) => result||" "||row.fedId.toString() ) as seenFedIds, count(fedId) as support, 
 	date(current_timestamp()) as systime, date(max(timestamp.getTime())) as srctime
 	from pattern[every BxnClustersCount(clusters>1)]  unidirectional, FrlCtlLnk.std:unique(fedId) as ctl group by bxNumber order by count(fedId) desc;
@@ -103,7 +103,7 @@ select trg.clusters, date(trg.fetchstamp) as systime, date(trg.timestamp) as src
 @Deferred
 @Name('trgMisalignment.details')
 @Priority(1)
-@Verbose(label='output', fields={'systime','srctime', 'triggerNumber','support','seenFedIds'}, extraNfo='trgNumbers misaligned - det.')
+@Verbose(label='output-side', fields={'systime','srctime', 'triggerNumber','support','seenFedIds'}, extraNfo='trgNumbers misaligned - det.')
 select triggerNumber, window(ctl.*).aggregate("", (result, row) => result||" "||row.fedId.toString() ) as seenFedIds, count(fedId) as support, 
 	date(current_timestamp()) as systime, date(max(timestamp.getTime())) as srctime
 	from pattern[every TrgClustersCount(clusters>1)]  unidirectional, FrlCtlLnk.std:unique(fedId) as ctl group by triggerNumber order by count(fedId) desc;
@@ -176,16 +176,16 @@ where dTime>0 and (dBusy=dTime or dWarning=dTime or dError = dTime or dOos = dTi
 /** STATEMENTS TOGGLING: would be cool to write insert from ('A','B','C') etc. Possible?**/
 
 
-@Verbose(label='debug', fields={'msg'}, extraNfo="RunStart Stmt toggling")
-select resume({"bxnMisalignment.headline", "bxnMisalignment.details", "trgMisalignment.headline","trgMisalignment.details"}) as msg 
+@Verbose(label='debug', fields={'systime','msg'}, extraNfo="RunStart Stmt toggling")
+select date(current_timestamp()) as systime, resume({"bxnMisalignment.headline", "bxnMisalignment.details", "trgMisalignment.headline","trgMisalignment.details"}) as msg 
 	from pattern [every RunStart];
 
-@Verbose(label='debug', fields={'msg'}, extraNfo="RunStop Stmt toggling")
-select suspend({"bxnMisalignment.headline", "bxnMisalignment.details", "trgMisalignment.headline","trgMisalignment.details"}) as msg 
+@Verbose(label='debug', fields={'systime','msg'}, extraNfo="RunStop Stmt toggling")
+select date(current_timestamp()) as systime, suspend({"bxnMisalignment.headline", "bxnMisalignment.details", "trgMisalignment.headline","trgMisalignment.details"}) as msg 
 	from pattern [every RunStop];
 
-@Verbose(label='debug', fields={'msg'}, extraNfo="RateZero started stmts")
-select resume({"stuckFeds"}) as msg from pattern [every RateStuckAtZeroEvent];
+@Verbose(label='debug', fields={'systime','msg'}, extraNfo="RateZero started stmts")
+select date(current_timestamp()) as systime, resume({"stuckFeds"}) as msg from pattern [every RateStuckAtZeroEvent];
 
-@Verbose(label='debug', fields={'msg'}, extraNfo="RateZero stopped stmts")
-select suspend({"stuckFeds"}) as msg from pattern [every RateFineEvent];
+@Verbose(label='debug', fields={'systime','msg'}, extraNfo="RateZero stopped stmts")
+select date(current_timestamp()) as systime, suspend({"stuckFeds"}) as msg from pattern [every RateFineEvent];

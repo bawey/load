@@ -46,7 +46,8 @@ public class ThroughputMonitor extends LoadView {
 					MeasurementEnvelope e = queue.take();
 
 					if (initSystemTime != null && initEsperTime != null) {
-						playbackSpeed.setText("SpeedUp factor: " + ((e.engineTime - initEsperTime) / (double) (e.systemTime - initSystemTime)));
+						playbackSpeed
+								.setText("SpeedUp factor: " + String.format("%1$,.2f",(e.engineTime - initEsperTime) / (double) (e.systemTime - initSystemTime)));
 					} else {
 						initSystemTime = e.systemTime;
 						initEsperTime = e.engineTime;

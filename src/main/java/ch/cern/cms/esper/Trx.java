@@ -149,8 +149,8 @@ public class Trx {
 		Integer mins = (int) (ms / 1000 / 60) % 60;
 		Integer hours = (int) (ms / 1000 / 60 / 60);
 
-		return sb.append(hours.toString()).append(":").append(mins.toString()).append(":").append(sec.toString()).append(".").append(msec.toString())
-				.toString();
+		return sb.append(String.format("%02d", hours)).append("h:").append(String.format("%02d", mins)).append("m:").append(String.format("%02d", sec))
+				.append("s.").append(String.format("%03d", msec)).toString();
 	}
 
 	public static final String regExtract(String src, String regexp, int groupNo) {

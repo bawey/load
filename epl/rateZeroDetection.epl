@@ -6,7 +6,7 @@ create variable long deadRateTimeout=10000;
 
 
 @Description('Window to store the oldest and newest from a series of zero-rate events')
-create window L1ZeroRates.win:expr(newest_event.rate=0 and (oldest_event.timestamp = timestamp or newest_event.timestamp = timestamp)) as select * from L1Rates;
+create window L1ZeroRates.win:expr(newest_event.rate=0 and (oldest_event.timestamp = timestamp or newest_event.timestamp = timestamp) and isRunOn=true) as select * from L1Rates;
 @Description('Window to hold the most recent value of time measured while rate is stuck at 0')
 create window ZeroRateTimer.win:length(1) as (elapsed long);
 
@@ -15,6 +15,7 @@ create window ZeroRateTimer.win:length(1) as (elapsed long);
 @Name("l1ZeroRates.populate")
 @Description('Insert all the rates into L1ZeroRates. Retention policy does the trick')
 insert into L1ZeroRates select distinct * from L1Rates;
+//insert into L1ZeroRates select 0.0 as rate, current_timestamp() as timestamp from pattern[every timer:interval(333 msec)];
 
 
 @Deferred
@@ -40,8 +41,8 @@ insert into RateFineEvent select timestamp as engineTimestamp from ZeroRateTimer
 	define A as A.elapsed<=deadRateTimeout and (prev(A.elapsed) is null or prev(A.elapsed)>=deadRateTimeout)
 );
 
-@Verbose(label='debug', fields={'msg'}, extraNfo="RunStart resumed stmts")
-select resume({"l1ZeroRates.populate", "zeroRateTimer.populate"}) as msg from pattern [every RunStart];
+@Verbose(label='debug', fields={'systime','msg'}, extraNfo="RunStart resumed stmts")
+select resume({"l1ZeroRates.populate", "zeroRateTimer.populate"}) as msg, date(current_timestamp()) as systime from pattern [every RunStart];
 
-@Verbose(label='debug', fields={'msg'}, extraNfo="RunStart suspended stmts")
-select suspend({"l1ZeroRates.populate", "zeroRateTimer.populate"}) as msg from pattern [every RunStop];
+@Verbose(label='debug', fields={'systime','msg'}, extraNfo="RunStop suspended stmts")
+select suspend({"l1ZeroRates.populate", "zeroRateTimer.populate"}) as msg, date(current_timestamp()) as systime from pattern [every RunStop];

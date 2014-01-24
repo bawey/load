@@ -8,5 +8,5 @@ insert into StreamRates select sum(cast(tuple(smp.streamNames, smp.ratePerStream
 select rate as rate from StreamRates(name='A');
 
 @Verbose(label='output', fields={'systime','name','rate','srctime'}, extraNfo='Stream A rate high!')
-select date(current_timestamp()) as systime, rate as rate, name as name, srctime from StreamRates(name='A', rate>500);
+select date(current_timestamp()) as systime, rate as rate, name as name, srctime from StreamRates(name='A', rate>500) output last every 10 seconds;
 

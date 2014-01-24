@@ -102,7 +102,7 @@ public class StatementsLifecycleManager {
 	public synchronized boolean resume(EPStatement statement) {
 		if (suspended.containsKey(statement.getName())) {
 			suspended.remove(statement.getName());
-			logger.debug("About to add to statementsQueue. Queue remaining capacity: " + statementsQueue.remainingCapacity());
+			// logger.debug("About to add to statementsQueue. Queue remaining capacity: " + statementsQueue.remainingCapacity());
 			statementsQueue.add(statement);
 			return true;
 		} else {
@@ -124,7 +124,8 @@ public class StatementsLifecycleManager {
 					if (jailedNames.contains(statement.getName())) {
 						jail.getEPAdministrator().removeStatement(statement);
 						jailedNames.remove(statement.getName());
-						logger.debug("Effectively resumed: " + statement.getName());
+						logger.debug("Effectively resumed: " + statement.getName() + ". Statements in queue: " + statementsQueue.size() + ", remaining slots: "
+								+ statementsQueue.remainingCapacity());
 					} else {
 						jail.getEPAdministrator().addStatement(statement);
 						jailedNames.add(statement.getName());

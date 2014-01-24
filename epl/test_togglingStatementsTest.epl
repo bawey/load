@@ -1,6 +1,6 @@
 #include "runStartStop.epl"
 /** THIS FILE CONTAINS ONLY STATEMENTS INTENDED TO TEST STATEMENTS TOGGLING **/
-
+/**
 @Deferred
 @Watched(label='in-Run timer')
 @Name("InRunTimer")
@@ -17,3 +17,4 @@ select resume({"InRunTimer"})||", "||suspend({"OutRunTimer"}) as msg from patter
 
 //@Verbose(label='debug', fields={'msg'})
 select resume({"OutRunTimer"})||", "||suspend({"InRunTimer"}) as msg from pattern[every RunStop];
+**/

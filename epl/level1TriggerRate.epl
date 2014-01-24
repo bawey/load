@@ -35,13 +35,6 @@ insert into SubrateSrcNo select count(distinct lid) as cnt from EVM.win:expr(ses
 @Watched(label='rateUpdateCoeff')
 on SubrateSrcNo as ssn set rateUpdateCoeff = cast(ssn.cnt,int);
 
-@Description('Helper to filter out null average L1Rates')
-create expression double js:averageTriggerRate(n, m)[
-	if(n!=null){ n }
-	else if(m!=null){ m }
-	else { 0 }
-];
-
 on levelZeroFM_subsys(SID!=sid, FMURL like '%PublicGlobal%') as l set sid=l.SID;
 
 @Description('populate L1Subrates with EventManagers data for current SessionID')
@@ -54,7 +47,8 @@ on EVM(sessionid=sid) as evm set lastEVMtimestamp=evm.timestamp.getTime();
 on pattern[every [rateUpdateCoeff] L1Subrates] insert into L1RatesStream select sum(subrate) as rate, max(timestamp) as timestamp from L1Subrates;
 
 @Description('Updates the average rate value for the last (up to) 60 seconds. Uses a chain of variables to avoid Math.round(null) call.')
-on pattern[every r=L1Rates] set lastEverRate = r.rate, indirectAvgTrgRate = (select avg(rate) as rate from L1Rates).rate, avgTrgRate = Math.round(averageTriggerRate(indirectAvgTrgRate,lastEverRate));
+on pattern[every r=L1Rates] set lastEverRate = r.rate, indirectAvgTrgRate = (select avg(rate) as rate from L1Rates).rate, avgTrgRate = Math.round(
+	case when indirectAvgTrgRate is not null then indirectAvgTrgRate else (case when lastEverRate is not null then lastEverRate else 0 end) end);
 
 @Priority(0)
 on pattern[every a=L1Rates(rate>(avgTrgRate*(1+rateJumpMargin)) or rate < (avgTrgRate*(1-rateJumpMargin)))] delete from L1Rates;

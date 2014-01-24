@@ -391,6 +391,9 @@ select resume({"OutRunTimer"})||", "||suspend({"InRunTimer"}) as msg from patter
                 </p>
 
             </li>
+            <li>
+                <p>It seemed esper is doing a check for column names while inserting sth (hence the need to use aliases in order to avoid "no such column" issue). Yet when using objectarray schema and a view having identical structure, regardless of the aliases the values were copied based on their order in the 'insert into select A, C, B from Stream'. C was of the same type as B and the values were inserted into wrong columns in the process. </p>
+            </li>
         </ul>
 
 			
