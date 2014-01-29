@@ -1,19 +1,15 @@
 /** CREATE SCHEMAS, WINDOWS, VARIABLES **/
-@Description('defines the quasi-period of rate update. represents a number of subrate updates required to update the rate')
-create variable int rateUpdateCoeff = 2;
-
-@Description('Schema to pass the number of subrateSources through')
-create objectarray schema SubrateSrcNo as (cnt long);
 
 @Description('variable to keep the current Session ID')
 create variable String sid = '';
 
+
 @Description('the last timestamp of EventManager flashlist with desired SessionID')
 create variable Long lastEVMtimestamp = 0;
 
-@Description('create for EVM data. Keep only the most recent record per context-lid pair. Also, discard events older than 30 seconds')
-create window L1Subrates.std:unique(url,lid).win:time(30 sec) as (subrate Double, url String, lid String, timestamp Long);
 
+@Description('create for EVM data. Keep only the most recent record per context-lid pair. Also, discard events older than 10 seconds')
+create window L1Subrates.std:unique(url,lid).win:time(10 sec) as (subrate double, url String, lid String, timestamp long);
 
 create objectarray schema L1RatesStream as (rate double, timestamp Long);
 
@@ -28,27 +24,40 @@ create variable Double lastEverRate=null;
 @Description('Defines the jump threshold')
 create variable double rateJumpMargin = 0.1;
 
+/** Length of subrates will be inserted here, so that a variable can be set accordingly and used to stabilize output of rates **/
+create objectarray schema SubratesCountSchema as (value long);
+create variable long subratesCount = 1;
+insert into SubratesCountSchema select count(*) as value from L1Subrates;
+//@Verbose(label='noIdea')
+on SubratesCountSchema as ssc set subratesCount=ssc.value;
+
 /** DEFINE LOGIC **/
 
-insert into SubrateSrcNo select count(distinct lid) as cnt from EVM.win:expr(sessionid=sid); 
 
-@Watched(label='rateUpdateCoeff')
-on SubrateSrcNo as ssn set rateUpdateCoeff = cast(ssn.cnt,int);
+
+
 
 on levelZeroFM_subsys(SID!=sid, FMURL like '%PublicGlobal%') as l set sid=l.SID;
 
+//@Verbose(label='outputx')
 @Description('populate L1Subrates with EventManagers data for current SessionID')
-insert into L1Subrates select deltaN/deltaT as subrate, context as url, lid, timestamp.getTime() as timestamp from EVM where sessionid=sid and deltaT>0;
+insert into L1Subrates select deltaN/deltaT as subrate, context as url, lid, current_timestamp() as timestamp 
+	from EVM.win:time_batch(100 msec) where sessionid=sid and deltaT>0;
 
-@Watched(label='lastEVM time')
+//@Watched(label='lastEVM time')
 on EVM(sessionid=sid) as evm set lastEVMtimestamp=evm.timestamp.getTime();
 
+
 @Description ('Populate L1Rates with subsequently observed sums over the L1Subrates')
-on pattern[every [rateUpdateCoeff] L1Subrates] insert into L1RatesStream select sum(subrate) as rate, max(timestamp) as timestamp from L1Subrates;
+insert into L1RatesStream select Math.round(coalesce(sum(subrate),0)) as rate, max(timestamp) as timestamp from L1Subrates
+	output last every subratesCount events;
+
+//@Verbose(label="outputx", extraNfo="L1RatesStream", fields={"rate","timestamp"})
+select rate, timestamp from L1RatesStream;
 
 @Description('Updates the average rate value for the last (up to) 60 seconds. Uses a chain of variables to avoid Math.round(null) call.')
 on pattern[every r=L1Rates] set lastEverRate = r.rate, indirectAvgTrgRate = (select avg(rate) as rate from L1Rates).rate, avgTrgRate = Math.round(
-	case when indirectAvgTrgRate is not null then indirectAvgTrgRate else (case when lastEverRate is not null then lastEverRate else 0 end) end);
+	coalesce(indirectAvgTrgRate, lastEverRate, 0));
 
 @Priority(0)
 on pattern[every a=L1Rates(rate>(avgTrgRate*(1+rateJumpMargin)) or rate < (avgTrgRate*(1-rateJumpMargin)))] delete from L1Rates;

@@ -20,7 +20,8 @@ create objectarray schema TrgClustersCountStream as (clusters long, timestamp lo
 @Description('Same as BxnClustersCount, but for trg')
 create window TrgClustersCount.std:lastevent() as select * from TrgClustersCountStream;
 
-
+//create objectarray schema TrgMisalignmentMessages as (srctime Date, systime Date, msg String);
+//create objectarray schema BxnMisalignmentMessages as select * from TrgMisalignmentMessages;
 
 
 /** LOGIC **/
@@ -31,6 +32,7 @@ create window TrgClustersCount.std:lastevent() as select * from TrgClustersCount
 
 /** Count current number of BXNumber values. Insert -1 if the count makes no sense and filter out any identical values directly following each other **/
 
+@Deferred
 @Name('BxnClustersCounting')
 @Description('Update bxClusters count upon ZeroRateTimer update')
 insert into BxnClustersCountStream select count(distinct ctl.bxNumber) as clusters, max(ctl.timestamp.getTime()) as timestamp, max(ctl.fetchstamp) as fetchstamp
@@ -52,6 +54,8 @@ insert into BxnClustersCount select clusters, timestamp as timestamp, fetchstamp
 
 /** Same counting as for BXNumbers, but for Trigger Number. **/
 
+@Deferred
+@Name("TrgClustersCounting")
 insert into TrgClustersCountStream select distinct count(distinct ctl.triggerNumber) as clusters, max(ctl.timestamp.getTime()) as timestamp, max(ctl.fetchstamp) as fetchstamp
 	from pattern[every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, FrlCtlLnk.std:unique(fedId) as ctl;
 
@@ -78,7 +82,7 @@ select bxn.clusters, date(bxn.fetchstamp) as systime, date(bxn.timestamp) as src
 @Deferred
 @Name('bxnMisalignment.details')
 @Priority(1)
-@Verbose(label='output-side', fields={'systime', 'bxNumber','support','seenFedIds','srctime'}, extraNfo='bxNumbers misalignment - det.')
+@Verbose(label='output', fields={'systime', 'bxNumber','support','seenFedIds','srctime'}, extraNfo='bxNumbers misalignment - det.')
 select bxNumber, window(ctl.*).aggregate("", (result, row) => result||" "||row.fedId.toString() ) as seenFedIds, count(fedId) as support, 
 	date(current_timestamp()) as systime, date(max(timestamp.getTime())) as srctime
 	from pattern[every BxnClustersCount(clusters>1)]  unidirectional, FrlCtlLnk.std:unique(fedId) as ctl group by bxNumber order by count(fedId) desc;
@@ -103,13 +107,13 @@ select trg.clusters, date(trg.fetchstamp) as systime, date(trg.timestamp) as src
 @Deferred
 @Name('trgMisalignment.details')
 @Priority(1)
-@Verbose(label='output-side', fields={'systime','srctime', 'triggerNumber','support','seenFedIds'}, extraNfo='trgNumbers misaligned - det.')
+@Verbose(label='output', fields={'systime','srctime', 'triggerNumber','support','seenFedIds'}, extraNfo='trgNumbers misaligned - det.')
 select triggerNumber, window(ctl.*).aggregate("", (result, row) => result||" "||row.fedId.toString() ) as seenFedIds, count(fedId) as support, 
 	date(current_timestamp()) as systime, date(max(timestamp.getTime())) as srctime
 	from pattern[every TrgClustersCount(clusters>1)]  unidirectional, FrlCtlLnk.std:unique(fedId) as ctl group by triggerNumber order by count(fedId) desc;
 
 
-@Verbose(label='output', extraNfo='Trg misalignment problem gone', fields={ 'systime', 'srctime'})
+@Verbose(label='output', extraNfo='Trg misalignment problem gone', fields={'systime', 'srctime'})
 select systime, srctime from TrgClustersCount match_recognize(
 	measures B.clusters as clusters, date(B.fetchstamp) as systime, date(B.timestamp) as srctime
 	pattern (B)
@@ -177,15 +181,29 @@ where dTime>0 and (dBusy=dTime or dWarning=dTime or dError = dTime or dOos = dTi
 
 
 @Verbose(label='debug', fields={'systime','msg'}, extraNfo="RunStart Stmt toggling")
-select date(current_timestamp()) as systime, resume({"bxnMisalignment.headline", "bxnMisalignment.details", "trgMisalignment.headline","trgMisalignment.details"}) as msg 
+select date(current_timestamp()) as systime, resume({"bxnMisalignment.headline", "bxnMisalignment.details","trgMisalignment.headline","trgMisalignment.details"}) as msg 
 	from pattern [every RunStart];
 
 @Verbose(label='debug', fields={'systime','msg'}, extraNfo="RunStop Stmt toggling")
-select date(current_timestamp()) as systime, suspend({"bxnMisalignment.headline", "bxnMisalignment.details", "trgMisalignment.headline","trgMisalignment.details"}) as msg 
+select date(current_timestamp()) as systime, suspend({"bxnMisalignment.headline", "bxnMisalignment.details","trgMisalignment.headline","trgMisalignment.details"}) as msg 
 	from pattern [every RunStop];
 
 @Verbose(label='debug', fields={'systime','msg'}, extraNfo="RateZero started stmts")
-select date(current_timestamp()) as systime, resume({"stuckFeds"}) as msg from pattern [every RateStuckAtZeroEvent];
+select date(current_timestamp()) as systime, resume({"stuckFeds","BxnClustersCounting","TrgClustersCounting"}) as msg from pattern [every RateStuckAtZeroEvent];
 
 @Verbose(label='debug', fields={'systime','msg'}, extraNfo="RateZero stopped stmts")
-select date(current_timestamp()) as systime, suspend({"stuckFeds"}) as msg from pattern [every RateFineEvent];
+select date(current_timestamp()) as systime, suspend({"stuckFeds","BxnClustersCounting","TrgClustersCounting"}) as msg from pattern [every RateFineEvent];
+
+/**
+
+CHECKING WITH THE ORIGINAL DOCTOR'S PREREQUISITES
+
+@Verbose(label='debug', fields={'systime','msg'}, extraNfo="bxnMisalignment started")
+select date(current_timestamp()) as systime, resume({"bxnMisalignment.headline", "bxnMisalignment.details"}) as msg from 
+	pattern [every levelZeroFM_subsys(SUBSYS="TRG", STATE="Paused")];
+
+@Verbose(label='debug', fields={'systime','msg'}, extraNfo="bxnMisalignment stoppped")
+select date(current_timestamp()) as systime, suspend({"bxnMisalignment.headline", "bxnMisalignment.details"}) as msg 
+	from pattern [every (levelZeroFM_subsys(SUBSYS="TRG", STATE="Paused") -> levelZeroFM_subsys(SUBSYS="TRG", STATE!="Paused"))];
+
+**/

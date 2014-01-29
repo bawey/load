@@ -6,6 +6,7 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 
 import ch.cern.cms.esper.CustomConcatFactory;
+import ch.cern.cms.esper.SortedStringSet;
 import ch.cern.cms.esper.StatementsLifecycleManager;
 import ch.cern.cms.esper.Trx;
 import ch.cern.cms.esper.annotations.Conclusion;
@@ -80,13 +81,20 @@ public class EventProcessor {
 
 		c.addPlugInSingleRowFunction("parseFem", FedMask.class.getCanonicalName(), "parse");
 		c.addPlugInSingleRowFunction("in_array", Trx.class.getCanonicalName(), "inArray");
+		c.addPlugInSingleRowFunction("reformat", Trx.class.getCanonicalName(), "reformat");
 		c.addPlugInSingleRowFunction("tuple", Trx.class.getCanonicalName(), "tuple");
 		c.addPlugInSingleRowFunction("is_nonvariant", Trx.class.getCanonicalName(), "isNonvariant");
 		c.addPlugInSingleRowFunction("fedsForSubsysMap", HwInfo.class.getCanonicalName(), "getSubsystemToFEDsMap");
 		c.addPlugInSingleRowFunction("formatMs", Trx.class.getCanonicalName(), "formatMs");
+		c.addPlugInSingleRowFunction("format", Trx.class.getCanonicalName(), "format");
 		c.addPlugInSingleRowFunction("regExtract", Trx.class.getCanonicalName(), "regExtract");
 		c.addPlugInSingleRowFunction("suspend", StatementsLifecycleManager.class.getCanonicalName(), "suspendAll");
 		c.addPlugInSingleRowFunction("resume", StatementsLifecycleManager.class.getCanonicalName(), "resumeAll");
+		c.addPlugInSingleRowFunction("getBusyProcessorsRatio", Trx.class.getCanonicalName(), "getBusyProcessorsRatio");
+		c.addPlugInSingleRowFunction("indexesOf", Trx.class.getCanonicalName(), "indexesOf");
+		c.addPlugInSingleRowFunction("subList", Trx.class.getCanonicalName(), "subList");
+		c.addPlugInSingleRowFunction("SortedStringSet", SortedStringSet.class.getCanonicalName(), "getInstance");
+		
 		
 		// c.addPlugInAggregationFunctionFactory("concat", CustomConcatFunction.class.getCanonicalName());
 		c.addPlugInAggregationFunctionFactory("concat", CustomConcatFactory.class.getCanonicalName());

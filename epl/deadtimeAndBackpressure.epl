@@ -32,6 +32,9 @@ create objectarray schema FedDtGone as (fedId Integer, mainFedIds Integer[], tim
 create objectarray schema AllFrlCtlLnk() copyfrom FrlCtlLnk;
 create objectarray schema AllFmmInput() copyfrom FmmInput;
 
+/** For nice output **/
+create objectarray schema BpDtRecoveredFeds as (fedId long);
+
 /****** DECLARE THE INSERTION AND DELETION LOGIC (PREFERABLY MUTE), TOP-DOWN ORDER *****/
 
 @Description('Timespan to look for DT and BP within. In msec.')
@@ -108,25 +111,48 @@ insert into FmmInput select * from AllFmmInput as x
 
 /****** DECLARE ADDITIONAL OUTPUT STATEMENTS ******/
 
+
 @Description('Backpressure > 1%, alarm')
-@Verbose(label='output', fields={'systime','fedId','bp','srctime'}, extraNfo='FED Backpressure:')
-select date(x.timestamp) as srctime, date(current_timestamp()) as systime, fedId, x.bpFraction as bp from FrlBackpressure as x where x.bpFraction > 0.01;
+@Verbose(label='output', fields={'systime','fedsBp','srctime'}, extraNfo='FED Backpressure:')
+select 
+	reformat(window(x.*).aggregate("",(result, row)=>result||"fed#"||row.fedId.toString()||"["||format(row.bpFraction)||"]&"),"&",", ") as fedsBp,
+	date(current_timestamp()) as systime, date(max(x.timestamp)) as srctime
+	from FrlBackpressure as x, pattern[every FrlBackpressure->(timer:interval(1 msec) and not FrlBackpressure)] unidirectional;
+
 
 @Description('FED dead-time > 1%')
-@Verbose(label='output',fields={'systime','fedId','dt','src'}, extraNfo='FED Dead-time   :')
-select date(fmm.timestamp) as srctime, date(current_timestamp()) as systime, fedId, fmm.dtFraction as dt from FmmDeadtime as fmm;
+@Verbose(label='output',fields={'systime','fedsDt','src'}, extraNfo='FED Dead-time   :')
+select 
+	reformat(window(x.*).aggregate("",(result, row)=>result||"fed#"||row.fedId.toString()||"["||format(row.dtFraction)||"]&"),"&",", ") as fedsDt,
+	date(current_timestamp()) as systime, date(max(x.timestamp)) as srctime
+	from FmmDeadtime as x, pattern[every FmmDeadtime->(timer:interval(1 msec) and not FmmDeadtime)] unidirectional;
 
-@Verbose(label='output', extraNfo='FED BP gone', fields={'systime', 'fedId', 'bpFraction', 'srctime'})
-select date(timestamp) as srctime, date(current_timestamp()) as systime, fedId, bpFraction from FedBpGone;
 
-@Verbose(label='output', extraNfo='FED DT gone', fields={'systime', 'fedId', 'dtFraction', 'srctime'})
-select date(timestamp) as srctime, date(current_timestamp()) as systime, fedId, dtFraction from FedDtGone;
+@Verbose(label='output', extraNfo='FED BP gone', fields={'systime', 'feds', 'srctime'})
+select date(max(x.timestamp)) as srctime, date(current_timestamp()) as systime, 
+	reformat(window(x.*).aggregate("", (result, row) => result||row.fedId.toString()||"-"),"-",", ") as feds
+	from FedBpGone.win:time(2 msec) as x, pattern[every FedBpGone->(timer:interval(1 msec) and not FedBpGone)] unidirectional;
 
-@Verbose(label='output', extraNfo='FED with BP+DT', fields={'dtTime','bpTime','fedId','dtFraction','bpFraction'})
-select date(dtTime) as dtTime, date(bpTime) as bpTime, dtFraction, bpFraction, fedId from FedDeadPressure;
 
-@Verbose(label='output', extraNfo='FED no longer with BP+DT', fields={'fedId'})
-select rstream * from FedDeadPressure where fedId not in (select fedId from FedDeadPressure);
+@Verbose(label='output', extraNfo='FED DT gone', fields={'systime', 'feds', 'srctime'})
+select date(max(x.timestamp)) as srctime, date(current_timestamp()) as systime, 
+	reformat(window(x.*).aggregate("", (result, row) => result||row.fedId.toString()||"-"),"-",", ") as feds
+	from FedDtGone.win:time(2 msec) as x, pattern[every FedDtGone->(timer:interval(1 msec) and not FedDtGone)] unidirectional;
+
+
+@Verbose(label='output', extraNfo='FED with BP+DT', fields={'systime','feds','dtSrctime','bpSrctime'})
+select date(max(x.dtTime)) as dtSrctime, date(max(x.bpTime)) as bpSrctime, date(current_timestamp()) as systime,
+	reformat(window(x.*).aggregate("",(result, row)=>"fed#"||row.fedId.toString()||"[dt:"||format(row.dtFraction)||", bp: "||format(row.bpFraction)||"]-"),"-",", ") as feds
+	from FedDeadPressure as x, pattern[every FedDeadPressure->(timer:interval(1 msec) and not FedDeadPressure)] unidirectional;
+
+
+@Verbose(label='output', extraNfo='FEDs no longer with BP+DT', fields={'systime','feds'})
+select reformat(window(x.*).aggregate("",(result, row)=>result||cast(x.fedId,string)||"-"),"-",",") as feds, date(current_timestamp()) as systime from
+	BpDtRecoveredFeds.win:time(2 msec) as x, pattern[every BpDtRecoveredFeds->(timer:interval(1 msec) and not BpDtRecoveredFeds)] unidirectional;
+
+insert into BpDtRecoveredFeds
+select rstream fedId from FedDeadPressure where fedId not in (select fedId from FedDeadPressure);
+
 
 /****** DECLARE WATCHED STATEMENTS ******/
 @Watched(label='DeadPressure FEDS#')

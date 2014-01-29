@@ -2,10 +2,14 @@ package ch.cern.cms.esper;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -153,6 +157,10 @@ public class Trx {
 				.append("s.").append(String.format("%03d", msec)).toString();
 	}
 
+	public static final String format(double d) {
+		return String.format("%.3f", d);
+	}
+
 	public static final String regExtract(String src, String regexp, int groupNo) {
 		Pattern p = Pattern.compile(regexp);
 		Matcher matcher = p.matcher(src);
@@ -160,8 +168,60 @@ public class Trx {
 		return matcher.group(groupNo);
 	}
 
-	public static final String testest(String meat) {
-		System.out.println(meat + " received");
-		return "whola!";
+	public static final Collection<Integer> indexesOf(Object needle, List<?> list) {
+		Collection<Integer> rslt = new TreeSet<Integer>();
+		for (int i = 0; i < list.size(); ++i) {
+			if (needle != null) {
+				if (needle.equals(list.get(i))) {
+					rslt.add(i);
+				}
+			} else {
+				if (list.get(i) == null) {
+					rslt.add(i);
+				}
+			}
+		}
+		return rslt;
 	}
+
+	public static final List<Object> subList(List<?> list, Collection<Integer> indexes) {
+		List<Object> rslt = new ArrayList<Object>(indexes.size());
+		for (Integer index : indexes) {
+			rslt.add(list.get(index));
+		}
+		return rslt;
+	}
+
+	public static final double getBusyProcessorsRatio(List<String> macro, List<String> micro) {
+		// get the indexes corresponding to running ones
+		// System.out.println("macro: " + macro);
+		// System.err.println("micro: " + micro);
+		Collection<Integer> indexes = indexesOf("3", macro);
+		if (indexes.size() == 0) {
+			return 0;
+		}
+		List<Object> runningStates = subList(micro, indexes);
+		runningStates.removeAll(new LinkedList<String>() {
+			{
+				add("2");
+			}
+		});
+		// System.out.println(runningStates);
+		return runningStates.size() / (double) indexes.size();
+	}
+
+	public static void main(String[] args) {
+		System.out.println(format(3.1415) + " " + format(.56789));
+	}
+
+	public static final String reformat(String input, String separator, String newSeparator) {
+		String[] tokens = input.split(separator);
+		Arrays.sort(tokens);
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < tokens.length - 1; ++i) {
+			sb.append(tokens[i]).append(newSeparator);
+		}
+		return sb.append(tokens[tokens.length - 1]).toString();
+	}
+
 }

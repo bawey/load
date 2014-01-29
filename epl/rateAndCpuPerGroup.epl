@@ -1,26 +1,28 @@
 /** EVENT PROCESSING RATES PER GROUP **/
 
-create objectarray schema ProcessorYields as (kontext String, lid String, units long, rate double);
+create objectarray schema ProcessorPerformance as (kontext String, lid String, units long, rate double);
 
-insert into ProcessorYields select * from EventProcessorStatus match_recognize(
+insert into ProcessorPerformance select * from EventProcessorStatus match_recognize(
 	partition by context, lid
 	measures A.context as kontext, A.lid as lid, A.epMicroStateInt.size() as units, (B.nbProcessed - A.nbProcessed)/((B.timestamp.getTime()-A.timestamp.getTime())/1000.0) as rate
 	pattern (A B)
 	define B as B.context = B.context
 );
 
-create window LatestProcessorYields.std:unique(kontext, lid).win:time(1 sec) as select * from ProcessorYields;
-insert into LatestProcessorYields select * from ProcessorYields;
+create window LatestProcessorPerformance.std:unique(kontext, lid).win:time(1 sec) as select * from ProcessorPerformance;
+insert into LatestProcessorPerformance select * from ProcessorPerformance;
 
 @Watched
 select sum(rate) as value, units.toString()||"u events per sec" as label 
-	from pattern [every timer:interval(333 msec)] unidirectional, LatestProcessorYields group by units;
+	from pattern [every timer:interval(333 msec)] unidirectional, LatestProcessorPerformance group by units;
 
 /** CPU USE PER GROUP **/
 
 /** created so that it would be possible to group by units in the subsequent query **/
-create window EventProcessorStatusSnapshot.std:unique(kontext) as (kontext String, units int);
-	insert into EventProcessorStatusSnapshot select context as kontext, epMicroStateInt.size() as units from EventProcessorStatus;
+create window EventProcessorStatusSnapshot.std:unique(kontext) as (kontext String, units int, busyRatio double);
+	insert into EventProcessorStatusSnapshot select context as kontext, epMicroStateInt.size() as units, 
+		getBusyProcessorsRatio(epMacroStateInt, epMicroStateInt) as busyRatio
+		from EventProcessorStatus;
 
 /** 58 - colon on UTF-16, couldn't pass simple char **/
 @Watched
@@ -29,3 +31,7 @@ from pattern[every timer:interval(1 sec)] unidirectional, EventProcessorStatusSn
 where eps.`kontext`.substring(0,`kontext`.lastIndexOf(58)) = hi.`context`.substring(0,`context`.lastIndexOf(58))
 group by eps.units;
 
+/** Count those with macro state Running(3). How many of these have micro state different than 2? **/
+@Watched
+select avg(eps.busyRatio) as value, units.toString()||"u busy ratio" as label 
+from EventProcessorStatusSnapshot as eps group by units;

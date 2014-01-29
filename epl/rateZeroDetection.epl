@@ -2,11 +2,12 @@
 #include "runStartStop.epl"
 
 @Description('')
-create variable long deadRateTimeout=10000;
+create variable long deadRateTimeout=20000;
 
-
+/**
 @Description('Window to store the oldest and newest from a series of zero-rate events')
-create window L1ZeroRates.win:expr(newest_event.rate=0 and (oldest_event.timestamp = timestamp or newest_event.timestamp = timestamp) and isRunOn=true) as select * from L1Rates;
+create window L1ZeroRates.win:expr(newest_event.rate=0 and (oldest_event.timestamp = timestamp or newest_event.timestamp = timestamp) and isRunOn) 
+	as select * from L1Rates;
 @Description('Window to hold the most recent value of time measured while rate is stuck at 0')
 create window ZeroRateTimer.win:length(1) as (elapsed long);
 
@@ -14,6 +15,7 @@ create window ZeroRateTimer.win:length(1) as (elapsed long);
 @Deferred
 @Name("l1ZeroRates.populate")
 @Description('Insert all the rates into L1ZeroRates. Retention policy does the trick')
+@Priority(10)
 insert into L1ZeroRates select distinct * from L1Rates;
 //insert into L1ZeroRates select 0.0 as rate, current_timestamp() as timestamp from pattern[every timer:interval(333 msec)];
 
@@ -21,9 +23,36 @@ insert into L1ZeroRates select distinct * from L1Rates;
 @Deferred
 @Name('zeroRateTimer.populate')
 @Watched(label='deadRateElapsed')
+@Verbose(label='output')
 @Description('On each update on L1ZeroRates, update the measurement of time spent with rates stuck at 0 ')
 insert into ZeroRateTimer select (case when count(*)>1 then max(timestamp)-min(timestamp) else 0 end) as elapsed 
-	from pattern[every L1Rates] unidirectional, L1ZeroRates output last every 10 seconds;
+	from pattern[every timer:interval(333 msec)] unidirectional, L1ZeroRates output last every 10 seconds;
+**/
+
+create window ZeroRateTimer.win:length(1) as (elapsed long);
+create variable long zeroRateElapsed=0;
+
+on ZeroRateTimer as zrt set zeroRateElapsed = zrt.elapsed;
+
+@Watched(label='zeroRateElapsed')
+select elapsed from ZeroRateTimer;
+
+@Name('zeroRateTimer.populate')
+insert into ZeroRateTimer select zeroRateElapsed + dTime as elapsed
+	from L1RatesStream match_recognize(
+			measures B.timestamp-A.timestamp as dTime
+			after match skip to current row
+			pattern (A B)
+			define A as A.rate=0, B as B.rate=0
+		);
+
+insert into ZeroRateTimer select 0l as elapsed from L1RatesStream match_recognize(
+	measures 0 as whatever
+	after match skip to current row
+	pattern (A)
+	define A as A.rate>0 and coalesce(prev(A.rate),0) = 0
+);
+
 
 /** Streams to broadcast the 'StuckAtRate0'/'RateFine' states information **/
 create objectarray schema RateStuckAtZeroEvent as (engineTimestamp long);
@@ -41,8 +70,12 @@ insert into RateFineEvent select timestamp as engineTimestamp from ZeroRateTimer
 	define A as A.elapsed<=deadRateTimeout and (prev(A.elapsed) is null or prev(A.elapsed)>=deadRateTimeout)
 );
 
+/** SUSPENDING THE STATEMENTS **/
 @Verbose(label='debug', fields={'systime','msg'}, extraNfo="RunStart resumed stmts")
 select resume({"l1ZeroRates.populate", "zeroRateTimer.populate"}) as msg, date(current_timestamp()) as systime from pattern [every RunStart];
 
 @Verbose(label='debug', fields={'systime','msg'}, extraNfo="RunStop suspended stmts")
 select suspend({"l1ZeroRates.populate", "zeroRateTimer.populate"}) as msg, date(current_timestamp()) as systime from pattern [every RunStop];
+
+/** INITIALIZING AND CLEANING-UP SUSPENDABLE STATEMENTS **/
+on RunStart insert into ZeroRateTimer select 0l as elapsed;
