@@ -17,31 +17,6 @@ public class FedMask {
 
 	private boolean ttsMasked;
 
-	// REFERENCE
-	// private static int getFEDValueAllIN(FEDWithConnectivity fed) {
-	// int value = 0;
-	//
-	// // SLINK
-	// if (!fed.isSLINKMasked() && fed.hasSLINK()) {
-	// value += 1;
-	// } else if (fed.isSLINKMasked() && fed.hasSLINK()) {
-	// value += 4;
-	// } else if (!fed.hasSLINK()) {
-	// value += (4 + 1);
-	// }
-	//
-	// // TTS
-	// if (!fed.isTTSMasked() && fed.hasTTS()) {
-	// value += 2;
-	// } else if (fed.isTTSMasked() && fed.hasTTS()) {
-	// value += 8;
-	// } else if (!fed.hasTTS()) {
-	// value += (8 + 2);
-	// }
-	//
-	// return value;
-	// }
-
 	public FedMask(String s) {
 		String[] tkns = s.split("&");
 		this.fedId = Integer.parseInt(tkns[0]);

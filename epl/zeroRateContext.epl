@@ -1,0 +1,55 @@
+#include "level1TriggerRate.epl"
+#include "runStartStop.epl"
+#include "deadtimeAndBackpressure.epl"
+
+create context L1ZeroRate 
+	context RunOngoingNested start RunStart end RunStop,
+	context L1ZeroRateNested start pattern[s=L1RatesStream(rate=0)->(timer:interval(10 seconds) and not L1RatesStream(rate>0))]
+	end L1RatesStream(rate>0);
+
+
+@Watched(label="L1ZeroRate timer")
+context L1ZeroRate select date(current_timestamp()) from pattern [every timer:interval(1 seconds)];
+
+@Watched(label="ZeroRateContext tmr")
+context L1ZeroRate select (current_timestamp()-context.L1ZeroRateNested.startTime)/1000.0 from pattern [every timer:interval(1 seconds)];
+
+@Watched(label="ZeroRateNestedContext tmr")
+context L1ZeroRate select (current_timestamp()-context.L1ZeroRateNested.startTime)/1000.0 from pattern [every timer:interval(1 seconds)];
+
+@Watched(label="RunOngoingNestedContext tmr")
+context L1ZeroRate select (current_timestamp()-context.RunOngoingNested.startTime)/1000.0 from pattern [every timer:interval(1 seconds)];
+
+
+create objectarray schema TrgNumbersSummary as (uniqueValuesCnt long, systime long);
+
+create objectarray schema BxNumbersSummary as (uniqueValuesCnt long, systime long);
+
+@Description('We need to retain bxNumbers and trgNumbers for the sake of performing the checks. Creating window within a context resets it every time the context restarts')
+context L1ZeroRate create window FedsAlignmentIndicators.std:unique(fedId) as (fedId int, bxNumber long, trgNumber long);
+
+context L1ZeroRate insert into FedsAlignmentIndicators select fedId, 0l as bxNumber, 0l as trgNumber from FrlCtlLnk;
+
+@Verbose(label="contest text", fields={'fedIds'})
+context L1ZeroRate select count(fedId) as fedIds from FedsAlignmentIndicators;
+
+
+
+/**
+context L1ZeroRate insert into TrgNumbersSummary 
+	select ;
+
+context L1ZeroRate insert into BxNumbersSummary
+	select ;
+**/
+
+create context TriggerNumbersMisaligned
+	start TrgNumbersSummary(uniqueValuesCnt>1)
+	end TrgNumbersSummary(uniqueValuesCnt=1);
+
+create context CrossingNumbersMisaligned
+	start BxNumbersSummary(uniqueValuesCnt>1)
+	end BxNumbersSummary(uniqueValuesCnt=1);
+
+
+

@@ -4,31 +4,6 @@
 @Description('')
 create variable long deadRateTimeout=20000;
 
-/**
-@Description('Window to store the oldest and newest from a series of zero-rate events')
-create window L1ZeroRates.win:expr(newest_event.rate=0 and (oldest_event.timestamp = timestamp or newest_event.timestamp = timestamp) and isRunOn) 
-	as select * from L1Rates;
-@Description('Window to hold the most recent value of time measured while rate is stuck at 0')
-create window ZeroRateTimer.win:length(1) as (elapsed long);
-
-
-@Deferred
-@Name("l1ZeroRates.populate")
-@Description('Insert all the rates into L1ZeroRates. Retention policy does the trick')
-@Priority(10)
-insert into L1ZeroRates select distinct * from L1Rates;
-//insert into L1ZeroRates select 0.0 as rate, current_timestamp() as timestamp from pattern[every timer:interval(333 msec)];
-
-
-@Deferred
-@Name('zeroRateTimer.populate')
-@Watched(label='deadRateElapsed')
-@Verbose(label='output')
-@Description('On each update on L1ZeroRates, update the measurement of time spent with rates stuck at 0 ')
-insert into ZeroRateTimer select (case when count(*)>1 then max(timestamp)-min(timestamp) else 0 end) as elapsed 
-	from pattern[every timer:interval(333 msec)] unidirectional, L1ZeroRates output last every 10 seconds;
-**/
-
 create window ZeroRateTimer.win:length(1) as (elapsed long);
 create variable long zeroRateElapsed=0;
 

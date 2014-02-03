@@ -12,7 +12,5 @@ insert into FedFractions select * from FmmInput match_recognize(
 	define A as A is not null, B as B is not null
 );
 
-//If the flashlist is fine there should be no nulls appearing here. Yet, there are.
 @Verbose(label="output", fields={'timestamp','fedId', 'dIllegal', 'dTime'}, extraNfo='FED in illegal state')
-select timestamp, fedId, dTime, dTime-(dBusy+dWarning+dError+dOos+dReady) as dIllegal from FedFractions((dBusy+dWarning+dError+dOos+dReady)=0 
-	and dBusy is not null and dError is not null and dWarning is not null and dOos is not null and dReady is not null and dTime is not null and dTime >0);
+select timestamp, fedId, dTime, dTime-(dBusy+dWarning+dError+dOos+dReady) as dIllegal from FedFractions((dBusy+dWarning+dError+dOos+dReady)=0 and dTime >0);

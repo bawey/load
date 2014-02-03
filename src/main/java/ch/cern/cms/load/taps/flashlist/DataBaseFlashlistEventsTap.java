@@ -252,7 +252,7 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 								Map<String, Object> event = new HashMap<String, Object>();
 								event.put(columnsArray[0], fetched.getLong(1));
 								for (int i = 1; i < fetched.getMetaData().getColumnCount(); ++i) {
-									String columnName = fetched.getMetaData().getColumnName(i+1);
+									String columnName = fetched.getMetaData().getColumnName(i + 1);
 									if (blacklist == null || !blacklist.contains(columnName)) {
 										event.put(columnName, controller.getResolver().convert(fetched.getString(i + 1), columnName, eventName));
 									}
@@ -264,7 +264,7 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 								event[0] = fetched.getLong(1);
 								int valids = 1;
 								for (int i = 1; i < fetched.getMetaData().getColumnCount(); ++i) {
-									String columnName = fetched.getMetaData().getColumnName(i+1);
+									String columnName = fetched.getMetaData().getColumnName(i + 1);
 									if (blacklist == null || !blacklist.contains(columnName)) {
 										event[valids++] = controller.getResolver().convert(fetched.getString(i + 1), columnName, eventName);
 									}
