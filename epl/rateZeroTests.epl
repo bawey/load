@@ -162,8 +162,10 @@ select count(distinct myrinetResync) from FedResyncInfo;
 
 /** ANOTHER MESSY CHUNK - FEDS STUCK @ ERROR, WARNING etc AND  **/
 
-@Verbose(label='output', fields={'systime','b.fedId','b.bpFraction','srctime'}, extraNfo='FED stuck with Backpressure at zero rate')
-select b.fedId, date(b.timestamp) as srctime, date(current_timestamp()) as systime, b.bpFraction from pattern [every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, FrlBackpressure as b;
+@Verbose(label='output', fields={'systime','feds','srctime'}, extraNfo='FEDs stuck with Backpressure at zero rate')
+select date(max(b.timestamp)) as srctime, date(current_timestamp()) as systime, 
+	reformat(window(b.*).aggregate("",(result, row)=>result||cast(row.fedId,string)||"("||format(row.bpFraction)||")-"),"-",", ") as feds
+from pattern [every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, FrlBackpressure as b;
 
 @Verbose(label='output', fields={'systime','b.fedId','b.dtFraction', 'srctime'}, extraNfo='FED stuck with Deadtime at zero rate')
 select b.fedId, date(b.timestamp) as srctime, date(current_timestamp()) as systime, b.dtFraction from pattern [every ZeroRateTimer(elapsed>deadRateTimeout)] unidirectional, FmmDeadtime as b;
