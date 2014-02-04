@@ -161,6 +161,9 @@ select count(*) from FedDeadPressure;
 select count(*) from FrlBackpressure;
 
 /** TESTS **/
+//@Verbose(label="FrlBackpressureStream", fields={"fedId","timestamp"})
+//select fedId, timestamp from FrlBackpressureStream;
+
 
 /**
 @Verbose(label='BpPerFedIdEvaldasWay', fields={'time','fedId','bpFraction'})

@@ -8,6 +8,7 @@ create context L1ZeroRate
 	end L1RatesStream(rate>0);
 
 
+/** The following @Watched statements are debug-relevant only **/
 @Watched(label="L1ZeroRate timer")
 context L1ZeroRate select date(current_timestamp()) from pattern [every timer:interval(1 seconds)];
 
@@ -21,35 +22,97 @@ context L1ZeroRate select (current_timestamp()-context.L1ZeroRateNested.startTim
 context L1ZeroRate select (current_timestamp()-context.RunOngoingNested.startTime)/1000.0 from pattern [every timer:interval(1 seconds)];
 
 
-create objectarray schema TrgNumbersSummary as (uniqueValuesCnt long, systime long);
+create objectarray schema TrgNumbersSummary as (uniqueValuesCnt long, systime long, fedsNo long);
+create objectarray schema BxNumbersSummary as (uniqueValuesCnt long, systime long, fedsNo long);
 
-create objectarray schema BxNumbersSummary as (uniqueValuesCnt long, systime long);
+@Description('We need to retain bxNumbers and trgNumbers for the sake of performing the checks. Creating window within a context gets it reset every time the context restarts')
 
-@Description('We need to retain bxNumbers and trgNumbers for the sake of performing the checks. Creating window within a context resets it every time the context restarts')
 context L1ZeroRate create window FedsAlignmentIndicators.std:unique(fedId) as (fedId int, bxNumber long, trgNumber long);
+context L1ZeroRate insert into FedsAlignmentIndicators select fedId, bxNumber as bxNumber, triggerNumber as trgNumber from FrlCtlLnk;
 
-context L1ZeroRate insert into FedsAlignmentIndicators select fedId, 0l as bxNumber, 0l as trgNumber from FrlCtlLnk;
-
-@Verbose(label="contest text", fields={'fedIds'})
+/** a check if the window is reset with evert context start - true!
+@Verbose(label="context", fields={'fedIds'})
 context L1ZeroRate select count(fedId) as fedIds from FedsAlignmentIndicators;
-
-
-
-/**
-context L1ZeroRate insert into TrgNumbersSummary 
-	select ;
-
-context L1ZeroRate insert into BxNumbersSummary
-	select ;
 **/
 
+context L1ZeroRate insert into TrgNumbersSummary 
+	select count(distinct x.trgNumber) as uniqueValuesCnt, current_timestamp() as systime, count(fedId) as fedsNo
+	from pattern[every FedsAlignmentIndicators -> (timer:interval(1 msec) and not FedsAlignmentIndicators)] unidirectional,
+	FedsAlignmentIndicators as x output first every 10 seconds;
+
+context L1ZeroRate insert into BxNumbersSummary
+	select count(distinct x.bxNumber) as uniqueValuesCnt, current_timestamp() as systime, count(fedId) as fedsNo
+	from pattern[every FedsAlignmentIndicators -> (timer:interval(1 msec) and not FedsAlignmentIndicators)] unidirectional,
+	FedsAlignmentIndicators as x output first every 10 seconds;
+
+/** only for in-development testing 
+@Verbose(label="summaries", fields={'systime', 'uniqueValuesCnt'}, extraNfo="TrgNumbersSummary")
+select date(systime) as systime, uniqueValuesCnt from TrgNumbersSummary;
+@Verbose(label="summaries", fields={'systime', 'uniqueValuesCnt'}, extraNfo="BxNumbersSummary")
+select date(systime) as systime, uniqueValuesCnt from BxNumbersSummary;
+**/
+
+@Priority(10)
 create context TriggerNumbersMisaligned
-	start TrgNumbersSummary(uniqueValuesCnt>1)
-	end TrgNumbersSummary(uniqueValuesCnt=1);
+	start TrgNumbersSummary(uniqueValuesCnt>1 and uniqueValuesCnt<5 and fedsNo > 10* uniqueValuesCnt)
+	end TrgNumbersSummary(uniqueValuesCnt=1 or uniqueValuesCnt>4 or fedsNo <= 10* uniqueValuesCnt);
 
+@Priority(10)
 create context CrossingNumbersMisaligned
-	start BxNumbersSummary(uniqueValuesCnt>1)
-	end BxNumbersSummary(uniqueValuesCnt=1);
+	start BxNumbersSummary(uniqueValuesCnt>1 and uniqueValuesCnt<5 and fedsNo > 10* uniqueValuesCnt)
+	end BxNumbersSummary(uniqueValuesCnt=1 or uniqueValuesCnt>4 or fedsNo <= 10* uniqueValuesCnt);
 
 
+@Priority(10)
+create context TriggerNumbersScattered
+	start TrgNumbersSummary(uniqueValuesCnt>4 or fedsNo <= 10* uniqueValuesCnt)
+	end TrgNumbersSummary(uniqueValuesCnt<5 and fedsNo > 10* uniqueValuesCnt);
 
+@Priority(10)
+create context CrossingNumbersScattered
+	start BxNumbersSummary(uniqueValuesCnt>4 or fedsNo <= 10* uniqueValuesCnt)
+	end BxNumbersSummary(uniqueValuesCnt<5 and fedsNo > 10* uniqueValuesCnt);
+
+
+@Verbose(label="output", fields={"systime","msg"})
+context TriggerNumbersScattered select cast(fedsNo, string)||" trigger numbers scattered into "||cast(uniqueValuesCnt, string)||" groups of unique values" as msg, 
+	date(systime) as systime from TrgNumbersSummary;
+
+@Verbose(label="output", fields={"systime","msg"})
+context CrossingNumbersScattered select cast(fedsNo, string)||" bx numbers scattered into "||cast(uniqueValuesCnt, string)||" groups of unique values" as msg, 
+	date(systime) as systime from BxNumbersSummary;
+
+/** This checks if the event starting the context is picked up within it - according to docs it should and indeed it does
+@Verbose(label="context2", fields={"systime","uniqueValuesCnt"}, extraNfo="Uniq trg numbers")
+select uniqueValuesCnt, date(systime) as systime from TrgNumbersSummary;
+**/
+
+
+@Verbose(label="output", fields={"systime" ,"trgNumber", "fedsNo", "feds"})
+context TriggerNumbersMisaligned 
+	select trgNumber, reformat(window(x.*).aggregate("",(result, row)=>result||format("%03d",row.fedId)||"-"),"-",", ") as feds,
+		date(current_timestamp()) as systime, count(fedId) as fedsNo
+	from pattern[every TrgNumbersSummary ] unidirectional, FedsAlignmentIndicators as x group by trgNumber order by count(fedId) desc;
+
+@Verbose(label="output", fields={"systime" ,"bxNumber", "fedsNo", "feds"})
+context CrossingNumbersMisaligned 
+	select bxNumber, reformat(window(x.*).aggregate("",(result, row)=>result||format("%03d",row.fedId)||"-"),"-",", ") as feds,
+		date(current_timestamp()) as systime, count(fedId) as fedsNo
+	from pattern[every BxNumbersSummary ] unidirectional, FedsAlignmentIndicators as x group by bxNumber order by count(fedId) desc;
+
+/** send some context-state information to a separate output **/
+create objectarray schema ContextStateStream as (dsc String, msg String);
+
+context TriggerNumbersMisaligned insert into ContextStateStream select "TRG numbers misaligned" as msg, context.name||" started" as dsc from pattern[FedsAlignmentIndicators];
+context CrossingNumbersMisaligned insert into ContextStateStream select "BX numbers misaligned" as msg, context.name||" started" as dsc from pattern[FedsAlignmentIndicators];
+context TriggerNumbersScattered insert into ContextStateStream select "TRG numbers scattered" as msg, context.name||" started" as dsc from pattern[FedsAlignmentIndicators];
+context CrossingNumbersScattered insert into ContextStateStream select "BX numbers scattered" as msg, context.name||" started" as dsc from pattern[FedsAlignmentIndicators];
+
+context TriggerNumbersMisaligned insert into ContextStateStream select "TRG no longer misaligned" as msg, context.name||" terminated" as dsc from pattern[FedsAlignmentIndicators] output when terminated;
+context CrossingNumbersMisaligned insert into ContextStateStream select "BX no longer misaligned" as msg, context.name||" terminated" as dsc from pattern[FedsAlignmentIndicators] output when terminated;
+context TriggerNumbersScattered insert into ContextStateStream select "TRG no longer scattered" as msg, context.name||" terminated" as dsc from pattern[FedsAlignmentIndicators] output when terminated;
+context CrossingNumbersScattered insert into ContextStateStream select "BX no longer scattered" as msg, context.name||" terminated" as dsc from pattern[FedsAlignmentIndicators] output when terminated;
+
+
+@Verbose(label="context-state-info", extraNfo="Context state changed", fields={'systime','msg','dsc'})
+select date(current_timestamp()) as systime, msg, dsc from ContextStateStream;
