@@ -161,6 +161,10 @@ public class Trx {
 		return String.format("%.3f", d);
 	}
 
+	public static final String format(String fmt, Number n) {
+		return String.format(fmt, n);
+	}
+
 	public static final String regExtract(String src, String regexp, int groupNo) {
 		Pattern p = Pattern.compile(regexp);
 		Matcher matcher = p.matcher(src);
@@ -212,6 +216,7 @@ public class Trx {
 
 	public static void main(String[] args) {
 		System.out.println(format(3.1415) + " " + format(.56789));
+		System.out.println(format(3));
 	}
 
 	public static final String reformat(String input, String separator, String newSeparator) {
@@ -224,4 +229,43 @@ public class Trx {
 		return sb.append(tokens[tokens.length - 1]).toString();
 	}
 
+	public static final boolean compareHostnames(String a, String b) {
+		int indexA = a.length() - 1;
+		while (Character.isDigit(a.charAt(indexA))) {
+			--indexA;
+		}
+		if (a.charAt(indexA) != ':') {
+			indexA = a.length() - 1;
+		}
+
+		int indexB = b.length() - 1;
+		while (Character.isDigit(b.charAt(indexB))) {
+			--indexB;
+		}
+		if (b.charAt(indexB) != ':') {
+			indexB = b.length() - 1;
+		}
+
+		if (indexA == indexB) {
+			while (indexA >= 0) {
+				if (a.charAt(indexA) != b.charAt(indexA)) {
+					return false;
+				}
+				--indexA;
+			}
+		}
+		return true;
+	}
+	// public static final String getHost(String http) {
+	// int splitPoint = http.length();
+	// char c = http.charAt(splitPoint-1);
+	// while (Character.isDigit(c) || c == ':') {
+	// --splitPoint;
+	// }
+	//
+	// }
+	//
+	// public static final String areSameHosts(String http1, String http1) {
+	//
+	// }
 }

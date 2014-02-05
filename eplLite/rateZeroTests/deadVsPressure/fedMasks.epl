@@ -1,7 +1,0 @@
-#include "someotherfile.epl"
-
-create schema FedMaskEvent as ch.cern.cms.load.eventData.FedMask;
-create window FedMask.std:unique(fedId) as select * from FedMaskEvent;
-insert into FedMask select * from FedMaskEvent;
-insert into FedMaskEvent select x.* from levelZeroFM_static[parseFem(FED_ENABLE_MASK)@type(FedMaskEvent)] as x;
-

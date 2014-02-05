@@ -93,8 +93,10 @@ public class EventProcessor {
 		c.addPlugInSingleRowFunction("getBusyProcessorsRatio", Trx.class.getCanonicalName(), "getBusyProcessorsRatio");
 		c.addPlugInSingleRowFunction("indexesOf", Trx.class.getCanonicalName(), "indexesOf");
 		c.addPlugInSingleRowFunction("subList", Trx.class.getCanonicalName(), "subList");
+		c.addPlugInSingleRowFunction("compareHostnames", Trx.class.getCanonicalName(), "compareHostnames");
 		c.addPlugInSingleRowFunction("SortedStringSet", SortedStringSet.class.getCanonicalName(), "getInstance");
 		
+	
 		
 		// c.addPlugInAggregationFunctionFactory("concat", CustomConcatFunction.class.getCanonicalName());
 		c.addPlugInAggregationFunctionFactory("concat", CustomConcatFactory.class.getCanonicalName());

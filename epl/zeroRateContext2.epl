@@ -1,4 +1,5 @@
 #include "zeroRateContext.epl"
+#include "fedFractions.epl"
 
 context L1ZeroRate create window FedResyncInfos.std:unique(fedId) as (fedId int, myrinetLastResyncEvt long, myrinetResync long, systime long);
 
@@ -79,7 +80,7 @@ context L1ZeroRate
 	select 
 		date(max(b.timestamp)) as srctime, 
 		date(current_timestamp()) as systime,
-		reformat(window(b.*).aggregate("",(result, row)=>result||format("%03d", row.fedId)||"("||format(row.bpFraction)||")-"),"-",", ") as feds
+		window(b.*).orderBy(i=>i.fedId).aggregate("",(result, row)=>result||format("%03d", row.fedId)||"("||format(row.bpFraction)||"), ") as feds
 	from 
 		FrlBackpressure(timestamp is not null) as b,
 		pattern[every FrlBackpressure->(timer:interval(1 msec) and not FrlBackpressure)] unidirectional
@@ -100,19 +101,32 @@ context L1ZeroRate
 		first every 5 seconds;
 
 //needs folding too
-@Verbose(label="output3", fields={'systime','fedId', 'dOos','dBusy','dWarning','dError','dIllegal', 'dTime', 'srctime'}, extraNfo='FED stuck')
+@Verbose(label="output3", fields={'systime','feds', 'srctime'}, extraNfo='FEDs stuck')
 context L1ZeroRate
-	select 
-		timestamp as srctime, 
-		date(current_timestamp()) as systime, 
-		fedId, 
-		dTime, 
-		dTime-(dBusy+dWarning+dError+dOos+dReady) as dIllegal, 
-		dWarning, 
-		dError, 
-		dOos, 
-		dBusy 
+	select
+		reformat(window(ff.*).aggregate("",(result, row)
+			=>result||"fed#"||format("%03d",row.fedId)||" [dTime:"||(row.dTime.toString())||", dOos:"||(row.dOos.toString())||
+				", dBusy:"||(row.dBusy.toString())||", dWarning:"||(row.dWarning.toString())||", dError:"||(row.dError.toString())||
+				", dIllegal:"||(row.dTime-(row.dBusy+row.dWarning+row.dError+row.dOos+row.dReady)).toString()||"]-"),"-",", ") as feds,
+		max(timestamp) as srctime, 
+		date(current_timestamp()) as systime
 	from 
-		FedFractions
+		FedFractions.win:time(2 msec) as ff,
+		pattern[every FedFractions->(timer:interval(1 msec) and not FedFractions)] unidirectional
 	where 
 		dTime>0 and (dBusy=dTime or dWarning=dTime or dError = dTime or dOos = dTime or (dBusy+dWarning+dError+dOos+dReady)=0);
+
+
+
+/** let's play around that one alright? **/
+@Verbose(label='output4', fields={'systime','feds','srctime'}, extraNfo='FEDs stuck with Backpressure at zero rate')
+context L1ZeroRate
+	select 
+		date(max(b.timestamp)) as srctime, 
+		date(current_timestamp()) as systime,
+		window(b.*).orderBy(i=>i.fedId).aggregate("",(result, row)=>result||format("%03d", row.fedId)||"("||format(row.bpFraction)||"), ") as feds
+	from 
+		FrlBackpressure(timestamp is not null) as b,
+		pattern[every FrlBackpressure->(timer:interval(1 msec) and not FrlBackpressure)] unidirectional
+	output
+		first every 5 seconds;

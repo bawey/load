@@ -35,6 +35,9 @@ insert into RunStart select p.STATE as daqState, p.timestamp as srctime, date(p.
 @Priority(0)
 create context CurrentRun start RunStart end RunStop;
 
+@Watched(label="RunOngoingContext tmr")
+context CurrentRun select (current_timestamp()-context.startTime)/1000.0 from pattern [every timer:interval(1 seconds)];
+
 
 create objectarray schema RunAvgRate as (rate double);
 create objectarray schema RunAvgARate as (rate double);
@@ -64,6 +67,5 @@ select sid, p.systime as systime, runNumber() as runNumber, fedsForSubsysMap() a
 select p.systime as systime, sid, subsystems() as detectors, runNumber() as runNumber, fedsForSubsysMap() as fedsPerSubsystem, 
 	runAvgRate() as avgRunRate, runAvgARate() as avgStreamARate, formatMs(runDuration()) as runDuration, avgTrgLasDt() as avgTrgLasDt
 	from pattern [every p=RunStop] unidirectional;
-
 
 

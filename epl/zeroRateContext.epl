@@ -9,12 +9,6 @@ create context L1ZeroRate
 
 
 /** The following @Watched statements are debug-relevant only **/
-@Watched(label="L1ZeroRate timer")
-context L1ZeroRate select date(current_timestamp()) from pattern [every timer:interval(1 seconds)];
-
-@Watched(label="ZeroRateContext tmr")
-context L1ZeroRate select (current_timestamp()-context.L1ZeroRateNested.startTime)/1000.0 from pattern [every timer:interval(1 seconds)];
-
 @Watched(label="ZeroRateNestedContext tmr")
 context L1ZeroRate select (current_timestamp()-context.L1ZeroRateNested.startTime)/1000.0 from pattern [every timer:interval(1 seconds)];
 
@@ -52,6 +46,10 @@ select date(systime) as systime, uniqueValuesCnt from TrgNumbersSummary;
 select date(systime) as systime, uniqueValuesCnt from BxNumbersSummary;
 **/
 
+/** According to the docs, the event starting the context is available within it. However, 
+we don't want the terminating event to be accesible for our output as it surely falls into
+a different context
+**/
 @Priority(10)
 create context TriggerNumbersMisaligned
 	start TrgNumbersSummary(uniqueValuesCnt>1 and uniqueValuesCnt<5 and fedsNo > 10* uniqueValuesCnt)
@@ -102,6 +100,11 @@ context CrossingNumbersMisaligned
 
 /** send some context-state information to a separate output **/
 create objectarray schema ContextStateStream as (dsc String, msg String);
+
+/**
+	For the syntactical correctness, the from pattern[] is used here, but this is only to produce the message once the context is active or withhold it until
+	the context terminates so that the corresponding message gets broadcasted.
+**/
 
 context TriggerNumbersMisaligned insert into ContextStateStream select "TRG numbers misaligned" as msg, context.name||" started" as dsc from pattern[FedsAlignmentIndicators];
 context CrossingNumbersMisaligned insert into ContextStateStream select "BX numbers misaligned" as msg, context.name||" started" as dsc from pattern[FedsAlignmentIndicators];

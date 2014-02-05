@@ -25,11 +25,11 @@ create window EventProcessorStatusSnapshot.std:unique(kontext) as (kontext Strin
 		from EventProcessorStatus;
 
 /** 58 - colon on UTF-16, couldn't pass simple char **/
-@Watched
-select avg(hi.cpuUsage) as value, eps.units.toString()||"u: CPU usage" as label 
-from pattern[every timer:interval(1 sec)] unidirectional, EventProcessorStatusSnapshot as eps, hostInfo.std:unique(context) as hi
-where eps.`kontext`.substring(0,`kontext`.lastIndexOf(58)) = hi.`context`.substring(0,`context`.lastIndexOf(58))
-group by eps.units;
+//@Watched
+//select avg(hi.cpuUsage) as value, eps.units.toString()||"u: CPU usage" as label 
+//from pattern[every timer:interval(1 sec)] unidirectional, EventProcessorStatusSnapshot as eps, hostInfo.std:unique(context) as hi
+//where compareHostnames(eps.`kontext`, hi.`context`)
+//group by eps.units;
 
 /** Count those with macro state Running(3). How many of these have micro state different than 2? **/
 @Watched
