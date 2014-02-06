@@ -12,7 +12,10 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 import org.apache.log4j.Logger;
 
@@ -28,6 +31,7 @@ import rcms.utilities.hwcfg.eq.FMMCrate;
 import rcms.utilities.hwcfg.eq.FMMFMMLink;
 import rcms.utilities.hwcfg.eq.FRL;
 import rcms.utilities.hwcfg.eq.FRLCrate;
+import rcms.utilities.hwcfg.eq.SubSystem;
 import rcms.utilities.hwcfg.eq.TTCPartition;
 import ch.cern.cms.esper.Trx;
 import ch.cern.cms.load.Load;
@@ -167,27 +171,25 @@ public final class HwInfo implements Serializable {
 		}
 	}
 
-	public static Integer getFedId(Object context, Object geoSlotOrSlot, Object linkOrIo, CmsHw seenByHw) {
+	public static Integer getFedSrcId(Object context, Object geoSlotOrSlot, Object linkOrIo, CmsHw seenByHw) {
 		if (context instanceof String && geoSlotOrSlot instanceof Integer && linkOrIo instanceof Integer) {
-			return getFedId((String) context, ((Integer) geoSlotOrSlot).intValue(), ((Integer) linkOrIo).intValue(), seenByHw);
+			return getFedSrcId((String) context, ((Integer) geoSlotOrSlot).intValue(), ((Integer) linkOrIo).intValue(), seenByHw);
 		} else {
-			return getFedId(context.toString(), Integer.parseInt(geoSlotOrSlot.toString()), Integer.parseInt(linkOrIo.toString()), seenByHw);
+			return getFedSrcId(context.toString(), Integer.parseInt(geoSlotOrSlot.toString()), Integer.parseInt(linkOrIo.toString()), seenByHw);
 		}
 	}
 
-	private static Map<FedDesc, Integer> fedIdCache = new HashMap<FedDesc, Integer>();
+	private static Map<FedDesc, Integer> fedSrcIdCache = new HashMap<FedDesc, Integer>();
 
-	public static Integer getFedId(String context, int geoSlotOrSlot, int linkOrIo, CmsHw seenByHw) {
+	public static Integer getFedSrcId(String context, int geoSlotOrSlot, int linkOrIo, CmsHw seenByHw) {
 		FedDesc desc = new FedDesc(linkOrIo, geoSlotOrSlot, context, seenByHw);
-		Integer id = fedIdCache.get(desc);
+		Integer id = fedSrcIdCache.get(desc);
 		if (id != null) {
 			return id;
 		}
 		FED fed = getFed(context, geoSlotOrSlot, linkOrIo, seenByHw);
 		if (fed != null) {
-			fedIdCache.put(desc, fed.getSrcId());
-			// System.out.println(fedIdCache.size() + " elements in fedId cache: " + fedIdCache.values().toString());
-			// System.out.println(fedIdCache.keySet().toString());
+			fedSrcIdCache.put(desc, fed.getSrcId());
 			return fed.getSrcId();
 		}
 		return null;
@@ -213,7 +215,7 @@ public final class HwInfo implements Serializable {
 		return null;
 	}
 
-	public static Integer[] getMainFedIds(Object context, Object geoslot, Object io) {
+	public static Integer[] getMainFedSrcIds(Object context, Object geoslot, Object io) {
 		Collection<Integer> ids = new HashSet<Integer>();
 		String c = Trx.toText(context);
 		int slot = Trx.toInt(geoslot);
@@ -227,27 +229,10 @@ public final class HwInfo implements Serializable {
 		return ids.toArray(new Integer[ids.size()]);
 	}
 
-	public static Integer[] getMainFedIds(int fedId) {
+	public static Integer[] getMainFedSrcIds(int fedSrcId) {
 		Collection<Integer> ids = new HashSet<Integer>();
-		FED fed = getInstance().eqs.getFED(fedId);
+		FED fed = getInstance().eqs.getFEDBySourceId(fedSrcId);
 		if (fed != null) {
-			for (FED mainFed : fed.getMainFEDs()) {
-				ids.add(mainFed.getSrcId());
-			}
-		}
-		return ids.toArray(new Integer[ids.size()]);
-	}
-
-	/** means: when deadtime observed on the triplet passed here, all the result fedIDs should be checked against backpressure fedIDs **/
-	public static Integer[] getDeadtimeRelevantFedIds(Object context, Object geoslot, Object io) {
-
-		Collection<Integer> ids = new HashSet<Integer>();
-		String c = Trx.toText(context);
-		int slot = Trx.toInt(geoslot);
-		int i = Trx.toInt(io);
-		FED fed = getFed(peelHostname(c), slot, i, CmsHw.FMM);
-		if (fed != null) {
-			ids.add(fed.getSrcId());
 			for (FED mainFed : fed.getMainFEDs()) {
 				ids.add(mainFed.getSrcId());
 			}
@@ -275,13 +260,93 @@ public final class HwInfo implements Serializable {
 		for (TTCPartition ttcp : hi.eqs.getTTCPartitions().values()) {
 			List<Long> list = new LinkedList<Long>();
 			for (FED fed : ttcp.getFEDs().values()) {
-				if (FedMask.isFedActive((int) fed.getId()));
-				list.add((long)fed.getSrcId());
+				if (FedMask.isFedActive((int) fed.getSrcId())) {
+					list.add((long) fed.getSrcId());
+				}
 			}
 			if (!list.isEmpty()) {
 				m.put(ttcp.getSubSystem().getName(), list);
 			}
 		}
 		return m;
+	}
+
+	public static final String fedsInfoString(Map<Integer, String> rawData) {
+		HwInfo hi = getInstance();
+
+		TreeMap<String, TreeMap<String, TreeSet<String>>> eyjafjallajokull = new TreeMap<String, TreeMap<String, TreeSet<String>>>();
+
+		for (Map.Entry<Integer, String> tuple : rawData.entrySet()) {
+			long fedSourceId = tuple.getKey();
+			String desc = tuple.getValue();
+			FED fed = hi.eqs.getFEDBySourceId(fedSourceId);
+
+			if (fed == null) {
+				System.out.println("Null fed. remove such possibility after tests");
+				continue;
+			}
+			TTCPartition partition = fed.getTTCPartition();
+			SubSystem subsys = partition.getSubSystem();
+
+			StringBuilder fedInfo = new StringBuilder("fed#").append(String.format("%03d", fedSourceId));
+			if (desc != null && desc.length() > 0) {
+				fedInfo.append(": ").append(desc);
+			}
+
+			if (!eyjafjallajokull.containsKey(subsys.getName())) {
+				eyjafjallajokull.put(subsys.getName(), new TreeMap<String, TreeSet<String>>());
+			}
+
+			Map<String, TreeSet<String>> subMap = eyjafjallajokull.get(subsys.getName());
+
+			if (!subMap.containsKey(partition.getName())) {
+				subMap.put(partition.getName(), new TreeSet<String>());
+			}
+
+			subMap.get(partition.getName()).add(fedInfo.toString());
+		}
+
+		StringBuilder result = new StringBuilder();
+
+		Iterator<Entry<String, TreeMap<String, TreeSet<String>>>> iter1 = eyjafjallajokull.entrySet().iterator();
+		while (iter1.hasNext()) {
+			Map.Entry<String, TreeMap<String, TreeSet<String>>> level1 = iter1.next();
+			result.append(level1.getKey()).append(": [");
+			Iterator<Entry<String, TreeSet<String>>> iter2 = level1.getValue().entrySet().iterator();
+			while (iter2.hasNext()) {
+				Map.Entry<String, TreeSet<String>> level2 = iter2.next();
+				result.append(level2.getKey()).append(": (");
+				Iterator<String> iter3 = level2.getValue().iterator();
+				while (iter3.hasNext()) {
+					result.append(iter3.next());
+					if (iter3.hasNext()) {
+						result.append(", ");
+					}
+				}
+				result.append(")");
+				if (iter2.hasNext()) {
+					result.append(", ");
+				}
+			}
+			result.append("]");
+			if (iter1.hasNext()) {
+				result.append(", ");
+			}
+		}
+		return result.toString();
+	}
+
+	public static final void main(String[] args) {
+		Map<Integer, String> a = new HashMap<Integer, String>() {
+			{
+				for (int i = 1; i < 800; ++i) {
+					double rand = Math.random();
+					if (rand > 0.75) {
+						put(i, Trx.format(rand));
+					}
+				}
+			}
+		};
+		System.out.println(fedsInfoString(a));
 	}
 }

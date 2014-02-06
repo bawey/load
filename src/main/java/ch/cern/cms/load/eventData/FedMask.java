@@ -7,7 +7,7 @@ public class FedMask {
 
 	private static Map<Integer, FedMask> registry = new HashMap<Integer, FedMask>();
 
-	private final int fedId;
+	private final int fedSrcId;
 
 	private boolean slinkMasked;
 
@@ -19,7 +19,7 @@ public class FedMask {
 
 	public FedMask(String s) {
 		String[] tkns = s.split("&");
-		this.fedId = Integer.parseInt(tkns[0]);
+		this.fedSrcId = Integer.parseInt(tkns[0]);
 		int i = Integer.parseInt(tkns[1]);
 		switch ((i & 4) + (i & 1)) {
 		case 4:
@@ -53,11 +53,11 @@ public class FedMask {
 
 	@Override
 	public String toString() {
-		return "FedMask [fedId=" + fedId + ", slinkMasked=" + slinkMasked + ", hasSlink=" + hasSlink + ", hasTts=" + hasTts + ", ttsMasked=" + ttsMasked + "]";
+		return "FedMask [fedId=" + fedSrcId + ", slinkMasked=" + slinkMasked + ", hasSlink=" + hasSlink + ", hasTts=" + hasTts + ", ttsMasked=" + ttsMasked + "]";
 	}
 
 	public int getFedId() {
-		return fedId;
+		return fedSrcId;
 	}
 
 	public boolean isSlinkMasked() {

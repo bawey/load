@@ -34,9 +34,9 @@ public class HwInfoTest {
 		int gslot = 7;
 		HwInfo nn = HwInfo.getInstance();
 		for (Integer i = 0; i < 20; ++i) {
-			System.out.println("connected FED: " + nn.getFedId(ctx, gslot, i.toString(), CmsHw.FMM));
+			System.out.println("connected FED: " + nn.getFedSrcId(ctx, gslot, i.toString(), CmsHw.FMM));
 			System.out.println("source FMM: " + nn.getSrcFMM(nn.getFMM(ctx, gslot), i));
-			System.out.println(nn.getDeadtimeRelevantFedIds("http://fmmpc-s1d12-08.cms:11100", 7, i));
+			System.out.println(nn.getMainFedSrcIds("http://fmmpc-s1d12-08.cms:11100", 7, i));
 		}
 		//
 	}

@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -256,7 +257,8 @@ public class Trx {
 		}
 		return true;
 	}
-	// public static final String getHost(String http) {
+
+		// public static final String getHost(String http) {
 	// int splitPoint = http.length();
 	// char c = http.charAt(splitPoint-1);
 	// while (Character.isDigit(c) || c == ':') {

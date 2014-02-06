@@ -47,8 +47,8 @@ create context MyrinetResyncMisaligned
 	select 
 		date(x.systime) as systime, 
 		count(fedId) as fedsNo, 
-		myrinetLastResyncEvt, 
-		reformat(window(x.*).aggregate("", (result, row) => result||format("%03d",row.fedId)||"-"),"-",", ") as feds
+		myrinetLastResyncEvt,
+		fedsInfoString(window(x.*).toMap(k=>k.fedId, v=>null)) as feds 
 	from 
 		pattern [every FedResyncSummary] unidirectional,
 		FedResyncInfos as x 
@@ -64,7 +64,7 @@ create context MyrinetResyncMisaligned
 		date(x.systime) as systime, 
 		count(fedId) as fedsNo, 
 		myrinetResync, 	
-		reformat(window(x.*).aggregate("", (result, row) => result||format("%03d",row.fedId)||"-"),"-",", ") as feds
+		fedsInfoString(window(x.*).toMap(k=>k.fedId, v=>null)) as feds 
 	from 
 		pattern[every FedResyncSummary] unidirectional, 
 		FedResyncInfos as x 
@@ -80,7 +80,7 @@ context L1ZeroRate
 	select 
 		date(max(b.timestamp)) as srctime, 
 		date(current_timestamp()) as systime,
-		window(b.*).orderBy(i=>i.fedId).aggregate("",(result, row)=>result||format("%03d", row.fedId)||"("||format(row.bpFraction)||"), ") as feds
+		fedsInfoString(window(b.*).toMap(k=>k.fedId, v=>format(v.bpFraction))) as feds 
 	from 
 		FrlBackpressure(timestamp is not null) as b,
 		pattern[every FrlBackpressure->(timer:interval(1 msec) and not FrlBackpressure)] unidirectional
@@ -93,21 +93,30 @@ context L1ZeroRate
 	select 
 		date(max(b.timestamp)) as srctime, 
 		date(current_timestamp()) as systime, 
-		reformat(window(b.*).aggregate("",(result, row)=>result||format("%03d", row.fedId)||"("||format(row.dtFraction)||")-"),"-",", ") as feds
+		fedsInfoString(window(b.*).toMap(k=>k.fedId, v=>format(v.dtFraction))) as feds 
 	from 
 		FmmDeadtime as b, 
 		pattern[every FmmDeadtime->(timer:interval(1 msec) and not FmmDeadtime)] unidirectional
 	output
 		first every 5 seconds;
 
-//needs folding too
+
 @Verbose(label="output3", fields={'systime','feds', 'srctime'}, extraNfo='FEDs stuck')
 context L1ZeroRate
-	select
-		reformat(window(ff.*).aggregate("",(result, row)
-			=>result||"fed#"||format("%03d",row.fedId)||" [dTime:"||(row.dTime.toString())||", dOos:"||(row.dOos.toString())||
-				", dBusy:"||(row.dBusy.toString())||", dWarning:"||(row.dWarning.toString())||", dError:"||(row.dError.toString())||
-				", dIllegal:"||(row.dTime-(row.dBusy+row.dWarning+row.dError+row.dOos+row.dReady)).toString()||"]-"),"-",", ") as feds,
+	select		
+		fedsInfoString(window(ff.*).toMap(
+				k=>k.fedId,
+				v=>
+					"« "||
+						(case when v.dOos>0 then "dOos: "||(100*v.dOos/v.dTime).toString()||"% " else "" end) ||
+						(case when v.dBusy>0 then "dBusy: "||(100*v.dBusy/v.dTime).toString()||"% " else "" end) ||
+						(case when v.dWarning>0 then "dWarning: "||(100*v.dWarning/v.dTime).toString()||"% " else "" end) ||
+						(case when v.dError>0 then "dError: "||(100*v.dError/v.dTime).toString()||"% " else "" end) ||
+						(case when v.dTime>(v.dBusy+v.dWarning+v.dError+v.dOos+v.dReady) then 
+						", dIllegal "|| (100*(v.dTime-(v.dBusy+v.dWarning+v.dError+v.dOos+v.dReady))/v.dTime).toString()||"% " else "" end)||
+					"»"
+			)) as feds,
+
 		max(timestamp) as srctime, 
 		date(current_timestamp()) as systime
 	from 
@@ -115,18 +124,3 @@ context L1ZeroRate
 		pattern[every FedFractions->(timer:interval(1 msec) and not FedFractions)] unidirectional
 	where 
 		dTime>0 and (dBusy=dTime or dWarning=dTime or dError = dTime or dOos = dTime or (dBusy+dWarning+dError+dOos+dReady)=0);
-
-
-
-/** let's play around that one alright? **/
-@Verbose(label='output4', fields={'systime','feds','srctime'}, extraNfo='FEDs stuck with Backpressure at zero rate')
-context L1ZeroRate
-	select 
-		date(max(b.timestamp)) as srctime, 
-		date(current_timestamp()) as systime,
-		window(b.*).orderBy(i=>i.fedId).aggregate("",(result, row)=>result||format("%03d", row.fedId)||"("||format(row.bpFraction)||"), ") as feds
-	from 
-		FrlBackpressure(timestamp is not null) as b,
-		pattern[every FrlBackpressure->(timer:interval(1 msec) and not FrlBackpressure)] unidirectional
-	output
-		first every 5 seconds;

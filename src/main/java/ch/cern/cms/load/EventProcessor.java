@@ -75,9 +75,11 @@ public class EventProcessor {
 		c.addPlugInSingleRowFunction("Double", Trx.class.getCanonicalName(), "toDouble");
 
 		c.addPlugInSingleRowFunction("fmm", HwInfo.class.getCanonicalName(), "getFMM");
-		c.addPlugInSingleRowFunction("fedId", HwInfo.class.getCanonicalName(), "getFedId");
-		c.addPlugInSingleRowFunction("dtRelevantFedIds", HwInfo.class.getCanonicalName(), "getDeadtimeRelevantFedIds");
-		c.addPlugInSingleRowFunction("mainFedIds", HwInfo.class.getCanonicalName(), "getMainFedIds");
+		c.addPlugInSingleRowFunction("fedSrcId", HwInfo.class.getCanonicalName(), "getFedSrcId");
+		
+		
+		c.addPlugInSingleRowFunction("mainFedSrcIds", HwInfo.class.getCanonicalName(), "getMainFedSrcIds");
+		c.addPlugInSingleRowFunction("fedsInfoString", HwInfo.class.getCanonicalName(), "fedsInfoString");
 
 		c.addPlugInSingleRowFunction("parseFem", FedMask.class.getCanonicalName(), "parse");
 		c.addPlugInSingleRowFunction("in_array", Trx.class.getCanonicalName(), "inArray");

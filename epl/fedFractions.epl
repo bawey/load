@@ -1,6 +1,6 @@
 #include "deadtimeAndBackpressure.epl"
 
-create objectarray schema FedFractions as (fedId long, dBusy long, dWarning long, dOos long, dError long, dReady long, dTime long, timestamp Date);
+create objectarray schema FedFractions as (fedId int, dBusy long, dWarning long, dOos long, dError long, dReady long, dTime long, timestamp Date);
 
 insert into FedFractions select * from FmmInput match_recognize(
 	partition by fedId

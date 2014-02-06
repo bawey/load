@@ -14,7 +14,7 @@ select * from frlcontrollerLink match_recognize(
 create window ConfirmedFeds.std:unique(fedId) as select FEDSourceId as fedId from frlcontrollerLink;
 create window DeniedFeds.std:unique(fedId) as select * from ConfirmedFeds;
 on frlcontrollerLink as a insert into ConfirmedFeds select a.FEDSourceId as fedId 
-	where a.FEDSourceId not in (select fedId from ConfirmedFeds) and a.FEDSourceId = HwInfo.getInstance().getFedId(a.context, a.slotNumber, a.linkNumber, CmsHw.FRL);
+	where a.FEDSourceId not in (select fedId from ConfirmedFeds) and a.FEDSourceId = fedSrcId(a.context, a.slotNumber, a.linkNumber, CmsHw.FRL);
 @Watched(label='Verified FED IDs')
 select count(*) from ConfirmedFeds;
 

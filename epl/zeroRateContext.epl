@@ -86,15 +86,17 @@ select uniqueValuesCnt, date(systime) as systime from TrgNumbersSummary;
 **/
 
 
-@Verbose(label="output", fields={"systime" ,"trgNumber", "fedsNo", "feds"})
+@Verbose(label="output", fields={"systime" ,"trgNumber", "fedsNo", "feds"}, extraNfo="TRG numbers misaligned")
 context TriggerNumbersMisaligned 
-	select trgNumber, reformat(window(x.*).aggregate("",(result, row)=>result||format("%03d",row.fedId)||"-"),"-",", ") as feds,
+	select 	trgNumber, 
+			fedsInfoString(window(x.*).toMap(k=>k.fedId, v=>null)) as feds,
 		date(current_timestamp()) as systime, count(fedId) as fedsNo
 	from pattern[every TrgNumbersSummary ] unidirectional, FedsAlignmentIndicators as x group by trgNumber order by count(fedId) desc;
 
-@Verbose(label="output", fields={"systime" ,"bxNumber", "fedsNo", "feds"})
+@Verbose(label="output", fields={"systime" ,"bxNumber", "fedsNo", "feds"}, extraNfo="BX numbers misaligned")
 context CrossingNumbersMisaligned 
-	select bxNumber, reformat(window(x.*).aggregate("",(result, row)=>result||format("%03d",row.fedId)||"-"),"-",", ") as feds,
+	select bxNumber, 
+			fedsInfoString(window(x.*).toMap(k=>k.fedId, v=>null)) as feds, 
 		date(current_timestamp()) as systime, count(fedId) as fedsNo
 	from pattern[every BxNumbersSummary ] unidirectional, FedsAlignmentIndicators as x group by bxNumber order by count(fedId) desc;
 
