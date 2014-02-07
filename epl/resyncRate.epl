@@ -4,7 +4,7 @@ create variable String desiredContext = "";
 create variable Integer desiredSlotNumber = -1;
 create objectarray schema ResyncStream as (resyncRate double, resyncNo long);
 
-on FrlCtlLnk(fedId=812) as ctl set desiredContext = ctl.context, desiredSlotNumber= ctl.slotNumber;
+on FrlCtlLnk(fedSrcId=812) as ctl set desiredContext = ctl.context, desiredSlotNumber= ctl.slotNumber;
 
 insert into ResyncStream
 select resyncRate, resyncNo from frlcontrollerCard match_recognize(

@@ -21,21 +21,21 @@ create objectarray schema BxNumbersSummary as (uniqueValuesCnt long, systime lon
 
 @Description('We need to retain bxNumbers and trgNumbers for the sake of performing the checks. Creating window within a context gets it reset every time the context restarts')
 
-context L1ZeroRate create window FedsAlignmentIndicators.std:unique(fedId) as (fedId int, bxNumber long, trgNumber long);
-context L1ZeroRate insert into FedsAlignmentIndicators select fedId, bxNumber as bxNumber, triggerNumber as trgNumber from FrlCtlLnk;
+context L1ZeroRate create window FedsAlignmentIndicators.std:unique(fedSrcId) as (fedSrcId int, bxNumber long, trgNumber long);
+context L1ZeroRate insert into FedsAlignmentIndicators select fedSrcId, bxNumber as bxNumber, triggerNumber as trgNumber from FrlCtlLnk;
 
 /** a check if the window is reset with evert context start - true!
-@Verbose(label="context", fields={'fedIds'})
-context L1ZeroRate select count(fedId) as fedIds from FedsAlignmentIndicators;
+@Verbose(label="context", fields={'fedSrcIds'})
+context L1ZeroRate select count(fedSrcId) as fedSrcIds from FedsAlignmentIndicators;
 **/
 
 context L1ZeroRate insert into TrgNumbersSummary 
-	select count(distinct x.trgNumber) as uniqueValuesCnt, current_timestamp() as systime, count(fedId) as fedsNo
+	select count(distinct x.trgNumber) as uniqueValuesCnt, current_timestamp() as systime, count(fedSrcId) as fedsNo
 	from pattern[every FedsAlignmentIndicators -> (timer:interval(1 msec) and not FedsAlignmentIndicators)] unidirectional,
 	FedsAlignmentIndicators as x output first every 10 seconds;
 
 context L1ZeroRate insert into BxNumbersSummary
-	select count(distinct x.bxNumber) as uniqueValuesCnt, current_timestamp() as systime, count(fedId) as fedsNo
+	select count(distinct x.bxNumber) as uniqueValuesCnt, current_timestamp() as systime, count(fedSrcId) as fedsNo
 	from pattern[every FedsAlignmentIndicators -> (timer:interval(1 msec) and not FedsAlignmentIndicators)] unidirectional,
 	FedsAlignmentIndicators as x output first every 10 seconds;
 
@@ -89,16 +89,16 @@ select uniqueValuesCnt, date(systime) as systime from TrgNumbersSummary;
 @Verbose(label="output", fields={"systime" ,"trgNumber", "fedsNo", "feds"}, extraNfo="TRG numbers misaligned")
 context TriggerNumbersMisaligned 
 	select 	trgNumber, 
-			fedsInfoString(window(x.*).toMap(k=>k.fedId, v=>null)) as feds,
-		date(current_timestamp()) as systime, count(fedId) as fedsNo
-	from pattern[every TrgNumbersSummary ] unidirectional, FedsAlignmentIndicators as x group by trgNumber order by count(fedId) desc;
+			fedsInfoString(window(x.*).toMap(k=>k.fedSrcId, v=>null)) as feds,
+		date(current_timestamp()) as systime, count(fedSrcId) as fedsNo
+	from pattern[every TrgNumbersSummary ] unidirectional, FedsAlignmentIndicators as x group by trgNumber order by count(fedSrcId) desc;
 
 @Verbose(label="output", fields={"systime" ,"bxNumber", "fedsNo", "feds"}, extraNfo="BX numbers misaligned")
 context CrossingNumbersMisaligned 
 	select bxNumber, 
-			fedsInfoString(window(x.*).toMap(k=>k.fedId, v=>null)) as feds, 
-		date(current_timestamp()) as systime, count(fedId) as fedsNo
-	from pattern[every BxNumbersSummary ] unidirectional, FedsAlignmentIndicators as x group by bxNumber order by count(fedId) desc;
+			fedsInfoString(window(x.*).toMap(k=>k.fedSrcId, v=>null)) as feds, 
+		date(current_timestamp()) as systime, count(fedSrcId) as fedsNo
+	from pattern[every BxNumbersSummary ] unidirectional, FedsAlignmentIndicators as x group by bxNumber order by count(fedSrcId) desc;
 
 /** send some context-state information to a separate output **/
 create objectarray schema ContextStateStream as (dsc String, msg String);

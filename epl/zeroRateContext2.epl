@@ -1,20 +1,20 @@
 #include "zeroRateContext.epl"
 #include "fedFractions.epl"
 
-context L1ZeroRate create window FedResyncInfos.std:unique(fedId) as (fedId int, myrinetLastResyncEvt long, myrinetResync long, systime long);
+context L1ZeroRate create window FedResyncInfos.std:unique(fedSrcId) as (fedSrcId int, myrinetLastResyncEvt long, myrinetResync long, systime long);
 
 @Description('When rate has been zero for long enough, count the clusters of myrinetLastResyncEvt values')
 context L1ZeroRate 
 	insert into 
 		FedResyncInfos 
 	select 
-		lnk.fedId as fedId, 
+		lnk.fedSrcId as fedSrcId, 
 		crd.myrinetLastResyncEvt as myrinetLastResyncEvt, 
 		crd.myrinetResync as myrinetResync,
 		current_timestamp() as systime
 	from 	
 		frlcontrollerCard.std:unique(context, slotNumber) as crd, 
-		FrlCtlLnk.std:unique(fedId) as lnk
+		FrlCtlLnk.std:unique(fedSrcId) as lnk
 	where	
 		lnk.context = crd.context and lnk.slotNumber = crd.slotNumber;
 
@@ -26,7 +26,7 @@ context L1ZeroRate insert into FedResyncSummary
 		current_timestamp() as systime,
 		count(distinct myrinetLastResyncEvt) as lastResyncUniq,
 		count(distinct myrinetResync) as resyncUniq,
-		count(fedId) as fedsNo
+		count(fedSrcId) as fedsNo
 	from 
 		pattern[FedResyncInfos->(timer:interval(1 msec) and not FedResyncInfos)] unidirectional, FedResyncInfos
 	output
@@ -46,32 +46,32 @@ create context MyrinetResyncMisaligned
 	context MyrinetLastResyncMisaligned
 	select 
 		date(x.systime) as systime, 
-		count(fedId) as fedsNo, 
+		count(fedSrcId) as fedsNo, 
 		myrinetLastResyncEvt,
-		fedsInfoString(window(x.*).toMap(k=>k.fedId, v=>null)) as feds 
+		fedsInfoString(window(x.*).toMap(k=>k.fedSrcId, v=>null)) as feds 
 	from 
 		pattern [every FedResyncSummary] unidirectional,
 		FedResyncInfos as x 
 	group by 
 		myrinetLastResyncEvt
 	order by 
-		count(fedId) desc;
+		count(fedSrcId) desc;
 
 
 @Verbose(label="output2", fields={'systime','fedsNo','myrinetResync','feds'}, extraNfo="myrinetResync discrepancy")
 	context MyrinetResyncMisaligned
 	select 
 		date(x.systime) as systime, 
-		count(fedId) as fedsNo, 
+		count(fedSrcId) as fedsNo, 
 		myrinetResync, 	
-		fedsInfoString(window(x.*).toMap(k=>k.fedId, v=>null)) as feds 
+		fedsInfoString(window(x.*).toMap(k=>k.fedSrcId, v=>null)) as feds 
 	from 
 		pattern[every FedResyncSummary] unidirectional, 
 		FedResyncInfos as x 
 	group by 
 		myrinetResync
 	order by
-		count(fedId) desc;
+		count(fedSrcId) desc;
 
 
 /** FEDS STUCK WIT BACKPRESSURE WITH ZERO RATE **/
@@ -80,7 +80,7 @@ context L1ZeroRate
 	select 
 		date(max(b.timestamp)) as srctime, 
 		date(current_timestamp()) as systime,
-		fedsInfoString(window(b.*).toMap(k=>k.fedId, v=>format(v.bpFraction))) as feds 
+		fedsInfoString(window(b.*).toMap(k=>k.fedSrcId, v=>format(v.bpFraction))) as feds 
 	from 
 		FrlBackpressure(timestamp is not null) as b,
 		pattern[every FrlBackpressure->(timer:interval(1 msec) and not FrlBackpressure)] unidirectional
@@ -93,7 +93,7 @@ context L1ZeroRate
 	select 
 		date(max(b.timestamp)) as srctime, 
 		date(current_timestamp()) as systime, 
-		fedsInfoString(window(b.*).toMap(k=>k.fedId, v=>format(v.dtFraction))) as feds 
+		fedsInfoString(window(b.*).toMap(k=>k.fedSrcId, v=>format(v.dtFraction))) as feds 
 	from 
 		FmmDeadtime as b, 
 		pattern[every FmmDeadtime->(timer:interval(1 msec) and not FmmDeadtime)] unidirectional
@@ -105,7 +105,7 @@ context L1ZeroRate
 context L1ZeroRate
 	select		
 		fedsInfoString(window(ff.*).toMap(
-				k=>k.fedId,
+				k=>k.fedSrcId,
 				v=>
 					"« "||
 						(case when v.dOos>0 then "dOos: "||(100*v.dOos/v.dTime).toString()||"% " else "" end) ||

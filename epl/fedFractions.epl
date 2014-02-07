@@ -1,10 +1,10 @@
 #include "deadtimeAndBackpressure.epl"
 
-create objectarray schema FedFractions as (fedId int, dBusy long, dWarning long, dOos long, dError long, dReady long, dTime long, timestamp Date);
+create objectarray schema FedFractions as (fedSrcId int, dBusy long, dWarning long, dOos long, dError long, dReady long, dTime long, timestamp Date);
 
 insert into FedFractions select * from FmmInput match_recognize(
-	partition by fedId
-	measures B.timeTag - A.timeTag as dTime, A.fedId as fedId, B.integralTimeBusy-A.integralTimeBusy as dBusy, B.integralTimeError-A.integralTimeError as dError,
+	partition by fedSrcId
+	measures B.timeTag - A.timeTag as dTime, A.fedSrcId as fedSrcId, B.integralTimeBusy-A.integralTimeBusy as dBusy, B.integralTimeError-A.integralTimeError as dError,
 				B.integralTimeOOS-A.integralTimeOOS as dOos, B.integralTimeWarning-A.integralTimeWarning as dWarning, B.integralTimeReady-A.integralTimeReady as dReady,
 				B.timestamp as timestamp
 	pattern (A B)
@@ -12,5 +12,5 @@ insert into FedFractions select * from FmmInput match_recognize(
 	define A as A is not null, B as B is not null
 );
 
-@Verbose(label="output", fields={'timestamp','fedId', 'dIllegal', 'dTime'}, extraNfo='FED in illegal state')
-select timestamp, fedId, dTime, dTime-(dBusy+dWarning+dError+dOos+dReady) as dIllegal from FedFractions((dBusy+dWarning+dError+dOos+dReady)=0 and dTime >0);
+@Verbose(label="output", fields={'timestamp','fedSrcId', 'dIllegal', 'dTime'}, extraNfo='FED in illegal state')
+select timestamp, fedSrcId, dTime, dTime-(dBusy+dWarning+dError+dOos+dReady) as dIllegal from FedFractions((dBusy+dWarning+dError+dOos+dReady)=0 and dTime >0);

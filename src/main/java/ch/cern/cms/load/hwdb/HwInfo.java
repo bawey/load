@@ -24,15 +24,18 @@ import rcms.common.db.DBConnectorIF;
 import rcms.common.db.DBConnectorOracle;
 import rcms.utilities.hwcfg.HWCfgConnector;
 import rcms.utilities.hwcfg.HWCfgDescriptor;
+import rcms.utilities.hwcfg.HardwareConfigurationException;
 import rcms.utilities.hwcfg.eq.EquipmentSet;
 import rcms.utilities.hwcfg.eq.FED;
 import rcms.utilities.hwcfg.eq.FMM;
 import rcms.utilities.hwcfg.eq.FMMCrate;
 import rcms.utilities.hwcfg.eq.FMMFMMLink;
+import rcms.utilities.hwcfg.eq.FMMTriggerLink;
 import rcms.utilities.hwcfg.eq.FRL;
 import rcms.utilities.hwcfg.eq.FRLCrate;
 import rcms.utilities.hwcfg.eq.SubSystem;
 import rcms.utilities.hwcfg.eq.TTCPartition;
+import rcms.utilities.hwcfg.eq.Trigger;
 import ch.cern.cms.esper.Trx;
 import ch.cern.cms.load.Load;
 import ch.cern.cms.load.eventData.FedMask;
@@ -253,24 +256,6 @@ public final class HwInfo implements Serializable {
 
 	}
 
-	public static Map<String, List<Long>> getSubsystemToFEDsMap() {
-		Map<String, List<Long>> m = new HashMap<String, List<Long>>();
-		HwInfo hi = HwInfo.getInstance();
-		// some are probably out...
-		for (TTCPartition ttcp : hi.eqs.getTTCPartitions().values()) {
-			List<Long> list = new LinkedList<Long>();
-			for (FED fed : ttcp.getFEDs().values()) {
-				if (FedMask.isFedActive((int) fed.getSrcId())) {
-					list.add((long) fed.getSrcId());
-				}
-			}
-			if (!list.isEmpty()) {
-				m.put(ttcp.getSubSystem().getName(), list);
-			}
-		}
-		return m;
-	}
-
 	public static final String fedsInfoString(Map<Integer, String> rawData) {
 		HwInfo hi = getInstance();
 
@@ -336,17 +321,66 @@ public final class HwInfo implements Serializable {
 		return result.toString();
 	}
 
-	public static final void main(String[] args) {
-		Map<Integer, String> a = new HashMap<Integer, String>() {
-			{
-				for (int i = 1; i < 800; ++i) {
-					double rand = Math.random();
-					if (rand > 0.75) {
-						put(i, Trx.format(rand));
+	public static String getPartitionName(String hostName, int geoSlot, String ab) {
+		System.out.println("getting partition by hostname: " + hostName + ", AB: " + ab + ", geoSlot: " + geoSlot);
+		HwInfo hi = getInstance();
+
+		for (FMM fmm : hi.eqs.getFMMs().values()) {
+			if (fmm.getFMMCrate().getHostName().equalsIgnoreCase(hostName) && fmm.getGeoSlot() == geoSlot)
+				return getFMMPartition(fmm, ab);
+		}
+
+		return "";
+	}
+
+	/**
+	 * @param fmm
+	 * @param ab
+	 *            "A" if checking partition for output A, or "B" otherwise
+	 * 
+	 * @return The partition name or null if the FMM belongs to multiple partitions
+	 */
+	public static String getFMMPartition(FMM fmm, String ab) {
+		HwInfo hi = getInstance();
+		System.out.println("getting partition by fmm: " + fmm + ", AB: " + ab);
+		long gtpId = -1;
+		for (Trigger t : hi.eqs.getTriggers().values())
+			if (t.getName().equals("GTP")) // FIXME make more generic
+				gtpId = t.getId();
+
+		for (FMMTriggerLink ftl : hi.eqs.getFMMTriggerLinks()) {
+			if (ftl.getTriggerId() == gtpId && fmm.getId() == ftl.getFMMId()) {
+				if (fmm.getDual() == false) {
+					return getPartitionNameByNr(ftl.getTriggerIO());
+				} else {
+					if (ab.equals("A")) {
+						if (ftl.getFMMIO() == 20 || ftl.getFMMIO() == 21)
+							return getPartitionNameByNr(ftl.getTriggerIO());
+					} else if (ab.equals("B")) {
+						if (ftl.getFMMIO() == 22 || ftl.getFMMIO() == 23)
+							return getPartitionNameByNr(ftl.getTriggerIO());
 					}
 				}
 			}
-		};
-		System.out.println(fedsInfoString(a));
+
+		}
+		return null;
 	}
+
+	public static String getPartitionNameByNr(int partNr) {
+		System.out.println("getting partition by number: " + partNr);
+		HwInfo hi = getInstance();
+
+		for (TTCPartition ttcp : hi.eqs.getTTCPartitions().values())
+			if (ttcp.getTTCPNr() == partNr) {
+				System.out.println("partName=" + ttcp.getName());
+				return ttcp.getName();
+			}
+
+		return null;
+	}
+
+	// public static final void main(String[] args) {
+	// for(int )
+	// }
 }

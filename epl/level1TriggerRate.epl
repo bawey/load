@@ -66,9 +66,9 @@ on pattern[every a=L1Rates(rate>(avgTrgRate*(1+rateJumpMargin)) or rate < (avgTr
 /** ADD OUTPUTS **/
 
 @Description('Notify about rate jumps. Should send some error instead')
-@Verbose(label='output', extraNfo='Level one trigger rate jump!', fields={'systime','average','last','srctime'})
+@Verbose(label='output', extraNfo='Level one trigger rate jump!', fields={'systime','currentAvg','lastVal','srctime'})
 @Priority(10)
-select avgTrgRate as average, a.rate as last, date(lastEVMtimestamp) as srctime, date(current_timestamp()) as systime 
+select avgTrgRate as currentAvg, a.rate as lastVal, date(lastEVMtimestamp) as srctime, date(current_timestamp()) as systime 
 	from pattern[every a=L1Rates(rate>(avgTrgRate*(1+rateJumpMargin)) or rate < (avgTrgRate*(1-rateJumpMargin)))]
 	output first every 2 seconds;
 

@@ -80,13 +80,14 @@ public class EventProcessor {
 		
 		c.addPlugInSingleRowFunction("mainFedSrcIds", HwInfo.class.getCanonicalName(), "getMainFedSrcIds");
 		c.addPlugInSingleRowFunction("fedsInfoString", HwInfo.class.getCanonicalName(), "fedsInfoString");
+		c.addPlugInSingleRowFunction("getPartitionName", HwInfo.class.getCanonicalName(), "getPartitionName");
 
 		c.addPlugInSingleRowFunction("parseFem", FedMask.class.getCanonicalName(), "parse");
+		c.addPlugInSingleRowFunction("activeFedSrcIds", FedMask.class.getCanonicalName(), "getActiveFedSrcIds");
 		c.addPlugInSingleRowFunction("in_array", Trx.class.getCanonicalName(), "inArray");
 		c.addPlugInSingleRowFunction("reformat", Trx.class.getCanonicalName(), "reformat");
 		c.addPlugInSingleRowFunction("tuple", Trx.class.getCanonicalName(), "tuple");
 		c.addPlugInSingleRowFunction("is_nonvariant", Trx.class.getCanonicalName(), "isNonvariant");
-		c.addPlugInSingleRowFunction("fedsForSubsysMap", HwInfo.class.getCanonicalName(), "getSubsystemToFEDsMap");
 		c.addPlugInSingleRowFunction("formatMs", Trx.class.getCanonicalName(), "formatMs");
 		c.addPlugInSingleRowFunction("format", Trx.class.getCanonicalName(), "format");
 		c.addPlugInSingleRowFunction("regExtract", Trx.class.getCanonicalName(), "regExtract");

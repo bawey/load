@@ -1,7 +1,10 @@
 package ch.cern.cms.load.eventData;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 public class FedMask {
 
@@ -45,7 +48,7 @@ public class FedMask {
 		for (int i = 0; i < fedStrings.length; ++i) {
 			fedMasks[i] = new FedMask(fedStrings[i]);
 			synchronized (FedMask.class) {
-				registry.put(fedMasks[i].getFedId(), fedMasks[i]);
+				registry.put(fedMasks[i].getFedSrcId(), fedMasks[i]);
 			}
 		}
 		return fedMasks;
@@ -53,10 +56,11 @@ public class FedMask {
 
 	@Override
 	public String toString() {
-		return "FedMask [fedId=" + fedSrcId + ", slinkMasked=" + slinkMasked + ", hasSlink=" + hasSlink + ", hasTts=" + hasTts + ", ttsMasked=" + ttsMasked + "]";
+		return "FedMask [fedSrcId=" + fedSrcId + ", slinkMasked=" + slinkMasked + ", hasSlink=" + hasSlink + ", hasTts=" + hasTts + ", ttsMasked=" + ttsMasked
+				+ "]";
 	}
 
-	public int getFedId() {
+	public int getFedSrcId() {
 		return fedSrcId;
 	}
 
@@ -87,5 +91,17 @@ public class FedMask {
 	public static boolean isFedActive(int fedId) {
 		FedMask fedOfInterest = registry.get(fedId);
 		return fedOfInterest != null && (fedOfInterest.isTtsEnabled() || fedOfInterest.isSlinkEnabled());
+	}
+
+	public static final Set<Integer> getActiveFedSrcIds() {
+		return new HashSet<Integer>() {
+			{
+				for (Entry<Integer, FedMask> tuple : registry.entrySet()) {
+					if (tuple.getValue().isTtsEnabled() || tuple.getValue().isSlinkEnabled()) {
+						add(tuple.getKey());
+					}
+				}
+			}
+		};
 	}
 }

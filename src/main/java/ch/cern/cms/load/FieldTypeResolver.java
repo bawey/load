@@ -138,5 +138,25 @@ public final class FieldTypeResolver extends HashMap<String, Class<?>> {
 		setFieldType("integralTimeOOS", Long.class);
 		setFieldType("integralTimeWarning", Long.class);
 		setFieldType("integralTimeReady", Long.class);
+		
+		/**
+		 * outputFractionReadyA as  fracReady,
+           x.outputFractionBusyA as  fracBusy,
+           x.outputFractionWarningA as  fracWarning,
+           x.outputFractionOOSA as  fracOOS,
+           x.outputFractionErrorA
+		 */
+		setFieldType("outputFractionReadyA", Double.class);
+		setFieldType("outputFractionBusyA", Double.class);
+		setFieldType("outputFractionWarningA", Double.class);
+		setFieldType("outputFractionOOSA", Double.class);
+		setFieldType("outputFractionErrorA", Double.class);
+		
+		setFieldType("outputFractionReadyB", Double.class);
+		setFieldType("outputFractionBusyB", Double.class);
+		setFieldType("outputFractionWarningB", Double.class);
+		setFieldType("outputFractionOOSB", Double.class);
+		setFieldType("outputFractionErrorB", Double.class);
+		
 	}
 }
