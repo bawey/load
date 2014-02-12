@@ -120,7 +120,7 @@ context L1ZeroRate
 		max(timestamp) as srctime, 
 		date(current_timestamp()) as systime
 	from 
-		FedFractions.win:time(2 msec) as ff,
-		pattern[every FedFractions->(timer:interval(1 msec) and not FedFractions)] unidirectional
+		FedIndicators.win:time(2 msec) as ff,
+		pattern[every FedIndicators->(timer:interval(1 msec) and not FedIndicators)] unidirectional
 	where 
 		dTime>0 and (dBusy=dTime or dWarning=dTime or dError = dTime or dOos = dTime or (dBusy+dWarning+dError+dOos+dReady)=0);

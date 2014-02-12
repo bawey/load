@@ -1,0 +1,50 @@
+#include "runStartStop.epl"
+
+@Description('schema with partition dead times')
+create objectarray schema PartitionDeadTime as (partitionName String, 
+	fracReady double, 
+	fracWarning double, 
+	fracBusy double, 
+	fracOOS double, 
+	fracError double, 
+	timestamp long);
+
+context CurrentRun insert into PartitionDeadTime
+    select getPartitionName(x.hostname, x.geoslot, "A") as partitionName, 
+           x.outputFractionReadyA as  fracReady,
+           x.outputFractionBusyA as  fracBusy,
+           x.outputFractionWarningA as  fracWarning,
+           x.outputFractionOOSA as  fracOOS,
+           x.outputFractionErrorA as  fracError,
+           x.timestamp.getTime() as timestamp
+    from FMMStatus as x 
+    where getPartitionName(x.hostname, x.geoslot, "A") is not null;
+    
+context CurrentRun insert into PartitionDeadTime
+    select getPartitionName(x.hostname, x.geoslot, "B") as partitionName, 
+           x.outputFractionReadyB as  fracReady,
+           x.outputFractionBusyB as  fracBusy,
+           x.outputFractionWarningB as  fracWarning,
+           x.outputFractionOOSB as  fracOOS,
+           x.outputFractionErrorB as  fracError,
+           x.timestamp.getTime() as timestamp
+    from FMMStatus as x 
+    where getPartitionName(x.hostname, x.geoslot, "B") is not null;
+    
+
+create context PartitionedByPartitionName
+	context RunOnNested start RunStart end RunStop,
+	context Partitioned partition by partitionName from PartitionDeadTime;
+
+@Verbose(label='output4', extraNfo='', fields={'systime', 'msg', 'srctime'})
+context PartitionedByPartitionName 
+ 	select 'TTS alarm for partition ' || a.partitionName || ': ' ||
+ 	(CASE WHEN a.fracWarning > 0. THEN 'W:' || format(a.fracWarning*100.) || '%; ' ELSE '' END) ||
+	(CASE WHEN a.fracBusy > 0. THEN 'B:' || format(a.fracBusy*100.) || '%; ' ELSE '' END) ||
+	(CASE WHEN a.fracOOS > 0. THEN 'O:' || format(a.fracOOS*100.) || '%; ' ELSE '' END) ||
+	(CASE WHEN a.fracError > 0. THEN 'E:' || format(a.fracError*100.) || '%; ' ELSE '' END) ||
+	(CASE WHEN (a.fracError+a.fracOOS+a.fracBusy+a.fracWarning+a.fracReady) < 1. THEN 'D/I:' || format((1.-(a.fracError+a.fracOOS+a.fracBusy+a.fracWarning+a.fracReady)) *100.) || '%; ' ELSE '' END) as msg,
+	date(a.timestamp) as srctime,
+	date(current_timestamp()) as systime
+ 	from pattern [every a=PartitionDeadTime(fracReady<.995) -> (timer:interval(5 seconds) and not PartitionDeadTime(fracReady>=.995, partitionName=a.partitionName))]
+    output first every 30 seconds;
