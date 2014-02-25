@@ -1,11 +1,9 @@
-package ch.cern.cms.load.taps;
+package ch.cern.cms.load;
 
-import ch.cern.cms.load.EventProcessor;
-import ch.cern.cms.load.Load;
 import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;
 import ch.cern.cms.load.taps.flashlist.OnlineFlashlistEventsTap;
 
-public abstract class AbstractEventsTap {
+public abstract class EventsTap {
 
 	protected Runnable job = new Runnable() {
 		@Override
@@ -17,7 +15,7 @@ public abstract class AbstractEventsTap {
 	protected final Load controller;
 	protected final String path;
 
-	protected AbstractEventsTap(Load expert, String path) {
+	protected EventsTap(Load expert, String path) {
 		this.ep = expert.getEventProcessor();
 		this.controller = expert;
 		this.path = path;
@@ -27,7 +25,7 @@ public abstract class AbstractEventsTap {
 
 	/**
 	 * allows setting things up before performing the full registration with expert
-	 * {@link AbstractEventsTap#initWithExpert(Load)}
+	 * {@link EventsTap#initWithExpert(Load)}
 	 **/
 	public abstract void preRegistrationSetup(Load expert);
 
@@ -48,7 +46,7 @@ public abstract class AbstractEventsTap {
 	}
 
 	public static void setOfflineTapsPosition(long position) {
-		for (AbstractEventsTap tap : Load.getInstance().getTaps()) {
+		for (EventsTap tap : Load.getInstance().getTaps()) {
 			if (tap instanceof OfflineFlashlistEventsTap) {
 				((OfflineFlashlistEventsTap) tap).setPosition(position);
 			}

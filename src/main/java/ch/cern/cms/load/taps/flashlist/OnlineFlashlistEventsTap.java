@@ -14,7 +14,7 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 
 import ch.cern.cms.load.Load;
-import ch.cern.cms.load.tools.HttpTools;
+import ch.cern.cms.load.utils.HttpTools;
 
 /**
  * urn:xdaq-flashlist:FMMInput

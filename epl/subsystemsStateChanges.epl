@@ -18,7 +18,7 @@ select srctime, systime, fromState, toState from levelZeroFM_subsys match_recogn
 	pattern (A B)
 	define
 		A as A.SUBSYS='DAQ',
-		B as B.SUBSYS='DAQ' and B.STATE != A.STATE
+		B as B.STATE != A.STATE 
 );
 
 

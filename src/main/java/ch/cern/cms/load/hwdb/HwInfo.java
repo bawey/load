@@ -76,7 +76,7 @@ public final class HwInfo implements Serializable {
 								ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(path));
 								oos.writeObject(instance);
 								oos.close();
-								System.out.println("HwInfo dumped at " + path);
+								//System.out.println("HwInfo dumped at " + path);
 							} catch (Exception e) {
 								logger.error("Failed to dump HwInfo to a file", e);
 							}
@@ -322,7 +322,7 @@ public final class HwInfo implements Serializable {
 	}
 
 	public static String getPartitionName(String hostName, int geoSlot, String ab) {
-		System.out.println("getting partition by hostname: " + hostName + ", AB: " + ab + ", geoSlot: " + geoSlot);
+		//System.out.println("getting partition by hostname: " + hostName + ", AB: " + ab + ", geoSlot: " + geoSlot);
 		HwInfo hi = getInstance();
 
 		for (FMM fmm : hi.eqs.getFMMs().values()) {
@@ -342,7 +342,7 @@ public final class HwInfo implements Serializable {
 	 */
 	public static String getFMMPartition(FMM fmm, String ab) {
 		HwInfo hi = getInstance();
-		System.out.println("getting partition by fmm: " + fmm + ", AB: " + ab);
+		//System.out.println("getting partition by fmm: " + fmm + ", AB: " + ab);
 		long gtpId = -1;
 		for (Trigger t : hi.eqs.getTriggers().values())
 			if (t.getName().equals("GTP")) // FIXME make more generic
@@ -368,12 +368,12 @@ public final class HwInfo implements Serializable {
 	}
 
 	public static String getPartitionNameByNr(int partNr) {
-		System.out.println("getting partition by number: " + partNr);
+		//System.out.println("getting partition by number: " + partNr);
 		HwInfo hi = getInstance();
 
 		for (TTCPartition ttcp : hi.eqs.getTTCPartitions().values())
 			if (ttcp.getTTCPNr() == partNr) {
-				System.out.println("partName=" + ttcp.getName());
+				//System.out.println("partName=" + ttcp.getName());
 				return ttcp.getName();
 			}
 

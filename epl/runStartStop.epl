@@ -24,12 +24,13 @@ insert into RunStop select p.toState as daqState, p.srctime as srctime, p.systim
 
 insert into RunStart select p.toState as daqState, p.srctime as srctime, p.systime as systime from 
 	pattern[every p=DaqStateChangeStream(
-		toState='Running'
+		toState.startsWith('Running')
 	)] where isRunOn=false;
 
 /** initialize when the expert starts and knows not the current state**/
 @Priority(0)
-insert into RunStart select p.STATE as daqState, p.timestamp as srctime, date(p.fetchstamp) as systime from pattern[p=levelZeroFM_subsys(SUBSYS='DAQ')] where p.STATE.equals('Running');
+insert into RunStart select p.STATE as daqState, p.timestamp as srctime, date(p.fetchstamp) as systime 
+	from pattern[p=levelZeroFM_subsys(SUBSYS='DAQ')] where p.STATE.startsWith('Running');
 
 /** some information to present upon the end of the run **/
 @Priority(0)

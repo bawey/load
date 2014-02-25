@@ -1,11 +1,11 @@
 #include "level1TriggerRate.epl"
 #include "runStartStop.epl"
 #include "deadtimeAndBackpressure.epl"
-
+@Audit
 create context L1ZeroRate 
 	context RunOngoingNested start RunStart end RunStop,
 	context L1ZeroRateNested start pattern[s=L1RatesStream(rate=0)->(timer:interval(10 seconds) and not L1RatesStream(rate>0))]
-	end L1RatesStream(rate>0);
+	end pattern[L1RatesStream(rate>0) or RunStop];
 
 
 /** The following @Watched statements are debug-relevant only **/
@@ -21,8 +21,11 @@ create objectarray schema BxNumbersSummary as (uniqueValuesCnt long, systime lon
 
 @Description('We need to retain bxNumbers and trgNumbers for the sake of performing the checks. Creating window within a context gets it reset every time the context restarts')
 
-context L1ZeroRate create window FedsAlignmentIndicators.std:unique(fedSrcId) as (fedSrcId int, bxNumber long, trgNumber long);
-context L1ZeroRate insert into FedsAlignmentIndicators select fedSrcId, bxNumber as bxNumber, triggerNumber as trgNumber from FrlCtlLnk;
+context L1ZeroRate create window FedsAlignmentIndicators.std:unique(fedSrcId) as (fedSrcId int, bxNumber long, trgNumber long, srctime Date);
+context L1ZeroRate insert into FedsAlignmentIndicators select fedSrcId, bxNumber as bxNumber, triggerNumber as trgNumber, timestamp as srctime from FrlCtlLnk;
+
+@Verbose(label="test", fields={"ctxid", "systime"})
+context L1ZeroRate select context.id as ctxid, date(current_timestamp()) as systime from pattern[every timer:interval(5 sec)];
 
 /** a check if the window is reset with evert context start - true!
 @Verbose(label="context", fields={'fedSrcIds'})
@@ -50,26 +53,30 @@ select date(systime) as systime, uniqueValuesCnt from BxNumbersSummary;
 we don't want the terminating event to be accesible for our output as it surely falls into
 a different context
 **/
+
 @Priority(10)
 create context TriggerNumbersMisaligned
-	start TrgNumbersSummary(uniqueValuesCnt>1 and uniqueValuesCnt<5 and fedsNo > 10* uniqueValuesCnt)
-	end TrgNumbersSummary(uniqueValuesCnt=1 or uniqueValuesCnt>4 or fedsNo <= 10* uniqueValuesCnt);
+	start a=TrgNumbersSummary(uniqueValuesCnt>1 and uniqueValuesCnt<5 and fedsNo > 10* uniqueValuesCnt)
+	end pattern[L1RatesStream(rate>0) or RunStop or TrgNumbersSummary(uniqueValuesCnt=1 or uniqueValuesCnt>4 or fedsNo <= 10* uniqueValuesCnt)];
 
 @Priority(10)
 create context CrossingNumbersMisaligned
-	start BxNumbersSummary(uniqueValuesCnt>1 and uniqueValuesCnt<5 and fedsNo > 10* uniqueValuesCnt)
-	end BxNumbersSummary(uniqueValuesCnt=1 or uniqueValuesCnt>4 or fedsNo <= 10* uniqueValuesCnt);
+	start a=BxNumbersSummary(uniqueValuesCnt>1 and uniqueValuesCnt<5 and fedsNo > 10* uniqueValuesCnt)
+	end pattern[L1RatesStream(rate>0) or RunStop or
+	BxNumbersSummary(uniqueValuesCnt=1 or uniqueValuesCnt>4 or fedsNo <= 10* uniqueValuesCnt)];
 
 
 @Priority(10)
 create context TriggerNumbersScattered
 	start TrgNumbersSummary(uniqueValuesCnt>4 or fedsNo <= 10* uniqueValuesCnt)
-	end TrgNumbersSummary(uniqueValuesCnt<5 and fedsNo > 10* uniqueValuesCnt);
+	end pattern[L1RatesStream(rate>0) or RunStop or
+		TrgNumbersSummary(uniqueValuesCnt<5 and fedsNo > 10* uniqueValuesCnt)];
 
 @Priority(10)
 create context CrossingNumbersScattered
 	start BxNumbersSummary(uniqueValuesCnt>4 or fedsNo <= 10* uniqueValuesCnt)
-	end BxNumbersSummary(uniqueValuesCnt<5 and fedsNo > 10* uniqueValuesCnt);
+	end pattern[L1RatesStream(rate>0) or RunStop or 
+		BxNumbersSummary(uniqueValuesCnt<5 and fedsNo > 10* uniqueValuesCnt)];
 
 
 @Verbose(label="output", fields={"systime","msg"})
@@ -86,22 +93,38 @@ select uniqueValuesCnt, date(systime) as systime from TrgNumbersSummary;
 **/
 
 
-@Verbose(label="output", fields={"systime" ,"trgNumber", "fedsNo", "feds"}, extraNfo="TRG numbers misaligned")
+@Verbose(label="output", fields={"systime" ,"trgNumber", "fedsNo", "fingerprint","feds"}, extraNfo="TRG numbers misaligned")
 context TriggerNumbersMisaligned 
 	select 	trgNumber, 
 			fedsInfoString(window(x.*).toMap(k=>k.fedSrcId, v=>null)) as feds,
 		date(current_timestamp()) as systime, count(fedSrcId) as fedsNo
 	from pattern[every TrgNumbersSummary ] unidirectional, FedsAlignmentIndicators as x group by trgNumber order by count(fedSrcId) desc;
 
-@Verbose(label="output", fields={"systime" ,"bxNumber", "fedsNo", "feds"}, extraNfo="BX numbers misaligned")
+@Verbose(label="output", fields={"systime" ,"bxNumber", "fedsNo", "fingerprint", "feds"}, extraNfo="BX numbers misaligned")
 context CrossingNumbersMisaligned 
 	select bxNumber, 
 			fedsInfoString(window(x.*).toMap(k=>k.fedSrcId, v=>null)) as feds, 
 		date(current_timestamp()) as systime, count(fedSrcId) as fedsNo
 	from pattern[every BxNumbersSummary ] unidirectional, FedsAlignmentIndicators as x group by bxNumber order by count(fedSrcId) desc;
 
-/** send some context-state information to a separate output **/
+
+/**
+
+There was some debugging when *NumbersMisaligned(Scattered) contexts were terminated only by an appropriate summary event indicating full consistency
+Thus the rate going back up or the run ending would not terminate the context. This in turn would not produce any output as it 
+(output triggered by summary events created exclusively from within L1ZeroRate context) until the L1ZeroRate context is active again
+and sends summaries indicating misalignment. However, the *NumbersMisaligned context temporally spanning over more than one L1ZeroRates
+context instances somehow alters the FedsAlignmentIndicators window's lifetime to span beyond the termination of its contents (L1Zerorates).
+As a result one would get values from the past interleaving with current reports. 
+Notably, using a triggered query, unlike and instead of unidirectional joins, yields a complain about FedsAlignmentIndicators 
+being declared within different context.
+
+@Verbose(label="xContext window access")
+context CrossingNumbersMisaligned select x.*, date(current_timestamp()) as systime from FedsAlignmentIndicators as x, 
+	pattern [every BxNumbersSummary] unidirectional;
+
 create objectarray schema ContextStateStream as (dsc String, msg String);
+**/
 
 /**
 	For the syntactical correctness, the from pattern[] is used here, but this is only to produce the message once the context is active or withhold it until

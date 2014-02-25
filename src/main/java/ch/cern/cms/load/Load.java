@@ -1,21 +1,15 @@
 package ch.cern.cms.load;
 
 import java.util.Collection;
-import java.util.Date;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
 
 import ch.cern.cms.load.eplProviders.BasicStructEplProvider;
 import ch.cern.cms.load.eplProviders.FileBasedEplProvider;
-import ch.cern.cms.load.guis.ExpertGui;
-import ch.cern.cms.load.taps.AbstractEventsTap;
 import ch.cern.cms.load.taps.flashlist.DataBaseFlashlistEventsTap;
 import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;
-import ch.cern.cms.load.timers.SimplePlaybackTimer;
-import ch.cern.cms.load.views.FileSink;
 
 /**
  * Core components, singletons etc. should be initialized here. However, the setup of initial structure should be well separated from the
@@ -27,7 +21,6 @@ import ch.cern.cms.load.views.FileSink;
 
 public class Load {
 
-	private Class<?> dummy = SimplePlaybackTimer.class;
 	private static final Logger logger = Logger.getLogger(Load.class);
 	private static Load instance;
 
@@ -35,9 +28,9 @@ public class Load {
 		if (instance == null) {
 			synchronized (Load.class) {
 				if (instance == null) {
-					System.out.println("getting new LOAD instance for "+Thread.currentThread().getName());
+					System.out.println("getting new LOAD instance for " + Thread.currentThread().getName());
 					instance = new Load();
-					
+
 					instance.ep = new EventProcessor();
 					instance.resolver = new FieldTypeResolver();
 					instance.settings.put(Settings.KEY_RESOLVER, instance.resolver);
@@ -64,15 +57,11 @@ public class Load {
 
 	private EventProcessor ep;
 
-	private final Set<ExpertGui> guis = new HashSet<ExpertGui>();
-
-	private final Set<AbstractEventsTap> taps = new HashSet<AbstractEventsTap>();
+	private final Set<EventsTap> taps = new HashSet<EventsTap>();
 
 	private FieldTypeResolver resolver;
 
-	private final Set<LoadView> views = new HashSet<LoadView>();
-
-	private EPTimer timer = null;
+	private final Set<EventSink> views = new HashSet<EventSink>();
 
 	private Load() {
 		// settings have to go first!
@@ -93,12 +82,8 @@ public class Load {
 		return resolver;
 	}
 
-	public Set<LoadView> getViews() {
+	public Set<EventSink> getViews() {
 		return views;
-	}
-
-	public EPTimer getTimer() {
-		return timer;
 	}
 
 	/**
@@ -120,8 +105,7 @@ public class Load {
 		if (settings.getProperty(DataBaseFlashlistEventsTap.KEY_DB_MODE).equalsIgnoreCase("read")) {
 			registerTap(new DataBaseFlashlistEventsTap(this));
 		}
-		AbstractEventsTap.registerKnownOnlineTaps();
-		setUpTimer();
+		EventsTap.registerKnownOnlineTaps();
 		// register the statements from file
 		new BasicStructEplProvider().registerStatements(ep);
 		new FileBasedEplProvider().registerStatements(ep);
@@ -130,10 +114,7 @@ public class Load {
 	}
 
 	public void openTaps() {
-		if (timer != null) {
-			timer.start();
-		}
-		for (AbstractEventsTap et : taps) {
+		for (EventsTap et : taps) {
 			et.openStreams();
 		}
 	}
@@ -141,11 +122,11 @@ public class Load {
 	/**
 	 * Inserts into the list of known taps this should depend on some configuration later on or start-up choice
 	 */
-	public void registerTap(AbstractEventsTap tap) {
+	public void registerTap(EventsTap tap) {
 		taps.add(tap);
 	}
 
-	public Collection<AbstractEventsTap> getTaps() {
+	public Collection<EventsTap> getTaps() {
 		return this.taps;
 	}
 
@@ -157,18 +138,12 @@ public class Load {
 
 	private void setUpViews() {
 		for (String viewName : settings.getMany("view")) {
-			views.add((LoadView) instantiateComponent("view", viewName));
-		}
-	}
-
-	private void setUpTimer() {
-		if (settings.containsKey(Settings.KEY_TIMER)) {
-			this.timer = (EPTimer) instantiateComponent(Settings.KEY_TIMER, settings.getProperty(Settings.KEY_TIMER));
-			if (settings.containsKey(Settings.KEY_TIMER_PACE)) {
-				timer.setPace(Double.parseDouble(settings.getProperty(Settings.KEY_TIMER_PACE)));
+			Object sink = instantiateComponent("sink", viewName);
+			if (sink instanceof EventSink) {
+				views.add((EventSink) sink);
 			}
-			if (settings.containsKey(Settings.KEY_TIMER_STEP)) {
-				timer.setStepSize(Long.parseLong(settings.getProperty(Settings.KEY_TIMER_STEP)));
+			if (sink instanceof LogSink) {
+				LoadLogCollector.registerSink((LogSink) sink);
 			}
 		}
 	}
@@ -184,14 +159,6 @@ public class Load {
 			logger.error("Failed to load " + type + " component: " + id, e);
 			e.printStackTrace();
 			return null;
-		}
-	}
-
-	public double getPace() {
-		if (timer != null) {
-			return timer.getPace();
-		} else {
-			return 1;
 		}
 	}
 

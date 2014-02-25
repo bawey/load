@@ -4,6 +4,7 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -14,6 +15,7 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.collections.map.SingletonMap;
 import org.apache.log4j.Logger;
 
 public class Trx {
@@ -126,6 +128,22 @@ public class Trx {
 			map.put(a, b);
 		}
 		return map;
+	}
+
+	public static final Map<Object, Object> arraysToMap(Object[] keysArray, Object[] valuesArray) {
+		Map<Object, Object> map = new HashMap<Object, Object>();
+		for (int i = 0; i < keysArray.length; ++i) {
+			map.put(keysArray[i], valuesArray[i]);
+		}
+		return map;
+	}
+
+	public static final List<Map<Object, Object>> arraysToSingletonMaps(Object[] keysArray, Object[] valuesArray) {
+		List<Map<Object, Object>> list = new ArrayList<Map<Object, Object>>();
+		for (int i = 0; i < keysArray.length; ++i) {
+			list.add(Collections.singletonMap(keysArray[i], valuesArray[i]));
+		}
+		return list;
 	}
 
 	public static final boolean isNonvariant(Object o) {
@@ -258,7 +276,7 @@ public class Trx {
 		return true;
 	}
 
-		// public static final String getHost(String http) {
+	// public static final String getHost(String http) {
 	// int splitPoint = http.length();
 	// char c = http.charAt(splitPoint-1);
 	// while (Character.isDigit(c) || c == ':') {

@@ -1,4 +1,4 @@
-package ch.cern.cms.load.views;
+package ch.cern.cms.load.sinks;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -28,10 +28,13 @@ import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
 import org.apache.log4j.Logger;
+import org.apache.log4j.spi.LoggingEvent;
 
 import ch.cern.cms.esper.annotations.Verbose;
 import ch.cern.cms.esper.annotations.Watched;
-import ch.cern.cms.load.LoadView;
+import ch.cern.cms.load.EventSink;
+import ch.cern.cms.load.LoadLogCollector;
+import ch.cern.cms.load.LogSink;
 
 import com.espertech.esper.client.EPServiceProvider;
 import com.espertech.esper.client.EPStatement;
@@ -40,7 +43,7 @@ import com.espertech.esper.client.StatementAwareUpdateListener;
 import com.espertech.esper.event.WrapperEventBean;
 import com.espertech.esper.event.map.MapEventBean;
 
-public class SwingGui extends LoadView {
+public class SwingGui extends EventSink implements LogSink {
 
 	private class MessageEvnelope {
 		public final String content;
@@ -73,7 +76,7 @@ public class SwingGui extends LoadView {
 
 	protected JPanel watchBox = new JPanel();
 	protected JTabbedPane consoleBox = new JTabbedPane();
-	protected JPanel alarmBox = new JPanel();
+	protected JPanel loggingBox = new JPanel();
 
 	private Map<String, JTextField> watchVals = new LinkedHashMap<String, JTextField>();
 	private Map<String, JLabel> watchLabels = new LinkedHashMap<String, JLabel>();
@@ -284,10 +287,12 @@ public class SwingGui extends LoadView {
 			pane.getViewport().setPreferredSize(size);
 			frm.getContentPane().add(pane, BorderLayout.LINE_START);
 			/** add the alarms box **/
-			alarmBox.setLayout(new BoxLayout(alarmBox, BoxLayout.PAGE_AXIS));
-			pane = new JScrollPane(alarmBox);
+			loggingBox.setLayout(new BoxLayout(loggingBox, BoxLayout.PAGE_AXIS));
+			pane = new JScrollPane(loggingBox);
 			pane.getViewport().setPreferredSize(size);
 			frm.getContentPane().add(pane, BorderLayout.LINE_END);
+		}
+		{
 
 		}
 		consoleBox.setPreferredSize(new Dimension(100, 500));
@@ -350,9 +355,9 @@ public class SwingGui extends LoadView {
 			console("warning", "raising an alarm already active");
 		} else {
 			alarms.put(alarm, new JLabel(alarm));
-			alarmBox.add(alarms.get(alarm));
-			alarmBox.revalidate();
-			alarmBox.repaint();
+			loggingBox.add(alarms.get(alarm));
+			loggingBox.revalidate();
+			loggingBox.repaint();
 		}
 	}
 
@@ -360,10 +365,10 @@ public class SwingGui extends LoadView {
 		if (!alarms.keySet().contains(alarm)) {
 			console("warning", "cancelling an alarm that does not exist");
 		} else {
-			alarmBox.remove(alarms.get(alarm));
+			loggingBox.remove(alarms.get(alarm));
 			alarms.remove(alarm);
-			alarmBox.revalidate();
-			alarmBox.repaint();
+			loggingBox.revalidate();
+			loggingBox.repaint();
 		}
 	}
 
@@ -390,4 +395,16 @@ public class SwingGui extends LoadView {
 			}
 		}
 	};
+
+	@Override
+	public void log(String message) {
+		//if (message.startsWith("DEBUG")) {
+			loggingBox.add(new JLabel(message));
+		//}
+	}
+
+	@Override
+	public void log(LoggingEvent loggingEvent) {
+		System.out.println(loggingEvent.toString());
+	}
 }

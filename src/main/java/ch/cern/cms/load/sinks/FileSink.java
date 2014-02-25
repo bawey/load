@@ -1,4 +1,4 @@
-package ch.cern.cms.load.views;
+package ch.cern.cms.load.sinks;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -14,14 +14,14 @@ import org.apache.log4j.Logger;
 
 import ch.cern.cms.load.FieldTypeResolver;
 import ch.cern.cms.load.Load;
-import ch.cern.cms.load.LoadView;
+import ch.cern.cms.load.EventSink;
 
 import com.espertech.esper.client.EPServiceProvider;
 import com.espertech.esper.client.EPStatement;
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.StatementAwareUpdateListener;
 
-public class FileSink extends LoadView {
+public class FileSink extends EventSink {
 
 	public static final String KEY_OUTPUT_DIRECTORY = "outputDir";
 
@@ -47,7 +47,7 @@ public class FileSink extends LoadView {
 		}
 	};
 
-	private BlockingQueue<UpdateEnvelope> queue = new ArrayBlockingQueue<LoadView.UpdateEnvelope>(1000);
+	private BlockingQueue<UpdateEnvelope> queue = new ArrayBlockingQueue<EventSink.UpdateEnvelope>(1000);
 
 	private Runnable worker = new Runnable() {
 

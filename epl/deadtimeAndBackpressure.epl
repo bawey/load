@@ -29,9 +29,6 @@ create objectarray schema FedBpGone as (fedSrcId Integer, timestamp Long, bpFrac
 /** FedDtGone **/
 create objectarray schema FedDtGone as (fedSrcId Integer, mainFedSrcIds Integer[], timestamp Long, dtFraction double);
 
-/** Two streams for unfiltered events **/
-create objectarray schema AllFrlCtlLnk() copyfrom frlcontrollerLink;
-create objectarray schema AllFmmInput() copyfrom FMMInput;
 
 /** **/
 
@@ -101,17 +98,14 @@ context CurrentRun insert into FedBpGone select f.fedSrcId as fedSrcId, f.timest
 	where f.fedSrcId in (select fedSrcId from FrlBackpressure);
 
 
-insert into AllFrlCtlLnk select * from frlcontrollerLink as x;
-insert into AllFmmInput select * from FMMInput as x;
-
 
 @Description('Populating FrlCtlLnk')
-insert into FrlCtlLnk select *, fedSrcId(x.context, x.slotNumber, x.linkNumber, CmsHw.FRL) as fedSrcId from AllFrlCtlLnk as x 
+insert into FrlCtlLnk select *, fedSrcId(x.context, x.slotNumber, x.linkNumber, CmsHw.FRL) as fedSrcId from frlcontrollerLink as x 
 	where fedSrcId(x.context, x.slotNumber, x.linkNumber, CmsHw.FRL) in (select fedSrcId from FedMask(slinkEnabled=true));
 
 
 @Description('Populating FmmInput')
-insert into FmmInput select *, fedSrcId(x.context, x.geoslot, x.io, CmsHw.FMM) as fedSrcId from AllFmmInput as x 
+insert into FmmInput select *, fedSrcId(x.context, x.geoslot, x.io, CmsHw.FMM) as fedSrcId from FMMInput as x 
 	where fedSrcId(x.context, x.geoslot, x.io, CmsHw.FMM) in (select fedSrcId from FedMask(ttsEnabled=true));
 
 /****** DECLARE ADDITIONAL OUTPUT STATEMENTS ******/

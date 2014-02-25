@@ -1,88 +1,69 @@
-/** CREATE SCHEMAS, WINDOWS, VARIABLES **/
-
-@Description('variable to keep the current Session ID')
-create variable String sid = '';
-
+#include "system.epl"
 
 @Description('the last timestamp of EventManager flashlist with desired SessionID')
 create variable Long lastEVMtimestamp = 0;
-
-
-@Description('create for EVM data. Keep only the most recent record per context-lid pair. Also, discard events older than 10 seconds')
-create window L1Subrates.std:unique(url,lid).win:time(10 sec) as (subrate double, url String, lid String, timestamp long);
-
-create objectarray schema L1RatesStream as (rate double, timestamp Long);
-
-@Description('Window for all the L1Rates observed over the previous 60 seconds. ')
-create window L1Rates.win:expr(timestamp>max(timestamp)-60000 and current_count<60) as select * from L1RatesStream;
-insert into L1Rates select * from L1RatesStream;
+on EVM set lastEVMtimestamp = timestamp.getTime();
 
 create variable Double avgTrgRate=null;
-create variable Double indirectAvgTrgRate = null;
-create variable Double lastEverRate=null;
-
-@Description('Defines the jump threshold')
 create variable double rateJumpMargin = 0.1;
+create variable int minimumRatesForAverage = 3;
 
-/** Length of subrates will be inserted here, so that a variable can be set accordingly and used to stabilize output of rates **/
-create objectarray schema SubratesCountSchema as (value long);
-create variable long subratesCount = 1;
-insert into SubratesCountSchema select count(*) as value from L1Subrates;
-//@Verbose(label='noIdea')
-on SubratesCountSchema as ssc set subratesCount=ssc.value;
+@Description('Stream broadcasting L1 trigger rates')
+create objectarray schema L1RatesStream as (rate double, timestamp Long, systime Long, subratesCnt Long);
 
-/** DEFINE LOGIC **/
+@Description('Window for all the L1Rates observed over the previous 60 seconds. ')
+create window L1Rates.win:time(60 seconds) as select * from L1RatesStream;
 
-
+insert into L1Rates select * from L1RatesStream;
 
 
+/** count the rate every time the EVM events stop coming in **/
+insert into L1RatesStream 
+	select
+		Math.round(coalesce(sum(deltaN/deltaT),0)) as rate,
+		max(timestamp.getTime()) as timestamp,
+		current_timestamp() as systime,
+		count(*) as subratesCnt
+	from
+		EVM(deltaT>0, sessionid=sid).win:time(10 msec),
+		pattern[every EVM->(timer:interval(1 msec) and not EVM)] unidirectional;
+		
 
-on levelZeroFM_subsys(SID!=sid, FMURL like '%PublicGlobal%') as l set sid=l.SID;
+create objectarray schema L1TrgRateChange as (systime long, srctime long, rate double, avgrate double);
 
-//@Verbose(label='outputx')
-@Description('populate L1Subrates with EventManagers data for current SessionID')
-insert into L1Subrates select deltaN/deltaT as subrate, context as url, lid, current_timestamp() as timestamp 
-	from EVM.win:time_batch(100 msec) where sessionid=sid and deltaT>0;
+@Priority(10)
+@Description('Updates the average rate value for the last (up to) 60 seconds.')
+on pattern[every r=L1Rates] set 
+	avgTrgRate = coalesce((select avg(rate) as rate from L1Rates).rate, r.rate, 0);	
 
-//@Watched(label='lastEVM time')
-on EVM(sessionid=sid) as evm set lastEVMtimestamp=evm.timestamp.getTime();
-
-
-@Description ('Populate L1Rates with subsequently observed sums over the L1Subrates')
-insert into L1RatesStream select Math.round(coalesce(sum(subrate),0)) as rate, max(timestamp) as timestamp from L1Subrates
-	output last every subratesCount events;
-
-//@Verbose(label="outputx", extraNfo="L1RatesStream", fields={"rate","timestamp"})
-select rate, timestamp from L1RatesStream;
-
-@Description('Updates the average rate value for the last (up to) 60 seconds. Uses a chain of variables to avoid Math.round(null) call.')
-on pattern[every r=L1Rates] set lastEverRate = r.rate, indirectAvgTrgRate = (select avg(rate) as rate from L1Rates).rate, avgTrgRate = Math.round(
-	coalesce(indirectAvgTrgRate, lastEverRate, 0));
-
-@Priority(0)
-on pattern[every a=L1Rates(rate>(avgTrgRate*(1+rateJumpMargin)) or rate < (avgTrgRate*(1-rateJumpMargin)))] delete from L1Rates;
-
-
-/** ADD OUTPUTS **/
 
 @Description('Notify about rate jumps. Should send some error instead')
-@Verbose(label='output', extraNfo='Level one trigger rate jump!', fields={'systime','currentAvg','lastVal','srctime'})
-@Priority(10)
-select avgTrgRate as currentAvg, a.rate as lastVal, date(lastEVMtimestamp) as srctime, date(current_timestamp()) as systime 
-	from pattern[every a=L1Rates(rate>(avgTrgRate*(1+rateJumpMargin)) or rate < (avgTrgRate*(1-rateJumpMargin)))]
-	output first every 2 seconds;
+@Priority(9)
+insert into L1TrgRateChange
+	select 
+		avgTrgRate as avgrate, 
+		a.rate as rate, 
+		lastEVMtimestamp as srctime, 
+		current_timestamp() as systime
+	from 
+		pattern[every a=L1Rates] 
+	where 
+		(select count(*) from L1Rates)>minimumRatesForAverage;
 
 
-@Description('Show the last average trigger rate')
-@Watched
-select avgTrgRate as value, lastEVMtimestamp as timestamp, 'avg rate' as label from L1Rates;
+@Verbose(label="output", fields={"systime","rate","avgrate","srctime"}, extraNfo="Level 1 TRG rate jump")
+on L1TrgRateChange(Math.abs(rate-avgrate)>rateJumpMargin*avgrate) as jump 
+	select and delete 
+		date(jump.systime) as systime,  
+		jump.rate as rate, 
+		jump.avgrate as avgrate, 
+		date(jump.srctime) as srctime 
+	from 
+		L1Rates as l1 limit 1;
 
 
-@Description('Display the last rate. Looks weird, right?')
-@Watched
-select prior(1,rate) as value, 'trigger rate' as label, lastEVMtimestamp as timestamp from L1Rates;
+@Watched(label='AVG rate')
+select avgTrgRate as value from L1Rates;
 
-
-@Watched(label='EVM total')
-select count(*) from EVM;
-
+@Watched(label="TRG rate")
+select rate as value from L1Rates;

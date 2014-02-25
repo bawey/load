@@ -6,16 +6,16 @@ import java.util.Date;
 
 import org.apache.log4j.Logger;
 
-import ch.cern.cms.load.views.VerboseAttributes;
+import ch.cern.cms.load.sinks.VerboseAttributes;
 
 import com.espertech.esper.client.EPServiceProvider;
 import com.espertech.esper.client.EPStatement;
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.StatementAwareUpdateListener;
 
-public abstract class LoadView {
+public abstract class EventSink {
 
-	private final static Logger logger = Logger.getLogger(LoadView.class);
+	private final static Logger logger = Logger.getLogger(EventSink.class);
 	protected SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss.SSS");
 
 	public class UpdateEnvelope {

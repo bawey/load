@@ -1,3 +1,28 @@
-@Verbose(label="jobctl", fields={'msg'})
-create variable int jobcontrolTimeout = 60;
-select "job control not updated within "||jobcontrolTimeout.toString()||" seconds" as msg from pattern[every jobcontrol -> (timer:interval(jobcontrolTimeout sec) and not jobcontrol)];
+create context jobControlByHost partition by hostname from jobcontrol;
+
+create variable int jobcontrolTimeout = 50;
+
+create context jobctlHostOutdated
+	context ByHost partition by hostname from jobcontrol,
+	context Outdated start pattern[a=jobcontrol->(timer:interval(jobcontrolTimeout) and not jobcontrol(hostname=a.hostname))]
+		end pattern [jobcontrol(hostname=a.hostname)];
+
+@Verbose(label="jobctlHostOutdated", fields={"systime","hostname","secondsSinceUpdate"}, extraNfo="jobcontrol flashlist outdated")
+context jobctlHostOutdated
+	select context.ByHost.key1 as hostname, date(current_timestamp()) as systime,
+		(current_timestamp()-context.Outdated.a.fetchstamp)/1000.0 as secondsSinceUpdate
+		from pattern [every timer:interval(10 seconds)];
+
+
+/**
+create context jobctlHostOutdatedTest
+	context ByHost partition by hostname from jobcontrol,
+	context Outdated start pattern[a=jobcontrol->(timer:interval(jobcontrolTimeout) and not jobcontrol)]
+		end pattern [jobcontrol];
+
+
+@Verbose(label="jobctlHostOutdatedTest", fields={"hostname","elapsed"})
+context jobctlHostOutdatedTest
+	select context.ByHost.key1 as hostname, (current_timestamp()-context.Outdated.a.fetchstamp)/1000.0 as elapsed
+		from pattern [every timer:interval(1 seconds)];
+**/

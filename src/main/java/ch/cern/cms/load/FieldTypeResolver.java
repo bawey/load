@@ -9,11 +9,12 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
+import ch.cern.cms.load.fieldTypes.AbstractListOfData;
+import ch.cern.cms.load.fieldTypes.ListOfDoubles;
+import ch.cern.cms.load.fieldTypes.ListOfStrings;
+
 import com.espertech.esper.epl.generated.EsperEPL2GrammarParser.firstAggregation_return;
 
-import fieldTypes.AbstractListOfData;
-import fieldTypes.ListOfDoubles;
-import fieldTypes.ListOfStrings;
 
 public final class FieldTypeResolver extends HashMap<String, Class<?>> {
 	// 2013-09-26T08:16:01.987334Z

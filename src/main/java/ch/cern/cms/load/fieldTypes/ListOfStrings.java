@@ -1,4 +1,4 @@
-package fieldTypes;
+package ch.cern.cms.load.fieldTypes;
 
 
 public class ListOfStrings extends AbstractListOfData<String> {

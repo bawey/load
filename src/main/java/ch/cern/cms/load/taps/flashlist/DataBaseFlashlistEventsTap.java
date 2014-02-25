@@ -21,12 +21,12 @@ import org.apache.log4j.Logger;
 import ch.cern.cms.esper.Trx;
 import ch.cern.cms.load.Load;
 import ch.cern.cms.load.Settings;
-import ch.cern.cms.load.annotations.TimeSource;
+import ch.cern.cms.load.annotations.ControllingEngineTime;
 
 import com.espertech.esper.client.EPRuntime;
 import com.espertech.esper.client.time.CurrentTimeSpanEvent;
 
-@TimeSource
+@ControllingEngineTime
 public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
 	private class Columns extends HashMap<String, String[]> {
@@ -206,6 +206,7 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 					} catch (InterruptedException e) {
 						logger.warn("Event herald interrupted ", e);
 					}
+
 					// if (deliveryTimes.size() == 1000) {
 					// logger.info(Stats.summarize("delivery times", deliveryTimes));
 					// deliveryTimes.clear();
@@ -234,6 +235,7 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
 				int timestampsCounter = 0;
 
+				long eventsRetrieved = 0;
 				while (times.next()) {
 					long start = System.currentTimeMillis();
 					long time = times.getLong(1);
@@ -248,6 +250,7 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 						String[] columnsArray = definitions.get(eventName);
 						Set<String> blacklist = blacklists.get(eventName);
 						while (fetched.next()) {
+							++eventsRetrieved;
 							if (USE_MAPS) {
 								Map<String, Object> event = new HashMap<String, Object>();
 								event.put(columnsArray[0], fetched.getLong(1));
@@ -287,6 +290,7 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 								+ new Date().toString());
 					}
 				}
+				System.out.println("Retrieved " + eventsRetrieved + " events from Database");
 			} catch (Exception e1) {
 				throw new RuntimeException(e1);
 			}

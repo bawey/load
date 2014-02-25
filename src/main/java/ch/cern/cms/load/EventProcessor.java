@@ -6,15 +6,10 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 
 import ch.cern.cms.esper.CustomConcatFactory;
-import ch.cern.cms.esper.SortedStringSet;
-import ch.cern.cms.esper.StatementsLifecycleManager;
 import ch.cern.cms.esper.Trx;
 import ch.cern.cms.esper.annotations.Conclusion;
-import ch.cern.cms.esper.annotations.DaqStateMask;
-import ch.cern.cms.esper.annotations.Deferred;
 import ch.cern.cms.esper.annotations.Verbose;
 import ch.cern.cms.esper.annotations.Watched;
-import ch.cern.cms.load.eplProviders.BasicStructEplProvider;
 import ch.cern.cms.load.eventData.FedMask;
 import ch.cern.cms.load.hwdb.CmsHw;
 import ch.cern.cms.load.hwdb.HwInfo;
@@ -63,6 +58,7 @@ public class EventProcessor {
 		c.getEngineDefaults().getThreading().setListenerDispatchPreserveOrder(true);
 		c.addImport(HwInfo.class);
 		c.addImport(CmsHw.class);
+		c.addImport(Math.class);
 		c.addImport("ch.cern.cms.esper.annotations.*");
 		c.addImport(Trx.class);
 		c.addPlugInSingleRowFunction("caseless_in", Trx.class.getCanonicalName(), "inIgnoreCase");
@@ -73,11 +69,12 @@ public class EventProcessor {
 		c.addPlugInSingleRowFunction("text", Trx.class.getCanonicalName(), "toText");
 		c.addPlugInSingleRowFunction("Long", Trx.class.getCanonicalName(), "toLong");
 		c.addPlugInSingleRowFunction("Double", Trx.class.getCanonicalName(), "toDouble");
+		c.addPlugInSingleRowFunction("arraysToMap", Trx.class.getCanonicalName(), "arraysToMap");
+		c.addPlugInSingleRowFunction("arraysToSingletonMaps", Trx.class.getCanonicalName(), "arraysToSingletonMaps");
 
 		c.addPlugInSingleRowFunction("fmm", HwInfo.class.getCanonicalName(), "getFMM");
 		c.addPlugInSingleRowFunction("fedSrcId", HwInfo.class.getCanonicalName(), "getFedSrcId");
-		
-		
+
 		c.addPlugInSingleRowFunction("mainFedSrcIds", HwInfo.class.getCanonicalName(), "getMainFedSrcIds");
 		c.addPlugInSingleRowFunction("fedsInfoString", HwInfo.class.getCanonicalName(), "fedsInfoString");
 		c.addPlugInSingleRowFunction("getPartitionName", HwInfo.class.getCanonicalName(), "getPartitionName");
@@ -91,16 +88,11 @@ public class EventProcessor {
 		c.addPlugInSingleRowFunction("formatMs", Trx.class.getCanonicalName(), "formatMs");
 		c.addPlugInSingleRowFunction("format", Trx.class.getCanonicalName(), "format");
 		c.addPlugInSingleRowFunction("regExtract", Trx.class.getCanonicalName(), "regExtract");
-		c.addPlugInSingleRowFunction("suspend", StatementsLifecycleManager.class.getCanonicalName(), "suspendAll");
-		c.addPlugInSingleRowFunction("resume", StatementsLifecycleManager.class.getCanonicalName(), "resumeAll");
 		c.addPlugInSingleRowFunction("getBusyProcessorsRatio", Trx.class.getCanonicalName(), "getBusyProcessorsRatio");
 		c.addPlugInSingleRowFunction("indexesOf", Trx.class.getCanonicalName(), "indexesOf");
 		c.addPlugInSingleRowFunction("subList", Trx.class.getCanonicalName(), "subList");
 		c.addPlugInSingleRowFunction("compareHostnames", Trx.class.getCanonicalName(), "compareHostnames");
-		c.addPlugInSingleRowFunction("SortedStringSet", SortedStringSet.class.getCanonicalName(), "getInstance");
-		
-	
-		
+
 		// c.addPlugInAggregationFunctionFactory("concat", CustomConcatFunction.class.getCanonicalName());
 		c.addPlugInAggregationFunctionFactory("concat", CustomConcatFactory.class.getCanonicalName());
 
@@ -133,17 +125,13 @@ public class EventProcessor {
 			public void onStatementCreate(EPServiceProvider serviceProvider, EPStatement statement) {
 				for (Annotation a : statement.getAnnotations()) {
 					if (a.annotationType().equals(Verbose.class)) {
-						for (LoadView view : Load.getInstance().getViews()) {
+						for (EventSink view : Load.getInstance().getViews()) {
 							statement.addListener(view.getVerboseStatementListener());
 						}
 					} else if (a.annotationType().equals(Watched.class)) {
-						for (LoadView view : Load.getInstance().getViews()) {
+						for (EventSink view : Load.getInstance().getViews()) {
 							statement.addListener(view.getWatchedStatementListener());
 						}
-					} else if (a.annotationType().equals(DaqStateMask.class)) {
-						StatementsToggler.register(statement, ((DaqStateMask) a).states());
-					} else if (a.annotationType().equals(Deferred.class)) {
-						StatementsLifecycleManager.getInstance().suspend(statement);
 					}
 				}
 			}

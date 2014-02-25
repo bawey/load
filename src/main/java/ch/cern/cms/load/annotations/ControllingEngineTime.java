@@ -1,5 +1,5 @@
 package ch.cern.cms.load.annotations;
 
-public @interface TimeSource {
+public @interface ControllingEngineTime {
 
 }

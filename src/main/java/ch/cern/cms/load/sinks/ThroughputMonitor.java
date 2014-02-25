@@ -1,4 +1,4 @@
-package ch.cern.cms.load.views;
+package ch.cern.cms.load.sinks;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -10,14 +10,14 @@ import javax.swing.JPanel;
 import ch.cern.cms.esper.Trx;
 import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.Load;
-import ch.cern.cms.load.LoadView;
+import ch.cern.cms.load.EventSink;
 
 import com.espertech.esper.client.EPServiceProvider;
 import com.espertech.esper.client.EPStatement;
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.StatementAwareUpdateListener;
 
-public class ThroughputMonitor extends LoadView {
+public class ThroughputMonitor extends EventSink {
 	private class MeasurementEnvelope {
 		public final long engineTime;
 		public final long systemTime;

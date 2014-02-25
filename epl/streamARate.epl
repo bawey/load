@@ -1,12 +1,25 @@
 create objectarray schema StreamRates as (name String, rate double, srctime long);
 
-insert into StreamRates select sum(cast(tuple(smp.streamNames, smp.ratePerStream).get('A'),double)) as rate, 'A' as name, max(timestamp.getTime()) as srctime
-	from pattern[every timer:interval(333 msec)] unidirectional, StorageManagerPerformance.std:unique(context) as smp;
+insert into StreamRates 
+	select 
+		sum(cast(arraysToMap(smp.streamNames, smp.ratePerStream).get('A'),double)) as rate, 
+		'A' as name, 
+		max(timestamp.getTime()) as srctime
+	from 
+		pattern[every StorageManagerPerformance -> (timer:interval(1 msec) and not StorageManagerPerformance)] unidirectional, 
+		StorageManagerPerformance.std:unique(context).win:time(10 msec) as smp;
 
 
 @Watched(label='streamA rate')
 select rate as rate from StreamRates(name='A');
 
 @Verbose(label='output', fields={'systime','name','rate','srctime'}, extraNfo='Stream A rate high!')
-select date(current_timestamp()) as systime, rate as rate, name as name, srctime from StreamRates(name='A', rate>500) output last every 10 seconds;
-
+select 
+	date(current_timestamp()) as systime, 
+	rate as rate, 
+	name as name, 
+	date(srctime) as srctime 
+from 
+	StreamRates(name='A', rate>500) 
+output 
+	last every 10 seconds;

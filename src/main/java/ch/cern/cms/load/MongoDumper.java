@@ -22,6 +22,7 @@ import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.MongoClient;
 
+@Deprecated
 public class MongoDumper {
 
 	private final static Logger logger = Logger.getLogger(MongoDumper.class);

@@ -1,4 +1,4 @@
-package ch.cern.cms.load.tools;
+package ch.cern.cms.load.utils;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;

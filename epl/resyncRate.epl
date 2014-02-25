@@ -9,7 +9,8 @@ on FrlCtlLnk(fedSrcId=812) as ctl set desiredContext = ctl.context, desiredSlotN
 insert into ResyncStream
 select resyncRate, resyncNo from frlcontrollerCard match_recognize(
 	partition by context, slotNumber
-	measures (B.myrinetResync - A.myrinetResync)/((B.timestamp.getTime()-A.timestamp.getTime())/1000) as resyncRate, B.myrinetResync as resyncNo
+	measures 1000*(B.myrinetResync - A.myrinetResync)/(B.timestamp.getTime()-A.timestamp.getTime()) as resyncRate, B.myrinetResync as resyncNo
+	after match skip to current row
 	pattern (A B)
 	define A as A.context = desiredContext and A.slotNumber=desiredSlotNumber
 );

@@ -1,4 +1,4 @@
-package ch.cern.cms.load.views;
+package ch.cern.cms.load.sinks;
 
 import java.lang.annotation.Annotation;
 
