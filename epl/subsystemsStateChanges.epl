@@ -7,6 +7,7 @@ select * from levelZeroFM_subsys match_recognize(
 	after match skip to current row
 	pattern (A B)
 	define
+		A as A.SUBSYS!='DAQ',
 		B as B.STATE != A.STATE and B.STATE.toUpperCase() in ('ERROR','RUNNING_DEGRADED','RUNNING_SOFT_ERROR_DETECTED','PAUSING','PAUSED','RESUMING')
 );
 

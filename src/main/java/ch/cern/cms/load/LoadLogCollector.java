@@ -11,7 +11,6 @@ public class LoadLogCollector extends AppenderSkeleton {
 	public static final String SETTINGS_KEY = "logSinks";
 
 	public LoadLogCollector() {
-		System.err.println("DOWN!");
 	}
 
 	protected void addSink(LogSink sink) {
@@ -32,8 +31,15 @@ public class LoadLogCollector extends AppenderSkeleton {
 	 */
 	protected void append(LoggingEvent event) {
 		String text = super.getLayout().format(event);
+		if (event.getThrowableInformation() != null)
+			System.out.println(event.getThrowableInformation().toString());
 		for (LogSink sink : sinks) {
-			sink.log(text);
+			if (sink.log(event)) {
+				continue;
+			}
+			if (sink.log(text)) {
+				continue;
+			}
 		}
 	}
 

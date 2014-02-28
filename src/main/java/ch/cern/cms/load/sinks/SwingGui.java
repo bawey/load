@@ -1,9 +1,16 @@
 package ch.cern.cms.load.sinks;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.Rectangle;
+import java.awt.Scrollbar;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
+import java.awt.event.ContainerEvent;
+import java.awt.event.ContainerListener;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
@@ -27,6 +34,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
+import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.spi.LoggingEvent;
 
@@ -44,6 +52,8 @@ import com.espertech.esper.event.WrapperEventBean;
 import com.espertech.esper.event.map.MapEventBean;
 
 public class SwingGui extends EventSink implements LogSink {
+
+	private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss");
 
 	private class MessageEvnelope {
 		public final String content;
@@ -76,7 +86,12 @@ public class SwingGui extends EventSink implements LogSink {
 
 	protected JPanel watchBox = new JPanel();
 	protected JTabbedPane consoleBox = new JTabbedPane();
-	protected JPanel loggingBox = new JPanel();
+	protected JPanel loggingBox = new JPanel() {
+		{
+			setBackground(Color.BLACK);
+		}
+	};
+	protected JScrollPane loggingScrollPane;
 
 	private Map<String, JTextField> watchVals = new LinkedHashMap<String, JTextField>();
 	private Map<String, JLabel> watchLabels = new LinkedHashMap<String, JLabel>();
@@ -288,9 +303,9 @@ public class SwingGui extends EventSink implements LogSink {
 			frm.getContentPane().add(pane, BorderLayout.LINE_START);
 			/** add the alarms box **/
 			loggingBox.setLayout(new BoxLayout(loggingBox, BoxLayout.PAGE_AXIS));
-			pane = new JScrollPane(loggingBox);
-			pane.getViewport().setPreferredSize(size);
-			frm.getContentPane().add(pane, BorderLayout.LINE_END);
+			loggingScrollPane = new JScrollPane(loggingBox);
+			loggingScrollPane.getViewport().setPreferredSize(size);
+			frm.getContentPane().add(loggingScrollPane, BorderLayout.CENTER);
 		}
 		{
 
@@ -315,6 +330,27 @@ public class SwingGui extends EventSink implements LogSink {
 				setName("Watched Updates Consumer");
 			}
 		}.start();
+
+	
+		loggingBox.addComponentListener(new ComponentListener() {
+			@Override
+			public void componentShown(ComponentEvent arg0) {
+			}
+
+			@Override
+			public void componentResized(ComponentEvent arg0) {
+				loggingScrollPane.getVerticalScrollBar().setValue(
+						loggingScrollPane.getVerticalScrollBar().getMaximum());
+			}
+
+			@Override
+			public void componentMoved(ComponentEvent arg0) {
+			}
+
+			@Override
+			public void componentHidden(ComponentEvent arg0) {
+			}
+		});
 
 	}
 
@@ -397,14 +433,53 @@ public class SwingGui extends EventSink implements LogSink {
 	};
 
 	@Override
-	public void log(String message) {
-		//if (message.startsWith("DEBUG")) {
-			loggingBox.add(new JLabel(message));
-		//}
+	public boolean log(String message) {
+		return false;
 	}
 
 	@Override
-	public void log(LoggingEvent loggingEvent) {
-		System.out.println(loggingEvent.toString());
+	public boolean log(LoggingEvent loggingEvent) {
+		StringBuffer txt = new StringBuffer("<html><i>");
+		txt.append(sdf.format(new Date(loggingEvent.timeStamp)));
+		txt.append("</i> ").append(loggingEvent.getRenderedMessage());
+
+		if (loggingEvent.getThrowableInformation() != null) {
+			for (String throwRep : loggingEvent.getThrowableInformation().getThrowableStrRep()) {
+				txt.append("<br />").append(throwRep.replace("\t", "&nbsp;&nbsp;&nbsp;&nbsp;"));
+			}
+		}
+		txt.append("</html>");
+
+		Color textColor;
+		switch (loggingEvent.getLevel().toInt()) {
+		case Level.DEBUG_INT:
+			textColor = Color.CYAN;
+			break;
+		case Level.ERROR_INT:
+		case Level.FATAL_INT:
+			textColor = Color.RED;
+			break;
+		case Level.TRACE_INT:
+		case Level.ALL_INT:
+		case Level.INFO_INT:
+			textColor = Color.GREEN;
+			break;
+		case Level.WARN_INT:
+			textColor = Color.ORANGE;
+			break;
+		case Level.OFF_INT:
+		default:
+			textColor = Color.WHITE;
+		}
+
+		JLabel label = new JLabel(txt.toString());
+		label.setForeground(textColor);
+
+		loggingBox.add(label);
+
+		loggingBox.invalidate();
+		loggingBox.revalidate();
+
+		return true;
 	}
 }

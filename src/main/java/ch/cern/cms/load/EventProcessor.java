@@ -92,7 +92,9 @@ public class EventProcessor {
 		c.addPlugInSingleRowFunction("indexesOf", Trx.class.getCanonicalName(), "indexesOf");
 		c.addPlugInSingleRowFunction("subList", Trx.class.getCanonicalName(), "subList");
 		c.addPlugInSingleRowFunction("compareHostnames", Trx.class.getCanonicalName(), "compareHostnames");
-
+		c.addPlugInSingleRowFunction("fedsHistogram", HwInfo.class.getCanonicalName(), "fedsHistogram");
+		
+		
 		// c.addPlugInAggregationFunctionFactory("concat", CustomConcatFunction.class.getCanonicalName());
 		c.addPlugInAggregationFunctionFactory("concat", CustomConcatFactory.class.getCanonicalName());
 

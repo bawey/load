@@ -1,9 +1,0 @@
-@Watched(label='system time')
-select date(current_timestamp()) from pattern[every timer:interval(1 sec)];
-
-@Verbose(label='debug')
-select message from DebugMsg;
-
-@Description('variable to keep the current Session ID')
-create variable String sid = '';
-on levelZeroFM_subsys(SID!=sid, FMURL like '%PublicGlobal%') as l set sid=l.SID;

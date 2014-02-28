@@ -3,7 +3,17 @@ package ch.cern.cms.load;
 import org.apache.log4j.spi.LoggingEvent;
 
 public interface LogSink {
-	public void log(String message);
+	/**
+	 * 
+	 * @param message
+	 * @return whether the message was processed or not
+	 */
+	public boolean log(String message);
 
-	public void log(LoggingEvent loggingEvent);
+	/**
+	 * 
+	 * @param loggingEvent
+	 * @return whethet the event was processed or not
+	 */
+	public boolean log(LoggingEvent loggingEvent);
 }

@@ -1,4 +1,3 @@
-#include "system.epl"
 
 @Description('the last timestamp of EventManager flashlist with desired SessionID')
 create variable Long lastEVMtimestamp = 0;

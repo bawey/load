@@ -48,7 +48,9 @@ create objectarray schema RunAvgTrgLasDt as (dt double);
 create expression runAvgRate {(select rate from RunAvgRate.win:length(1))};
 create expression runAvgARate {(select rate from RunAvgARate.win:length(1))};
 create expression runDuration {(select mili from RunDuration.win:length(1))};
-create expression subsystems {(select concat(SUBSYS) from levelZeroFM_subsys.std:unique(SUBSYS) where INOUT='In')};
+create expression subsystems {(select window(SUBSYS).orderBy().aggregate("",(result, row)=>
+	(result||(case when result.length()>0 then ", " else "" end)||row)) 
+	from levelZeroFM_subsys(SID=sid).std:unique(SUBSYS) where INOUT='In')};
 create expression runNumber {(select RUN_NUMBER from levelZeroFM_static.win:length(10).std:unique(SID) where SID=sid)};
 create expression avgTrgLasDt {(select dt from RunAvgTrgLasDt.win:length(1))};
 

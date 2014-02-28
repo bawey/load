@@ -6,16 +6,19 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
+
+import javax.swing.JComboBox.KeySelectionManager;
 
 import org.apache.log4j.Logger;
 
@@ -24,7 +27,6 @@ import rcms.common.db.DBConnectorIF;
 import rcms.common.db.DBConnectorOracle;
 import rcms.utilities.hwcfg.HWCfgConnector;
 import rcms.utilities.hwcfg.HWCfgDescriptor;
-import rcms.utilities.hwcfg.HardwareConfigurationException;
 import rcms.utilities.hwcfg.eq.EquipmentSet;
 import rcms.utilities.hwcfg.eq.FED;
 import rcms.utilities.hwcfg.eq.FMM;
@@ -38,7 +40,6 @@ import rcms.utilities.hwcfg.eq.TTCPartition;
 import rcms.utilities.hwcfg.eq.Trigger;
 import ch.cern.cms.esper.Trx;
 import ch.cern.cms.load.Load;
-import ch.cern.cms.load.eventData.FedMask;
 
 public final class HwInfo implements Serializable {
 
@@ -76,7 +77,7 @@ public final class HwInfo implements Serializable {
 								ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(path));
 								oos.writeObject(instance);
 								oos.close();
-								//System.out.println("HwInfo dumped at " + path);
+								// System.out.println("HwInfo dumped at " + path);
 							} catch (Exception e) {
 								logger.error("Failed to dump HwInfo to a file", e);
 							}
@@ -322,7 +323,7 @@ public final class HwInfo implements Serializable {
 	}
 
 	public static String getPartitionName(String hostName, int geoSlot, String ab) {
-		//System.out.println("getting partition by hostname: " + hostName + ", AB: " + ab + ", geoSlot: " + geoSlot);
+		// System.out.println("getting partition by hostname: " + hostName + ", AB: " + ab + ", geoSlot: " + geoSlot);
 		HwInfo hi = getInstance();
 
 		for (FMM fmm : hi.eqs.getFMMs().values()) {
@@ -342,7 +343,7 @@ public final class HwInfo implements Serializable {
 	 */
 	public static String getFMMPartition(FMM fmm, String ab) {
 		HwInfo hi = getInstance();
-		//System.out.println("getting partition by fmm: " + fmm + ", AB: " + ab);
+		// System.out.println("getting partition by fmm: " + fmm + ", AB: " + ab);
 		long gtpId = -1;
 		for (Trigger t : hi.eqs.getTriggers().values())
 			if (t.getName().equals("GTP")) // FIXME make more generic
@@ -368,19 +369,78 @@ public final class HwInfo implements Serializable {
 	}
 
 	public static String getPartitionNameByNr(int partNr) {
-		//System.out.println("getting partition by number: " + partNr);
+		// System.out.println("getting partition by number: " + partNr);
 		HwInfo hi = getInstance();
 
 		for (TTCPartition ttcp : hi.eqs.getTTCPartitions().values())
 			if (ttcp.getTTCPNr() == partNr) {
-				//System.out.println("partName=" + ttcp.getName());
+				// System.out.println("partName=" + ttcp.getName());
 				return ttcp.getName();
 			}
 
 		return null;
 	}
 
-	// public static final void main(String[] args) {
-	// for(int )
-	// }
+	public static final String fedsHistogram(Map<Integer, ? extends Object> readouts, boolean majoritySkipDetails) {
+		StringBuilder sb = new StringBuilder();
+
+		final Map<Object, Set<Integer>> unsortedHistogram = new HashMap<Object, Set<Integer>>();
+		Comparator<Object> cmprtr = new Comparator<Object>() {
+			@Override
+			public int compare(Object o1, Object o2) {
+				if (unsortedHistogram.get(o1).size() > unsortedHistogram.get(o2).size()) {
+					return -1;
+				} else if (unsortedHistogram.get(o1).size() < unsortedHistogram.get(o2).size()) {
+					return 1;
+				} else {
+					return (o1.toString().compareTo(o2.toString()));
+				}
+			}
+		};
+		SortedSet<Object> orderedKeys = new TreeSet<Object>(cmprtr);
+
+		for (Map.Entry<Integer, ? extends Object> entry : readouts.entrySet()) {
+			if (!unsortedHistogram.containsKey(entry.getValue())) {
+				unsortedHistogram.put(entry.getValue(), new TreeSet<Integer>());
+			}
+			unsortedHistogram.get(entry.getValue()).add(entry.getKey());
+		}
+		orderedKeys.addAll(unsortedHistogram.keySet());
+
+		int n = orderedKeys.size();
+		if (n == 1) {
+			sb.append("Observed one value only: ").append(unsortedHistogram.keySet().iterator().next().toString());
+		} else {
+			sb.append("Observed ").append(n).append(" values. ");
+			for (final Object histKey : orderedKeys) {
+				int count = unsortedHistogram.get(histKey).size();
+				sb.append("\nValue '").append(histKey).append("' observed for ").append(count).append(" fed")
+				.append(count>1?"s":"");
+				if (majoritySkipDetails) {
+					majoritySkipDetails = false;
+					continue;
+				}
+				sb.append(": ").append(fedsInfoString(new HashMap<Integer, String>() {
+					{
+						for (int i : unsortedHistogram.get(histKey)) {
+							put(i, null);
+						}
+					}
+				}));
+			}
+		}
+		return sb.toString();
+	}
+
+	public static final void main(String[] args) {
+		Map<Integer, Integer> map = new HashMap<Integer, Integer>() {
+			{
+				for (int i = 100; i < 150; ++i) {
+					put(i, (int) (Math.random() * 10));
+				}
+			}
+		};
+		System.out.println(map.toString());
+		System.out.println(fedsHistogram(map, true));
+	}
 }

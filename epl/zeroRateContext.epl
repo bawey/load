@@ -108,8 +108,57 @@ context CrossingNumbersMisaligned
 	from pattern[every BxNumbersSummary ] unidirectional, FedsAlignmentIndicators as x group by bxNumber order by count(fedSrcId) desc;
 
 
-/**
+@Verbose(label="output-devel", fields={"systime", "details"}, extraNfo="BX numbers misaligned")
+context CrossingNumbersMisaligned 
+	select 	fedsHistogram(window(x.*).toMap(k=>k.fedSrcId, v=>v.bxNumber), true) as details,
+			date(current_timestamp()) as systime
+	from 
+		pattern[every BxNumbersSummary ] unidirectional, 
+		FedsAlignmentIndicators as x;
 
+//@Verbose(label="output-dvl", extraNfo="BX numbers misaligned")
+//context CrossingNumbersMisaligned 
+//	select (
+//		select bxNumber, fedsInfoString(window(x.*).toMap(k=>k.fedSrcId, v=>null)) as feds, 
+//			date(current_timestamp()) as systime, count(fedSrcId) as fedsNo
+//		from
+//			FedsAlignmentIndicators as x group by bxNumber 
+//		) as nested
+//	from pattern[every BxNumbersSummary ] unidirectional;
+//
+//	//order by count(fedSrcId) desc
+
+
+//@Priority(5)
+//context CrossingNumbersMisaligned 
+//	insert into FedsPerBxNumber
+//	select bxNumber, 
+//			fedsInfoString(window(x.*).toMap(k=>k.fedSrcId, v=>null)) as feds, 
+//		date(current_timestamp()) as systime
+//	from pattern[every BxNumbersSummary ] unidirectional, FedsAlignmentIndicators as x group by bxNumber;
+
+
+
+
+
+//@Verbose(label="output-dvl", fields={"systime" ,"bxNumber", "fedsNo", "fingerprint", "feds", "extra"}, extraNfo="BX numbers misaligned")
+//context CrossingNumbersMisaligned 
+//	select date(current_timestamp()) as systime,
+//		window(x.*).aggregate(
+//		new {total=1, message="me", somelist=(new {})},
+//		(result, row) => 
+//		(case when 
+//			result.put("total", cast(result('total'), int)+1)!=null 
+//			and result.put("message", cast(result('message'), string)||" and me" )!=null
+//		then result else result end)
+//	) as extra
+//	from pattern[every timer:interval(5 sec)] unidirectional, FedsAlignmentIndicators as x;
+
+
+
+
+
+/**
 There was some debugging when *NumbersMisaligned(Scattered) contexts were terminated only by an appropriate summary event indicating full consistency
 Thus the rate going back up or the run ending would not terminate the context. This in turn would not produce any output as it 
 (output triggered by summary events created exclusively from within L1ZeroRate context) until the L1ZeroRate context is active again
