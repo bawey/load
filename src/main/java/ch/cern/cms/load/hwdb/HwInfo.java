@@ -5,11 +5,14 @@ import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -17,8 +20,6 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
-
-import javax.swing.JComboBox.KeySelectionManager;
 
 import org.apache.log4j.Logger;
 
@@ -257,66 +258,109 @@ public final class HwInfo implements Serializable {
 
 	}
 
-	public static final String fedsInfoString(Map<Integer, String> rawData) {
+	public static final String fedsInfoString(Map<Integer, String> fedsDescriptionMap) {
 		HwInfo hi = getInstance();
 
-		TreeMap<String, TreeMap<String, TreeSet<String>>> eyjafjallajokull = new TreeMap<String, TreeMap<String, TreeSet<String>>>();
+		TreeMap<String, TreeMap<String, TreeSet<String>>> subsysPartitionsInfoMap = new TreeMap<String, TreeMap<String, TreeSet<String>>>();
 
-		for (Map.Entry<Integer, String> tuple : rawData.entrySet()) {
-			long fedSourceId = tuple.getKey();
-			String desc = tuple.getValue();
-			FED fed = hi.eqs.getFEDBySourceId(fedSourceId);
-
-			if (fed == null) {
-				System.out.println("Null fed. remove such possibility after tests");
-				continue;
+		Map<String, String> partitionToSubsys = new HashMap<String, String>();
+		Map<String, List<Integer>> fedSrcIdsByPartition = new TreeMap<String, List<Integer>>();
+		Map<String, Integer> partitionSizes = new HashMap<String, Integer>();
+		
+		
+		for (Integer fedSrcId : fedsDescriptionMap.keySet()) {
+			TTCPartition partition = hi.eqs.getFEDBySourceId(fedSrcId).getTTCPartition();
+			if (!fedSrcIdsByPartition.keySet().contains(partition.getName())) {
+				fedSrcIdsByPartition.put(partition.getName(), new ArrayList<Integer>());
+				partitionSizes.put(partition.getName(), partition.getFEDs().size());
 			}
-			TTCPartition partition = fed.getTTCPartition();
-			SubSystem subsys = partition.getSubSystem();
+			fedSrcIdsByPartition.get(partition.getName()).add(fedSrcId);
+			partitionToSubsys.put(partition.getName(), partition.getSubSystem().getName());
+		}
+		// sort all the sub lists now
+		for (String partitionName : fedSrcIdsByPartition.keySet()) {
+			Collections.sort(fedSrcIdsByPartition.get(partitionName));
+		}
 
-			StringBuilder fedInfo = new StringBuilder("fed#").append(String.format("%03d", fedSourceId));
-			if (desc != null && desc.length() > 0) {
-				fedInfo.append(": ").append(desc);
+		for (String partitionName : fedSrcIdsByPartition.keySet()) {
+			String subsysName = partitionToSubsys.get(partitionName);
+			List<Integer> fedSrcIds = fedSrcIdsByPartition.get(partitionName);
+			for (int fedIndex = 0; fedIndex < fedSrcIds.size(); ++fedIndex) {
+				int fedSrcId = fedSrcIds.get(fedIndex);
+				while (fedIndex < fedSrcIds.size() - 1
+						&& fedSrcIds.get(fedIndex) + 1 == fedSrcIds.get(fedIndex + 1)
+						&& (fedsDescriptionMap.get(fedSrcIds.get(fedIndex)) == fedsDescriptionMap.get(fedSrcIds.get(fedIndex + 1)) || (fedsDescriptionMap
+								.get(fedSrcIds.get(fedIndex)) != null && fedsDescriptionMap.get(fedSrcIds.get(fedIndex)).equals(
+								fedsDescriptionMap.get(fedSrcIds.get(fedIndex + 1)))))) {
+					++fedIndex;
+				}
+
+				StringBuilder fedInfo = new StringBuilder();
+				if (fedSrcIds.get(fedIndex) != fedSrcId) {
+					fedInfo.append("[");
+				}
+				fedInfo.append(String.format("%03d", fedSrcId));
+				if (fedSrcIds.get(fedIndex) != fedSrcId) {
+					fedInfo.append("...").append(String.format("%03d", fedSrcIds.get(fedIndex))).append("]");
+				}
+				if (fedsDescriptionMap.get(fedSrcId) != null && fedsDescriptionMap.get(fedSrcId).length() > 0) {
+					fedInfo.append(": ").append(fedsDescriptionMap.get(fedSrcId));
+				}
+
+				FED fed = hi.eqs.getFEDBySourceId(fedSrcId);
+
+
+				if (!subsysPartitionsInfoMap.containsKey(subsysName)) {
+					subsysPartitionsInfoMap.put(subsysName, new TreeMap<String, TreeSet<String>>());
+				}
+
+				Map<String, TreeSet<String>> fedsPerPartitionMap = subsysPartitionsInfoMap.get(subsysName);
+
+				if (!fedsPerPartitionMap.containsKey(partitionName)) {
+					fedsPerPartitionMap.put(partitionName, new TreeSet<String>());
+				}
+
+				fedsPerPartitionMap.get(partitionName).add(fedInfo.toString());
+
 			}
-
-			if (!eyjafjallajokull.containsKey(subsys.getName())) {
-				eyjafjallajokull.put(subsys.getName(), new TreeMap<String, TreeSet<String>>());
-			}
-
-			Map<String, TreeSet<String>> subMap = eyjafjallajokull.get(subsys.getName());
-
-			if (!subMap.containsKey(partition.getName())) {
-				subMap.put(partition.getName(), new TreeSet<String>());
-			}
-
-			subMap.get(partition.getName()).add(fedInfo.toString());
 		}
 
 		StringBuilder result = new StringBuilder();
 
-		Iterator<Entry<String, TreeMap<String, TreeSet<String>>>> iter1 = eyjafjallajokull.entrySet().iterator();
+		Iterator<Entry<String, TreeMap<String, TreeSet<String>>>> iter1 = subsysPartitionsInfoMap.entrySet().iterator();
 		while (iter1.hasNext()) {
-			Map.Entry<String, TreeMap<String, TreeSet<String>>> level1 = iter1.next();
-			result.append(level1.getKey()).append(": [");
-			Iterator<Entry<String, TreeSet<String>>> iter2 = level1.getValue().entrySet().iterator();
+			Map.Entry<String, TreeMap<String, TreeSet<String>>> subsystemPartitionsMap = iter1.next();
+			result.append("\t");
+			result.append(subsystemPartitionsMap.getKey()).append(": ");
+			Iterator<Entry<String, TreeSet<String>>> iter2 = subsystemPartitionsMap.getValue().entrySet().iterator();
+			boolean twoTabs = false;
 			while (iter2.hasNext()) {
-				Map.Entry<String, TreeSet<String>> level2 = iter2.next();
-				result.append(level2.getKey()).append(": (");
-				Iterator<String> iter3 = level2.getValue().iterator();
+				Map.Entry<String, TreeSet<String>> partitionFedsMap = iter2.next();
+				result.append("\t");
+				if (twoTabs) {
+					result.append("\t");
+				}
+				twoTabs = true;
+				String partitionName = partitionFedsMap.getKey();
+				result.append(partitionName);
+				if(partitionSizes.get(partitionName).equals(fedSrcIdsByPartition.get(partitionName).size())){
+					result.append("(ALL)");
+				}
+				result.append(": ");
+
+				Iterator<String> iter3 = partitionFedsMap.getValue().iterator();
 				while (iter3.hasNext()) {
 					result.append(iter3.next());
 					if (iter3.hasNext()) {
 						result.append(", ");
 					}
 				}
-				result.append(")");
 				if (iter2.hasNext()) {
-					result.append(", ");
+					result.append("\n");
 				}
 			}
-			result.append("]");
 			if (iter1.hasNext()) {
-				result.append(", ");
+				result.append("\n");
 			}
 		}
 		return result.toString();
@@ -414,8 +458,7 @@ public final class HwInfo implements Serializable {
 			sb.append("Observed ").append(n).append(" values. ");
 			for (final Object histKey : orderedKeys) {
 				int count = unsortedHistogram.get(histKey).size();
-				sb.append("\nValue '").append(histKey).append("' observed for ").append(count).append(" fed")
-				.append(count>1?"s":"");
+				sb.append("\nValue '").append(histKey).append("' observed for ").append(count).append(" fed").append(count > 1 ? "s" : "");
 				if (majoritySkipDetails) {
 					majoritySkipDetails = false;
 					continue;
