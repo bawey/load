@@ -14,14 +14,14 @@ import org.apache.log4j.Logger;
 
 import ch.cern.cms.load.FieldTypeResolver;
 import ch.cern.cms.load.Load;
-import ch.cern.cms.load.EventSink;
+import ch.cern.cms.load.EventsSink;
 
 import com.espertech.esper.client.EPServiceProvider;
 import com.espertech.esper.client.EPStatement;
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.StatementAwareUpdateListener;
 
-public class FileSink extends EventSink {
+public class FileSink extends EventsSink {
 
 	public static final String KEY_OUTPUT_DIRECTORY = "outputDir";
 
@@ -47,7 +47,7 @@ public class FileSink extends EventSink {
 		}
 	};
 
-	private BlockingQueue<UpdateEnvelope> queue = new ArrayBlockingQueue<EventSink.UpdateEnvelope>(1000);
+	private BlockingQueue<UpdateEnvelope> queue = new ArrayBlockingQueue<EventsSink.UpdateEnvelope>(1000);
 
 	private Runnable worker = new Runnable() {
 

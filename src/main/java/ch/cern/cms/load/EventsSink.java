@@ -13,9 +13,9 @@ import com.espertech.esper.client.EPStatement;
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.StatementAwareUpdateListener;
 
-public abstract class EventSink {
+public abstract class EventsSink {
 
-	private final static Logger logger = Logger.getLogger(EventSink.class);
+	private final static Logger logger = Logger.getLogger(EventsSink.class);
 	protected SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss.SSS");
 
 	public class UpdateEnvelope {

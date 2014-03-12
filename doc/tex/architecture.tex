@@ -1,11 +1,27 @@
 Project comprises the following modules:
 \begin{itemize}
-	\item LOAD - the application controller object governing the lifecycle of federated objects
-	\item EventsProcessor - Esper engine wrapper responsible
+	\item LOAD - the application controller object governing the lifecycle of federated objects; loads some components using the settings in load.properties file and reflection
+	\item EventsProcessor - Esper engine wrapper responsible for ...
 	\item FieldsTypeResolver
-	\item EventsTap - an interface 
+	\item EventsTap - an abstract class providing a scaffolding for events registration and 
 	\begin{itemize}
 		\item DbFlashlistEventsTap
 	\end{itemize}
 	\item EventsSink
+		\begin{itemize}
+			\item{SwingGui}
+			\item{FileSink}
+		\end{itemize}
+	\item Settings 
+	\item LoadLogCollector
+	\item LogSink - an interface...
+	\item MysqlDumper
+	\item MongoDumper
+	\item EplProvider - an interface...
+	\begin{itemize}
+		\item
+	\end{itemize}
+
 \end{itemize}
+
+

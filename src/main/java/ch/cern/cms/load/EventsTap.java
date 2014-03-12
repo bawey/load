@@ -1,7 +1,5 @@
 package ch.cern.cms.load;
 
-import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;
-import ch.cern.cms.load.taps.flashlist.OnlineFlashlistEventsTap;
 
 public abstract class EventsTap {
 
@@ -35,21 +33,5 @@ public abstract class EventsTap {
 	/** launches the Tap-specific job in a separate thread **/
 	public final void openStreams() {
 		new Thread(job).start();
-	}
-
-
-	@Deprecated
-	public static void registerKnownOnlineTaps() {
-		Load ec = Load.getInstance();
-		for (String flRoot : ec.getSettings().getMany(OnlineFlashlistEventsTap.SETTINGS_KEY_FLASHLIST_ROOT))
-			ec.registerTap(new OnlineFlashlistEventsTap(ec, flRoot));
-	}
-
-	public static void setOfflineTapsPosition(long position) {
-		for (EventsTap tap : Load.getInstance().getTaps()) {
-			if (tap instanceof OfflineFlashlistEventsTap) {
-				((OfflineFlashlistEventsTap) tap).setPosition(position);
-			}
-		}
 	}
 }

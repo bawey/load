@@ -1,16 +1,16 @@
 package ch.cern.cms.load;
 
-import static org.junit.Assert.*;
-
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;
+import ch.cern.cms.load.taps.flashlist.DataBaseFlashlistEventsTap;
 
-public class SettingsTest {
+public class DataBaseFlashlistEventsTapTest {
+
+	private Load load = null;
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
@@ -22,6 +22,9 @@ public class SettingsTest {
 
 	@Before
 	public void setUp() throws Exception {
+		load = Load.getInstance();
+		DataBaseFlashlistEventsTap tap = new DataBaseFlashlistEventsTap(load);
+		load.openTaps();
 	}
 
 	@After
@@ -30,10 +33,6 @@ public class SettingsTest {
 
 	@Test
 	public void test() {
-		Load e = Load.getInstance();
-		for (String s : e.getSettings().getMany(OfflineFlashlistEventsTap.SETTINGS_KEY_FLASHLIST_DIR)) {
-			System.out.println(s);
-		}
 	}
 
 }

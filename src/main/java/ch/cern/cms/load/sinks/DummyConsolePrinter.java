@@ -5,7 +5,7 @@ import com.espertech.esper.client.EPStatement;
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.StatementAwareUpdateListener;
 
-import ch.cern.cms.load.EventSink;
+import ch.cern.cms.load.EventsSink;
 
 /**
  * @author Tomasz Bawej
@@ -13,7 +13,7 @@ import ch.cern.cms.load.EventSink;
  *         This is just a dummy view to verify the concept as working.
  */
 
-public class DummyConsolePrinter extends EventSink {
+public class DummyConsolePrinter extends EventsSink {
 
 	@Override
 	public StatementAwareUpdateListener getVerboseStatementListener() {

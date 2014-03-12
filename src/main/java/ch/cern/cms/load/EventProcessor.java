@@ -127,11 +127,11 @@ public class EventProcessor {
 			public void onStatementCreate(EPServiceProvider serviceProvider, EPStatement statement) {
 				for (Annotation a : statement.getAnnotations()) {
 					if (a.annotationType().equals(Verbose.class)) {
-						for (EventSink view : Load.getInstance().getViews()) {
+						for (EventsSink view : Load.getInstance().getViews()) {
 							statement.addListener(view.getVerboseStatementListener());
 						}
 					} else if (a.annotationType().equals(Watched.class)) {
-						for (EventSink view : Load.getInstance().getViews()) {
+						for (EventsSink view : Load.getInstance().getViews()) {
 							statement.addListener(view.getWatchedStatementListener());
 						}
 					}

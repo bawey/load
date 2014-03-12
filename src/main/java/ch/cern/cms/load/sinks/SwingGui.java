@@ -40,7 +40,7 @@ import org.apache.log4j.spi.LoggingEvent;
 
 import ch.cern.cms.esper.annotations.Verbose;
 import ch.cern.cms.esper.annotations.Watched;
-import ch.cern.cms.load.EventSink;
+import ch.cern.cms.load.EventsSink;
 import ch.cern.cms.load.LoadLogCollector;
 import ch.cern.cms.load.LogSink;
 
@@ -51,7 +51,7 @@ import com.espertech.esper.client.StatementAwareUpdateListener;
 import com.espertech.esper.event.WrapperEventBean;
 import com.espertech.esper.event.map.MapEventBean;
 
-public class SwingGui extends EventSink implements LogSink {
+public class SwingGui extends EventsSink implements LogSink {
 
 	private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss");
 

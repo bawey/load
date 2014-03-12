@@ -9,20 +9,17 @@ import org.apache.log4j.Logger;
 import ch.cern.cms.load.eplProviders.BasicStructEplProvider;
 import ch.cern.cms.load.eplProviders.FileBasedEplProvider;
 import ch.cern.cms.load.taps.flashlist.DataBaseFlashlistEventsTap;
-import ch.cern.cms.load.taps.flashlist.OfflineFlashlistEventsTap;
+import ch.cern.cms.load.taps.flashlist.OnlineFlashlistEventsTap;
 
 /**
  * Core components, singletons etc. should be initialized here. However, the setup of initial structure should be well separated from the
  * configuration-specific actions to enable unit-testing and reconfigurations.
  */
 
-// try this for loading properties: inputFile =
-// this.getClass().getClassLoader().getResourceAsStream("etc/trivia.epl")
-
 public class Load {
 
-	private static final Logger logger = Logger.getLogger(Load.class);
 	private static Load instance;
+	private static final Logger logger = Logger.getLogger(Load.class);
 
 	public static Load getInstance() {
 		if (instance == null) {
@@ -40,9 +37,6 @@ public class Load {
 		return instance;
 	}
 
-	/**
-	 * @param args
-	 */
 	public static final void main(String[] args) {
 		Thread.currentThread().setName("Level 0 Anomaly Detective");
 		instance = getInstance();
@@ -53,19 +47,17 @@ public class Load {
 		}
 	}
 
-	private final Settings settings;
-
 	private EventProcessor ep;
-
-	private final Set<EventsTap> taps = new HashSet<EventsTap>();
 
 	private FieldTypeResolver resolver;
 
-	private final Set<EventSink> views = new HashSet<EventSink>();
+	private final Settings settings;
+
+	private final Set<EventsTap> taps = new HashSet<EventsTap>();
+
+	private final Set<EventsSink> views = new HashSet<EventsSink>();
 
 	private Load() {
-		// settings have to go first!
-		System.out.println("producing LOAD");
 		settings = new Settings();
 		setUpSOCKSProxy();
 	}
@@ -74,15 +66,15 @@ public class Load {
 		return ep;
 	}
 
-	public Settings getSettings() {
-		return settings;
-	}
-
 	public FieldTypeResolver getResolver() {
 		return resolver;
 	}
 
-	public Set<EventSink> getViews() {
+	public Settings getSettings() {
+		return settings;
+	}
+
+	public Set<EventsSink> getViews() {
 		return views;
 	}
 
@@ -90,62 +82,21 @@ public class Load {
 	 * Initializes the default application structure.
 	 */
 	private void defaultSetup() {
-		// looks stupid - calls every known component to perform its setup
-		// depending on the config file's contents
-		// place for dependency injection??
-
-		// register the views
 		this.setUpViews();
 
-		// register taps
-		if (settings.getMany(OfflineFlashlistEventsTap.SETTINGS_KEY_FLASHLIST_DIR).size() > 0) {
-			// registerTap(new OfflineFlashlistEventsTap(this, null));
-			// registerTap(new OfflineFlashlistEventsTap2(this));
-		}
 		if (settings.getProperty(DataBaseFlashlistEventsTap.KEY_DB_MODE).equalsIgnoreCase("read")) {
 			registerTap(new DataBaseFlashlistEventsTap(this));
 		}
-		EventsTap.registerKnownOnlineTaps();
+
+		for (String flashlistsRootUrl : getSettings().getMany(OnlineFlashlistEventsTap.SETTINGS_KEY_FLASHLIST_ROOT)) {
+			registerTap(new OnlineFlashlistEventsTap(this, flashlistsRootUrl));
+		}
+
 		// register the statements from file
 		new BasicStructEplProvider().registerStatements(ep);
 		new FileBasedEplProvider().registerStatements(ep);
 
 		openTaps();
-	}
-
-	public void openTaps() {
-		for (EventsTap et : taps) {
-			et.openStreams();
-		}
-	}
-
-	/**
-	 * Inserts into the list of known taps this should depend on some configuration later on or start-up choice
-	 */
-	public void registerTap(EventsTap tap) {
-		taps.add(tap);
-	}
-
-	public Collection<EventsTap> getTaps() {
-		return this.taps;
-	}
-
-	private void setUpSOCKSProxy() {
-		for (String key : new String[] { "socksProxyHost", "proxySet", "socksProxyPort" }) {
-			System.getProperties().put(key, settings.get(key));
-		}
-	}
-
-	private void setUpViews() {
-		for (String viewName : settings.getMany("view")) {
-			Object sink = instantiateComponent("sink", viewName);
-			if (sink instanceof EventSink) {
-				views.add((EventSink) sink);
-			}
-			if (sink instanceof LogSink) {
-				LoadLogCollector.registerSink((LogSink) sink);
-			}
-		}
 	}
 
 	private Object instantiateComponent(String type, String id) {
@@ -162,8 +113,43 @@ public class Load {
 		}
 	}
 
-	public boolean isInternalTimerEnabled() {
+	private void setUpViews() {
+		for (String viewName : settings.getMany("view")) {
+			Object sink = instantiateComponent("sink", viewName);
+			if (sink instanceof EventsSink) {
+				views.add((EventsSink) sink);
+			}
+			if (sink instanceof LogSink) {
+				LoadLogCollector.registerSink((LogSink) sink);
+			}
+		}
+	}
+
+	protected Collection<EventsTap> getTaps() {
+		return this.taps;
+	}
+
+	protected boolean isInternalTimerEnabled() {
 		return false;
+	}
+
+	protected void openTaps() {
+		for (EventsTap et : taps) {
+			et.openStreams();
+		}
+	}
+
+	/**
+	 * Inserts into the list of known taps this should depend on some configuration later on or start-up choice
+	 */
+	protected void registerTap(EventsTap tap) {
+		taps.add(tap);
+	}
+
+	protected void setUpSOCKSProxy() {
+		for (String key : new String[] { "socksProxyHost", "proxySet", "socksProxyPort" }) {
+			System.getProperties().put(key, settings.get(key));
+		}
 	}
 
 }

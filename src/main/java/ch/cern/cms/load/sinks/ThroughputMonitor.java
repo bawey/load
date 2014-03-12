@@ -10,14 +10,14 @@ import javax.swing.JPanel;
 import ch.cern.cms.esper.Trx;
 import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.Load;
-import ch.cern.cms.load.EventSink;
+import ch.cern.cms.load.EventsSink;
 
 import com.espertech.esper.client.EPServiceProvider;
 import com.espertech.esper.client.EPStatement;
 import com.espertech.esper.client.EventBean;
 import com.espertech.esper.client.StatementAwareUpdateListener;
 
-public class ThroughputMonitor extends EventSink {
+public class ThroughputMonitor extends EventsSink {
 	private class MeasurementEnvelope {
 		public final long engineTime;
 		public final long systemTime;
