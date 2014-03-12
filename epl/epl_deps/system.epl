@@ -1,0 +1,80 @@
+@Watched(label='system time')
+select date(current_timestamp()) from pattern[every timer:interval(1 sec)];
+
+@Verbose(label='debug')
+select message from DebugMsg;
+
+@Description('variable to keep the current Session ID')
+create variable String sid = '';
+on levelZeroFM_subsys(SID!=sid, FMURL like '%PublicGlobal%') as l set sid=l.SID;
+
+
+@Priority(10)
+@Drop
+select * from frlcontrollerLink where sessionid!=sid;
+
+@Priority(10)
+@Drop
+select * from jobcontrol where sessionid!=sid;
+
+@Priority(10)
+@Drop
+select * from frlcontrollerCard where sessionid!=sid;
+
+@Priority(10)
+@Drop
+select * from EVM where sessionid!=sid;
+
+@Priority(10)
+@Drop
+select * from FMMInput where sessionid!=sid;
+
+@Priority(10)
+@Drop
+select * from levelZeroFM_static where SID!=sid;
+
+@Priority(10)
+@Drop
+select * from EventProcessorStatus where sessionid!=sid;
+
+@Priority(10)
+@Drop
+select * from StorageManagerPerformance where sessionid!=sid;
+
+@Priority(10)
+@Drop
+select * from FMMStatus where sessionid!=sid;
+
+
+
+
+@Verbose(label="dropping test", fields={"rightSid","mySid"}, extraNfo="frlcontrollerLink")
+select sessionid as mySid, sid as rightSid from frlcontrollerLink(sessionid!=sid);
+
+@Verbose(label="dropping test", fields={"rightSid","mySid"}, extraNfo="frlcontrollerCard")
+select sessionid as mySid, sid as rightSid from frlcontrollerCard(sessionid!=sid);
+
+@Verbose(label="dropping test", fields={"rightSid","mySid"}, extraNfo="EVM")
+select sessionid as mySid, sid as rightSid from EVM(sessionid!=sid);
+
+@Verbose(label="dropping test", fields={"rightSid","mySid"}, extraNfo="FMMInput")
+select sessionid as mySid, sid as rightSid from FMMInput(sessionid!=sid);
+
+@Verbose(label="dropping test", fields={"rightSid","mySid"}, extraNfo="FM_static")
+select SID as mySid, sid as rightSid from levelZeroFM_static(SID!=sid);
+
+@Verbose(label="dropping test", fields={"rightSid","mySid"}, extraNfo="jobctl")
+select sessionid as mySid, sid as rightSid from jobcontrol(sessionid!=sid);
+
+@Verbose(label="dropping test", fields={"rightSid","mySid"}, extraNfo="EPS")
+select sessionid as mySid, sid as rightSid from EventProcessorStatus(sessionid!=sid);
+
+@Verbose(label="dropping test", fields={"rightSid","mySid"}, extraNfo="SMP")
+select sessionid as mySid, sid as rightSid from StorageManagerPerformance(sessionid!=sid);
+
+@Verbose(label="dropping test", fields={"rightSid","mySid"}, extraNfo="FMMSt")
+select sessionid as mySid, sid as rightSid from FMMStatus(sessionid!=sid);
+
+
+
+

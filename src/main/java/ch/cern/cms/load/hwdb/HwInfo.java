@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -28,6 +27,10 @@ import rcms.common.db.DBConnectorIF;
 import rcms.common.db.DBConnectorOracle;
 import rcms.utilities.hwcfg.HWCfgConnector;
 import rcms.utilities.hwcfg.HWCfgDescriptor;
+import rcms.utilities.hwcfg.HardwareConfigurationException;
+import rcms.utilities.hwcfg.dp.DAQPartition;
+import rcms.utilities.hwcfg.dp.DAQPartitionSet;
+import rcms.utilities.hwcfg.dp.DAQPartitionStructureExtractor;
 import rcms.utilities.hwcfg.eq.EquipmentSet;
 import rcms.utilities.hwcfg.eq.FED;
 import rcms.utilities.hwcfg.eq.FMM;
@@ -36,7 +39,6 @@ import rcms.utilities.hwcfg.eq.FMMFMMLink;
 import rcms.utilities.hwcfg.eq.FMMTriggerLink;
 import rcms.utilities.hwcfg.eq.FRL;
 import rcms.utilities.hwcfg.eq.FRLCrate;
-import rcms.utilities.hwcfg.eq.SubSystem;
 import rcms.utilities.hwcfg.eq.TTCPartition;
 import rcms.utilities.hwcfg.eq.Trigger;
 import ch.cern.cms.esper.Trx;
@@ -90,11 +92,24 @@ public final class HwInfo implements Serializable {
 		return instance;
 	}
 
+	/**
+	 * Forces reinitialization of HwInfo object. getInstance() will either call a constructor that should fill all the caches or reload the
+	 * same instance form file (development mode).
+	 **/
+	synchronized public static final void reinitialize() {
+		instance = null;
+		getInstance();
+	}
+
 	private transient DBConnectorIF dbconn = null;
-	private transient HWCfgDescriptor dpNode;
+	private transient HWCfgDescriptor dpNode = null;
 	private transient HWCfgConnector hwconn = null;
 
-	private EquipmentSet eqs;
+	private transient EquipmentSet eqs;
+	private transient DAQPartitionSet dps;
+
+	private Map<TTCPartition, SortedSet<FED>> daqConfFedsByPartition;
+	private Set<FED> daqConfFeds;
 
 	private HwInfo() {
 		try {
@@ -102,10 +117,37 @@ public final class HwInfo implements Serializable {
 
 			hwconn = new HWCfgConnector(dbconn);
 			dpNode = hwconn.getNode("/cms/eq_120503/RUN_2012/fb_all_2012routing2_rev120320_SplitCSC/dp_4SL0f_bl688_158BU_4SMr06");
-			eqs = hwconn.retrieveDPSet(dpNode).getEquipmentSet();
+			dps = hwconn.retrieveDPSet(dpNode);
+			eqs = dps.getEquipmentSet();
+
+			/** Initialize caches **/
+			initDaqConfFeds();
+
 		} catch (Exception r) {
 			System.err.println("die die die my darling");
 			r.printStackTrace();
+		}
+	}
+
+	private void initDaqConfFeds(){
+		daqConfFeds = new HashSet<FED>();
+		for (DAQPartition daqPartition : dps.getDPs().values()) {
+			DAQPartitionStructureExtractor structureExtractor = new DAQPartitionStructureExtractor(daqPartition);
+			try {
+				for (FED fed : structureExtractor.getFEDsInDP().values()) {
+					daqConfFeds.add(fed);
+				}
+			} catch (HardwareConfigurationException e) {
+				logger.error("Problem while accessing FEDs for DAQ partition", e);
+			}
+		}
+	
+		daqConfFedsByPartition = new HashMap<TTCPartition, SortedSet<FED>>();
+		for (FED fed : daqConfFeds) {
+			if (!daqConfFedsByPartition.containsKey(fed.getTTCPartition())) {
+				daqConfFedsByPartition.put(fed.getTTCPartition(), new TreeSet<FED>(new FedComparator()));
+			}
+			daqConfFedsByPartition.get(fed.getTTCPartition()).add(fed);
 		}
 	}
 
@@ -266,13 +308,12 @@ public final class HwInfo implements Serializable {
 		Map<String, String> partitionToSubsys = new HashMap<String, String>();
 		Map<String, List<Integer>> fedSrcIdsByPartition = new TreeMap<String, List<Integer>>();
 		Map<String, Integer> partitionSizes = new HashMap<String, Integer>();
-		
-		
+
 		for (Integer fedSrcId : fedsDescriptionMap.keySet()) {
 			TTCPartition partition = hi.eqs.getFEDBySourceId(fedSrcId).getTTCPartition();
 			if (!fedSrcIdsByPartition.keySet().contains(partition.getName())) {
 				fedSrcIdsByPartition.put(partition.getName(), new ArrayList<Integer>());
-				partitionSizes.put(partition.getName(), partition.getFEDs().size());
+				partitionSizes.put(partition.getName(), hi.daqConfFedsByPartition.get(partition).size());
 			}
 			fedSrcIdsByPartition.get(partition.getName()).add(fedSrcId);
 			partitionToSubsys.put(partition.getName(), partition.getSubSystem().getName());
@@ -309,7 +350,6 @@ public final class HwInfo implements Serializable {
 
 				FED fed = hi.eqs.getFEDBySourceId(fedSrcId);
 
-
 				if (!subsysPartitionsInfoMap.containsKey(subsysName)) {
 					subsysPartitionsInfoMap.put(subsysName, new TreeMap<String, TreeSet<String>>());
 				}
@@ -343,9 +383,7 @@ public final class HwInfo implements Serializable {
 				twoTabs = true;
 				String partitionName = partitionFedsMap.getKey();
 				result.append(partitionName);
-				if(partitionSizes.get(partitionName).equals(fedSrcIdsByPartition.get(partitionName).size())){
-					result.append("(ALL)");
-				}
+				result.append(" (").append(fedSrcIdsByPartition.get(partitionName).size()).append("/").append(partitionSizes.get(partitionName)).append(")");
 				result.append(": ");
 
 				Iterator<String> iter3 = partitionFedsMap.getValue().iterator();
@@ -475,6 +513,14 @@ public final class HwInfo implements Serializable {
 		return sb.toString();
 	}
 
+	public static final Set<FED> getFedsInDaqConfiguration() {
+		return getInstance().daqConfFeds;
+	}
+
+	public static final Map<TTCPartition, SortedSet<FED>> getFedsInDaqConfigurationPerPartition() {
+		return getInstance().daqConfFedsByPartition;
+	}
+
 	public static final void main(String[] args) {
 		Map<Integer, Integer> map = new HashMap<Integer, Integer>() {
 			{
@@ -483,7 +529,26 @@ public final class HwInfo implements Serializable {
 				}
 			}
 		};
-		System.out.println(map.toString());
-		System.out.println(fedsHistogram(map, true));
+
+		long timeStart = System.currentTimeMillis();
+		HwInfo.getInstance();
+		for (Map.Entry<TTCPartition, SortedSet<FED>> entry : getFedsInDaqConfigurationPerPartition().entrySet()) {
+			System.out.println(entry.getKey().getName());
+			for (FED fed : entry.getValue()) {
+				System.out.println("\t " + fed.getSrcId());
+			}
+		}
+		;
+		System.out.println("Retrieved Feds in DAQ configuration within: " + (System.currentTimeMillis() - timeStart) + " ms");
+
+	}
+
+	private class FedComparator implements Comparator<FED>, Serializable {
+		private static final long serialVersionUID = 1L;
+
+		@Override
+		public int compare(FED arg0, FED arg1) {
+			return (int) Math.signum(arg0.getSrcId() - arg1.getSrcId());
+		}
 	}
 }
