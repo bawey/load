@@ -80,7 +80,8 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 		fetchstampName = this.controller.getSettings().getProperty(KEY_RETRIEVAL_TIMESTAMP_NAME, "fetchstamp");
 		timespanStart = this.controller.getSettings().getLong(Settings.KEY_TIMER_START, 0l);
 		timespanEnd = this.controller.getSettings().getLong(Settings.KEY_TIMER_END, System.currentTimeMillis());
-		flashlistNames = this.controller.getSettings().getSemicolonSeparatedValues(AbstractFlashlistEventsTap.KEY_FLASHLISTS);
+		flashlistNames = this.controller.getSettings().getSemicolonSeparatedValues(
+				AbstractFlashlistEventsTap.KEY_FLASHLISTS);
 		blacklists = new HashMap<String, Set<String>>();
 
 		try {
@@ -142,7 +143,8 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 				for (int i = 1; i < fieldTypes.length; ++i) {
 					fieldTypes[i] = controller.getResolver().getFieldType(definitions.get(eventName)[i], eventName);
 				}
-				controller.getEventProcessor().getAdministrator().getConfiguration().addEventType(eventName, definitions.get(eventName), fieldTypes);
+				controller.getEventProcessor().getAdministrator().getConfiguration()
+						.addEventType(eventName, definitions.get(eventName), fieldTypes);
 			}
 		}
 	}
@@ -154,7 +156,8 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
 	public static final String getDbPath(Settings settings) {
 		StringBuilder dbUrl = new StringBuilder("jdbc:");
-		dbUrl.append(settings.getProperty(KEY_DB_TYPE)).append("://").append(settings.getProperty(KEY_DB_HOST)).append("/");
+		dbUrl.append(settings.getProperty(KEY_DB_TYPE)).append("://").append(settings.getProperty(KEY_DB_HOST))
+				.append("/");
 		dbUrl.append(settings.getProperty(KEY_DB_NAME)).append("?user=").append(settings.getProperty(KEY_DB_USER));
 		if (settings.containsKey(KEY_DB_PASS)) {
 			dbUrl.append("&password=").append(settings.getProperty(KEY_DB_PASS));
@@ -202,13 +205,15 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 						} else {
 							rt.sendEvent(ee.event);
 						}
-						// deliveryTimes.add(System.currentTimeMillis() - start);
+						// deliveryTimes.add(System.currentTimeMillis() -
+						// start);
 					} catch (InterruptedException e) {
 						logger.warn("Event herald interrupted ", e);
 					}
 
 					// if (deliveryTimes.size() == 1000) {
-					// logger.info(Stats.summarize("delivery times", deliveryTimes));
+					// logger.info(Stats.summarize("delivery times",
+					// deliveryTimes));
 					// deliveryTimes.clear();
 					// }
 				}
@@ -223,11 +228,15 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 				System.out.println("Running the thread");
 				selects = new Selects();
 				for (String table : definitions.keySet()) {
-					selects.put(table, conn.prepareStatement(new StringBuilder("select * from ").append(table).append(" where fetchstamp=?").toString()));
+					selects.put(
+							table,
+							conn.prepareStatement(new StringBuilder("select * from ").append(table)
+									.append(" where fetchstamp=?").toString()));
 				}
 
 				ResultSet times = conn.createStatement().executeQuery(
-						"select fetchstamp from fetchstamps where fetchstamp between " + timespanStart + " and " + timespanEnd + " order by fetchstamp asc");
+						"select fetchstamp from fetchstamps where fetchstamp between " + timespanStart + " and "
+								+ timespanEnd + " order by fetchstamp asc");
 
 				// ArrayList<Long> dataPushTimes = new ArrayList<Long>(100);
 				// ArrayList<Long> timePushTimes = new ArrayList<Long>(100);
@@ -245,7 +254,8 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 						selects.get(eventName).setLong(1, time);
 						start = System.currentTimeMillis();
 						ResultSet fetched = selects.get(eventName).executeQuery();
-						// dataPullTimes.add(System.currentTimeMillis() - start);
+						// dataPullTimes.add(System.currentTimeMillis() -
+						// start);
 						start = System.currentTimeMillis();
 						String[] columnsArray = definitions.get(eventName);
 						Set<String> blacklist = blacklists.get(eventName);
@@ -257,7 +267,10 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 								for (int i = 1; i < fetched.getMetaData().getColumnCount(); ++i) {
 									String columnName = fetched.getMetaData().getColumnName(i + 1);
 									if (blacklist == null || !blacklist.contains(columnName)) {
-										event.put(columnName, controller.getResolver().convert(fetched.getString(i + 1), columnName, eventName));
+										event.put(
+												columnName,
+												controller.getResolver().convert(fetched.getString(i + 1), columnName,
+														eventName));
 									}
 								}
 								queue.put(new EventEnvelope(eventName, event));
@@ -269,25 +282,30 @@ public class DataBaseFlashlistEventsTap extends AbstractFlashlistEventsTap {
 								for (int i = 1; i < fetched.getMetaData().getColumnCount(); ++i) {
 									String columnName = fetched.getMetaData().getColumnName(i + 1);
 									if (blacklist == null || !blacklist.contains(columnName)) {
-										event[valids++] = controller.getResolver().convert(fetched.getString(i + 1), columnName, eventName);
+										event[valids++] = controller.getResolver().convert(fetched.getString(i + 1),
+												columnName, eventName);
 									}
 								}
 								queue.put(new EventEnvelope(eventName, event));
 							}
 						}
-						// dataPushTimes.add(System.currentTimeMillis() - start);
+						// dataPushTimes.add(System.currentTimeMillis() -
+						// start);
 					}
 					// if (timePushTimes.size() == 10) {
-					// logger.info(Stats.summarize("Data pushing: ", dataPushTimes));
-					// logger.info(Stats.summarize("Data pulling: ", dataPullTimes));
-					// logger.info(Stats.summarize("Time pushing: ", timePushTimes));
+					// logger.info(Stats.summarize("Data pushing: ",
+					// dataPushTimes));
+					// logger.info(Stats.summarize("Data pulling: ",
+					// dataPullTimes));
+					// logger.info(Stats.summarize("Time pushing: ",
+					// timePushTimes));
 					// dataPullTimes.clear();
 					// dataPushTimes.clear();
 					// timePushTimes.clear();
 					// }
 					if ((++timestampsCounter) % 10000 == 0) {
-						System.out.println("Processed " + timestampsCounter + " timestamps. Last fetchstamp: " + Trx.toDate(time) + ", current local time: "
-								+ new Date().toString());
+						System.out.println("Processed " + timestampsCounter + " timestamps. Last fetchstamp: "
+								+ Trx.toDate(time) + ", current local time: " + new Date().toString());
 					}
 				}
 				System.out.println("Retrieved " + eventsRetrieved + " events from Database");

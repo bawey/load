@@ -51,6 +51,7 @@ public final class HwInfo implements Serializable {
 	private static final Logger logger = Logger.getLogger(HwInfo.class);
 
 	private final static String hwcfgDbURL = "jdbc:oracle:thin:@localhost:10121/cms_omds_tunnel.cern.ch";
+	//private final static String hwcfgDbURL = "jdbc:oracle:thin:@int2r1-v.cern.ch:10121/int2r_lb.cern.ch";
 	private final static String hwcfgPassword = "mickey2mouse";
 	private final static String hwcfgUser = "CMS_DAQ_HW_CONF_R";
 	private static HwInfo instance = null;
@@ -59,6 +60,7 @@ public final class HwInfo implements Serializable {
 		if (instance == null) {
 			synchronized (HwInfo.class) {
 				if (instance == null) {
+					/** During development it was possible to serialize HwDb  **/
 					if (Load.getInstance().getSettings().containsKey("HwInfo_load")) {
 						String path = Load.getInstance().getSettings().getProperty("HwInfo_load");
 						ObjectInputStream ois;

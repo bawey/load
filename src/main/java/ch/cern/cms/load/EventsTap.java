@@ -28,7 +28,7 @@ public abstract class EventsTap {
 	public abstract void preRegistrationSetup(Load expert);
 
 	/** adds event definitions to configuration obtained via {@link Load} **/
-	public abstract void registerEventTypes(Load expert);
+	protected abstract void registerEventTypes(Load expert);
 
 	/** launches the Tap-specific job in a separate thread **/
 	public final void openStreams() {

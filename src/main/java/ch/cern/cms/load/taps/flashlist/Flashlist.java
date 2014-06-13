@@ -23,6 +23,7 @@ public class Flashlist extends LinkedList<Map<String, Object>> {
 	private static final long serialVersionUID = 1L;
 	private static final Logger logger = Logger.getLogger(Flashlist.class);
 	private String streamName;
+	private Long fetchstamp;
 
 	public Flashlist(URL url, String listName) {
 		super();
@@ -34,6 +35,9 @@ public class Flashlist extends LinkedList<Map<String, Object>> {
 			BufferedReader br = new BufferedReader(isr);
 			String line = null;
 			while ((line = br.readLine()) != null) {
+				if(fetchstamp==null){
+					fetchstamp = System.currentTimeMillis();
+				}
 				if (keys == null) {
 					keys = line.split(",");
 				} else {
@@ -84,6 +88,7 @@ public class Flashlist extends LinkedList<Map<String, Object>> {
 
 	public void emit(EventProcessor ep) {
 		for (Map<String, Object> event : this) {
+			event.put("fetchstamp", fetchstamp);
 			ep.getRuntime().sendEvent(event, streamName);
 		}
 	}

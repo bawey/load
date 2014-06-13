@@ -223,4 +223,20 @@ public class Settings extends Properties {
 		}
 		return null;
 	}
+
+	public boolean check(String key, String value) {
+		return check(key, value, false);
+	}
+
+	public boolean check(String key, String value, boolean ignoreCase) {
+		if (this.containsKey(key)) {
+			if (ignoreCase) {
+				return this.getProperty(key).equalsIgnoreCase(value);
+			} else {
+				return this.getProperty(key).equals(value);
+			}
+		} else {
+			return value == null;
+		}
+	}
 }

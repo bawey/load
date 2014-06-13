@@ -51,7 +51,7 @@ import ch.cern.cms.load.utils.HttpTools;
 
 public class OnlineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 
-	public static final String SETTINGS_KEY_FLASHLIST_ROOT = "onlineFlashlistRoot";
+	public static final String SETTINGS_KEY_FLASHLIST_ROOT = "onlineFlashlistsRoot";
 	
 	public static final String CATALOG_SUFFIX = "retrieveCatalog?fmt=plain";
 	public static final String LIST_SUFFIX = "retrieveCollection?fmt=plain&flash=";
@@ -114,6 +114,7 @@ public class OnlineFlashlistEventsTap extends AbstractFlashlistEventsTap {
 					types.put(field, Load.getInstance().getResolver().getFieldType(field, flashlists.get(i)));
 					logger.info("event: " + eventName + ", field: " + field);
 				}
+				types.put("fetchstamp", Long.class);
 				eventDefinitions.put(eventName, types);
 			} catch (IOException e) {
 				logger.error("Error reading from String, event definition: " + eventName + " skipped", e);

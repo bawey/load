@@ -18,34 +18,6 @@
     </head>
     <body>
         <ul>
-            <li><h3>Scripts: passing values to expressions</h3><p>
-                    It doesn't seem possible to directly bind expressions to <i>select</i> statements like:
-                    <br /><code>on Something callMe(select field as alias from SomeStream)</code><br />
-                    Instead you need to pass a column like: 
-                    <br /><code>on SomeStream as s set someVar = someFun(s.anyField)</code><br />
-                    <code>
-                        StringBuilder script = new StringBuilder(); <br />
-                        script.append("create expression double js:getNumber(n) ["); <br />
-                        script.append("importClass(java.lang.System);"); <br />
-                        script.append("System.out.println(\"received value: \"+n+\" of type: \"+typeof(n));"); <br />
-                        script.append("if(n!==null){ System.out.println(n);"); <br />
-                        script.append("n}else{-8}"); <br />
-                        script.append("]"); <br />
-                        <br />
-                        ep.createEPL(script);<br />
-                        <br />
-                        ep.createEPL("create window IndirectAvgTrgRate.win:length(2) as (value double)"); <br />
-                        ep.createEPL("insert into IndirectAvgTrgRate select avg(r.rate) as value from rates as r"); <br />
-                        <br />
-                        ep.createEPL("create variable double avgRate=0");   <br />
-                    </code><br />
-                    this always results in null received by getNumber() <br />
-                    <code>ep.createEPL("on IndirectAvgTrgRate as iatr set avgRate = getNumber(iatr.value)");  </code><br />
-                    this however sets the average fine, without passing it through getNumber() <br />
-                    <code>ep.createEPL("on IndirectAvgTrgRate as iatr set avgRate = (iatr.value)"); </code><br />
-                    this however works fine, the value is sent through the getNumber and average is set equal to last observed value <br />
-                    <code>ep.createEPL("on rates as r set avgRate = getNumber(r.rate)"); </code><br />
-                </p></li>
             <li>
                 <h3>Triggered selection</h3>
                 <p>
@@ -99,21 +71,7 @@
                     It should also fix the "statement returned multiple rows" error.
                 </p>
             </li>
-            <li>
-                <h3>Dealing with nulls (coz ya ain't know what ya select)</h3><p></p>
-            </li>
-            <li>
-                Loading module crashes on scripts with semicolons. 
-            </li>
-            <li>
-                <h3>Conclusion streams hierarchy...</h3>
-            </li>
-            <li>
-                <h3>Annotations to link text-based epl with java</h3>
-            </li>
-
-            <li>
-                
+			<li>              
                 <h3>Replacing internal timer</h3>
                 <p>
                     You don't get warnings in your logs when attempting to set past / current time using <code>CurrentTimeEvent</code>. <br />
@@ -123,70 +81,9 @@
                 </p>
             </li>
             <li>
-                <h3>every vs every-distinct</h3>
-                <p>It seems like <code>every</code> tends to produce some repeated results. Then you switch between distinct and normal and it seems not to differ again. </p>
-                <p>PAY ATTENTION TO the BRACES: every A -> B is not every (A->B)</p>
-            </li>
-            <li>
-                Blocked paths. Here will be a matrix of allowed and forbidden combinations of esper techniques along with epl examples <br />
-                - cannot do "on rstream A ..." <br />
-                - cannot do delete from B as b where b.id in (select rstream A.id); <br />
-                - stream splitting with contained events...? <br />
-                - <code>delete from FedDeadPressure as f where f.fedId in (select * from FmmInput(fractionWarning<0.01, fractionBusy<0.01)[dtRelevantFedIds(context, geoslot, io)@type(FedId)].std:lastevent());</code> yields <br />
-                <code>Unexpected exception starting statement: Invalid null or zero-element list of select clause expression types</code><br/>
-                - in subqueries you cannot use references to streams made available higher up, like:<br/>
-                <code>on FmmInput(fractionBusy<0.01, fractionWarning<0.01) as fmi 
-    delete from FedDeadPressure fdp where fdp.fedId in (select * from FmmDeadtime(fedId=fmi.fedId)[mainFedIds@type(DeadtimeRecoveredFedId)]);</code><br />
-                - <code>on FrlCtlLnk as ctl <br/>
-    insert into FrlBackpressure select ((ctl.fifoAlmostFullCnt - tmp.fifoAlmostFullCnt) / (ctl.clockCount-tmp.clockCount)) as bpFraction, <br />
-        ctl.fedId as fedId, ctl.timestamp.getTime() as timestamp <br />
-        from FedBackpressureTemp as tmps</code><br />
-        Another problem. Splitting stream with a nested select... ?
-
-            </li>
-            <li>
-                This worked: <br />
-                <code>
-                    create schema DeadtimeRecoveredFedId as Integer;
-                    @Description('Populating DeadtimeRecoveredFedId')
-insert into DeadtimeRecoveredFedId select * from FmmInput(fractionWarning<0.01, fractionBusy<0.01)[dtRelevantFedIds(context, geoslot, io)@type(DeadtimeRecoveredFedId)].std:lastevent();
-                </code>
-            </li>
-
-            <li>
-                <h3>Statement Execution Order</h3>
-                <p>
-                    <code>
-                        @Verbose(label='orderTest',extraNfo='first') <br />
-                        select count(*) from FrlCtlLnk; <br /><br />
-
-                        @Verbose(label='orderTest',extraNfo='second') <br />
-                        select count(*) from FrlCtlLnk; <br /><br />
-
-                        @Verbose(label='orderTest',extraNfo='third') <br />
-                        select count(*) from FrlCtlLnk; <br />
-                    </code>
-                    yields a random order each time.
-                </p>
-            </li>
-            <li>
-                <h3>Calling 'get' on any Java object from EPL</h3>
+                <h3>Calling 'get' on any Java object from EP (fixed in 4.11)L</h3>
                 <code>select tuple(streamNames, ratePerStream).get('A') from StorageManagerPerformance;</code> <br />
                 <code class="error">Date-time enumeration method 'get' requires either a Calendar, Date or long value as input or events of an event type that declares a timestamp property but received java.util.Map</code>
-            </li>
-            <li>
-                <h3>Inline if?</h3>
-                <code>(case when result='' then '' else ',' end)</code>
-            </li>
-            <li>
-                <h3>What does count(*) actually count...</h3>
-                <p>Events in a window or all events that heve ever gone through a stream.</p>   
-            </li>
-            <li>
-                <h3>Aggregates 101</h3>
-                it's just weird...
-                <code>select window(*).aggregate(0, (result, item) => result + item.rate) as totalRate
-from RecentL1Rates;</code>
             </li>
 
             <li><h3>Count distinct returns 0 when 'whered' using different view</h3>

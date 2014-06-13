@@ -84,7 +84,7 @@ public class Load {
 	private void defaultSetup() {
 		this.setUpViews();
 
-		if (settings.getProperty(DataBaseFlashlistEventsTap.KEY_DB_MODE).equalsIgnoreCase("read")) {
+		if (settings.check(DataBaseFlashlistEventsTap.KEY_DB_MODE, "read")) {
 			registerTap(new DataBaseFlashlistEventsTap(this));
 		}
 

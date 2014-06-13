@@ -5,17 +5,28 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileReader;
+import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.axis.management.jmx.DeploymentAdministrator;
 import org.apache.log4j.Logger;
 
 import ch.cern.cms.load.EplProvider;
 import ch.cern.cms.load.EventProcessor;
 import ch.cern.cms.load.Load;
+
+import com.espertech.esper.client.deploy.DeploymentOptions;
+import com.espertech.esper.client.deploy.DeploymentOrder;
+import com.espertech.esper.client.deploy.DeploymentOrderOptions;
+import com.espertech.esper.client.deploy.DeploymentResult;
+import com.espertech.esper.client.deploy.EPDeploymentAdmin;
+import com.espertech.esper.client.deploy.Module;
+import com.espertech.esper.client.deploy.ParseException;
 
 public class FileBasedEplProvider implements EplProvider {
 
@@ -37,23 +48,36 @@ public class FileBasedEplProvider implements EplProvider {
 
 	@Override
 	public void registerStatements(EventProcessor ep) {
-		imported.clear();
-		for (File dir : eplRoots) {
-			importEplDir(dir);
+		try {
+			EPDeploymentAdmin deployAdmin = Load.getInstance().getEventProcessor().getAdministrator()
+					.getDeploymentAdmin();
+			imported.clear();
+			List<Module> modules = new ArrayList<Module>();
+			for (File dir : eplRoots) {
+				fillUpModulesList(modules, dir);
+			}
+			DeploymentOrder dOrder = deployAdmin.getDeploymentOrder(modules, new DeploymentOrderOptions());
+
+			for (Module mymodule : dOrder.getOrdered()) {
+				deployAdmin.deploy(mymodule, new DeploymentOptions());
+			}
+
+		} catch (Exception e) {
+			logger.error("Things got wrong while importing EPL modules", e);
 		}
 	}
 
-	private void importEplDir(File dir) {
-		logger.info("enetering " + dir.getAbsolutePath() + " EPL directory");
-		for (File f : dir.listFiles(eplFileFilter)) {
-			logger.info("found " + f.getName() + " EPL file");
 
-			/** detecting a dependency subdirectory (same name as EPL file, yet no trailing '.epl' extension). Abandoned and discouraged **/
-			File dpnDir = new File(dir.getAbsolutePath() + "/" + f.getName().substring(0, f.getName().lastIndexOf('.')));
-			if (dpnDir.exists() && dpnDir.isDirectory()) {
-				importEplDir(dpnDir);
+
+	private void fillUpModulesList(List<Module> list, File rootDir) throws IOException, ParseException {
+		if (rootDir.isDirectory()) {
+			for (File f : rootDir.listFiles()) {
+				if (f.isDirectory()) {
+					fillUpModulesList(list, f);
+				} else if (f.getName().endsWith(".epl") || f.getName().endsWith(".EPL")) {
+					list.add(Load.getInstance().getEventProcessor().getAdministrator().getDeploymentAdmin().read(f));
+				}
 			}
-			importEplFile(f);
 		}
 	}
 
@@ -88,7 +112,8 @@ public class FileBasedEplProvider implements EplProvider {
 				}
 			}
 			InputStream inputStream = new ByteArrayInputStream(content.toString().getBytes("UTF-8"));
-			Load.getInstance().getEventProcessor().getAdministrator().getDeploymentAdmin().readDeploy(inputStream, null, null, null);
+			Load.getInstance().getEventProcessor().getAdministrator().getDeploymentAdmin()
+					.readDeploy(inputStream, null, null, null);
 			logger.info("successfully deployed a module from  " + f.getPath());
 		} catch (Exception e) {
 			logger.error("Failed to read EPL file: " + f.getAbsolutePath(), e);
