@@ -1,3 +1,4 @@
+module rateAndCpuPerGroup;
 /** EVENT PROCESSING RATES PER GROUP **/
 
 create objectarray schema ProcessorPerformance as (kontext String, lid String, units long, rate double);

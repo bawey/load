@@ -1,3 +1,5 @@
+module deadVsPressure2;
+
 create window FedBackpressure.std:unique(fedId) as select * from FrlBackpressureStream;
 
 create window FedDeadtime.std:unique(fedId) as (fedId int, dtFraction double, timestamp long, mainFedIds int[]);

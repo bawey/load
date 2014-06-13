@@ -1,0 +1,3 @@
+uses prerequisite;
+
+insert into Anything select "update" as content, current_timestamp() as systime from pattern[every timer:interval(30 seconds)];

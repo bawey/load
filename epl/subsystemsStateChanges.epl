@@ -1,3 +1,5 @@
+module subsystemsStateChanges;
+
 create objectarray schema DaqStateChangeStream as (srctime Date, systime Date, fromState String, toState String);
 
 @Verbose(label='output', fields={'systime', 'subsys', 'fromState', 'toState', 'srctime'}, extraNfo = 'Subsystem changed state')

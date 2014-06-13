@@ -1,0 +1,26 @@
+/** CHECKING IF EVENTS INSERTED FROM TWO DIFFERENT CONTEXTS CAN BE PICKED UP**/
+create schema TextMessage as (content String, systime long);
+
+/** A - BY THE DEFAULT CONTEXT **/
+@Verbose(label="xContext")
+select date(systime) as systime, content from TextMessage;
+
+create context TillHalf start (0, *, *, *, *) end (30, *, *, *, *);
+
+create context PastHalf start (30, *, *, *, *) end (0, *, *, *, *);
+
+context TillHalf
+	insert into TextMessage select "tillHalf says hi!" as content, current_timestamp() as systime from pattern[every timer:interval(360 seconds)];
+
+context PastHalf
+	insert into TextMessage select "pastHalf says hello!" as content, current_timestamp() as systime from pattern[every timer:interval(360 seconds)];
+
+create context Reader start (15, *, *, *, *) end (45, *, *, *, *);
+
+/** B - BY ANY OTHER CONTEXT **/
+@Verbose(label='xContext')
+context Reader select date(systime) as systime, content, "good!" as comment from TextMessage;
+
+
+/** IN BOTH CASES IT IS TRUE. COOL **/
+	

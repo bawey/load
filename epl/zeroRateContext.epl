@@ -1,6 +1,9 @@
-#include "level1TriggerRate.epl"
-#include "runStartStop.epl"
-#include "deadtimeAndBackpressure.epl"
+module zeroRateContext;
+
+uses level1TriggerRate;
+uses runStartStop;
+uses deadtimeAndBackpressure;
+
 @Audit
 create context L1ZeroRate 
 	context RunOngoingNested start RunStart end RunStop,

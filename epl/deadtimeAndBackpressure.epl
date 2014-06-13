@@ -1,5 +1,7 @@
-#include "fedMasks.epl"
-#include "runStartStop.epl"
+module deadtimeAndBackpressure;
+
+uses fedMasks;
+uses runStartStop;
 
 /****** CREATE WORKING VIEWS / SCHEMAS ******/
 

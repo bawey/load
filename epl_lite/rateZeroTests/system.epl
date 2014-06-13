@@ -1,2 +1,4 @@
+module system;
+
 @Watched(label='system time')
 select date(current_timestamp()) from pattern[every timer:interval(1 sec)];

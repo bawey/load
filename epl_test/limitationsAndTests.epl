@@ -1,0 +1,58 @@
+/** THIS IS AN EPL FILE SUPPOSED TO ILLUSTRATE VARIOUIS SHORTCOMINGS OF EPL GRAMMAR **/
+
+/**
+create variable boolean justTrue = true;
+
+
+@Verbose(label="shortcomings")
+/**can't do - pattern expects an event
+on pattern[every EVM and justTrue] set justTrue=false; 
+can't - unexpected where
+on pattern[every EVM] set justTrue=false where justTrue=false;
+**/
+
+/** So let's just display that value when the EVM event comes **/
+/** well, missing an insert-into clause 
+on EVM select justTrue; 
+still not, doesn't recognize an EVM window...
+on EVM select justTrue from EVM;
+looked for an end of input but found a dot.. hmm
+**/
+
+//@Verbose(label="shortcomings")
+//select justTrue from EVM;
+
+/** anyway, more likely case is to output something peridocally **/
+//@Verbose(label="shortcomings")
+/** same old story, no insert-into complaints 
+on pattern[every timer:interval(3 sec)] select justTrue;**/
+//select cast(justTrue, string)||" is the current value" as msg from pattern[every timer:interval(3 sec)];
+/** which could also be used as 
+
+@Verbose(label="shortcomings")
+select cast(justTrue, string)||" is the EVM triggered value" as msg from pattern[every EVM];
+**/
+ /** Check if output first every 60 seconds waits and prints or vice versa **/
+
+ @Verbose(label="output clause", fields={'systime'}, extraNfo='live clock')
+select date(current_timestamp()) as systime from pattern[every timer:interval(1 seconds)];
+
+@Verbose(label="output clause", fields={'systime'}, extraNfo='discrete clock')
+select date(current_timestamp()) as systime from pattern[every timer:interval(1 seconds)] output first every 60 seconds;
+
+/** check if an output clause may force a hurried, null-valued return. not, this time at least **/
+
+create window fruits.win:time(10 seconds).std:unique(name) as (name string, eatable boolean);
+
+@Verbose(label="outputNull", fields={"systime","msg"})
+select date(current_timestamp()) as systime, 
+	window(f.*).aggregate("",(result, row)=>result||row.name||"("||cast(row.eatable, string)||") ") as msg 
+	from fruits as f,
+		pattern[every fruits->(timer:interval(1 msec) and not fruits)] unidirectional
+	output first every 3 seconds; 
+
+@Verbose(label="outputNull")
+insert into fruits select "apple" as name, true as eatable from pattern[every timer:interval(700 seconds)];
+
+@Verbose(label="outputNull")
+insert into fruits select "orange" as name, true as eatable from pattern[every timer:interval(900 seconds)];

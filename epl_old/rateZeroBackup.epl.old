@@ -1,3 +1,5 @@
+module rateZeroBackup;
+
 /** DEFINE STREAMS, WINDOWS AND VARIABLES **/
 create variable long minStuckTime = 10000;
 

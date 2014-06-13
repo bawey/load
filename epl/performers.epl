@@ -1,3 +1,5 @@
+module performers;
+
 create variable Double tolerance = 2.79;
 
 @Description('window holding only the most-recent info per context')

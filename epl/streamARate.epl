@@ -1,3 +1,5 @@
+module streamARate;
+
 create objectarray schema StreamRates as (name String, rate double, srctime long);
 
 insert into StreamRates 

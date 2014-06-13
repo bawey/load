@@ -1,0 +1,4 @@
+uses prerequisite;
+
+@Verbose
+insert into Anything select "module dependencies work!" as content, current_timestamp() as systime from pattern[every timer:interval(30 seconds)];

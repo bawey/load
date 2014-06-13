@@ -1,0 +1,14 @@
+/**
+create schema Dummy as (msg String, timestamp long);
+
+@Verbose(label="research")
+select * from Dummy;
+
+insert into Dummy select "Pizza arrived" as msg, current_timestamp() as timestamp from pattern [every timer:interval(333 msec)] output last every 5 seconds;
+
+
+@Verbose(label='research2')
+select f.fedId as id, date(current_timestamp()) as date from pattern[every timer:interval(333 msec)] unidirectional, FrlCtlLnk.std:unique(fedId) as f
+	output all every 5 seconds;
+
+**/

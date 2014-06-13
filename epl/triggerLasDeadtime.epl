@@ -1,3 +1,5 @@
+module triggerLasDeadtime;
+
 create objectarray schema TriggerLasDtStream as (dt double);
 
 insert into TriggerLasDtStream select cast(regExtract(GtPartition0DeadtimeRatio,"(\\[\"DeadtimeBeamActive\",)(.+?)(])",2), double)*100 as dt from gt_cell_lumiseg;

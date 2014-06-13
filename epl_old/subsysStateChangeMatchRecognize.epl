@@ -1,3 +1,5 @@
+module subsysStateChangeMatchRecognize;
+
 @Verbose(label='output', fields={'time', 'subsys', 'fromState', 'toState'}, extraNfo = 'Subsystem changed state')
 select * from levelZeroFM_subsys match_recognize(
 	partition by SUBSYS

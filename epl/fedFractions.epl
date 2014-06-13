@@ -1,4 +1,6 @@
-#include "deadtimeAndBackpressure.epl"
+module fedFractions;
+
+uses deadtimeAndBackpressure;
 
 create objectarray schema FedIndicators as (fedSrcId int, dBusy long, dWarning long, dOos long, dError long, dReady long, dTime long, timestamp Date);
 

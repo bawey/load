@@ -1,5 +1,7 @@
-#include "level1TriggerRate.epl"
-#include "runStartStop.epl"
+module rateZeroDetection;
+
+uses level1TriggerRate;
+uses runStartStop;
 
 @Description('')
 create variable long deadRateTimeout=20000;

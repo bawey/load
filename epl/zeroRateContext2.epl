@@ -1,5 +1,7 @@
-#include "zeroRateContext.epl"
-#include "fedFractions.epl"
+module zeroRateContext2;
+
+uses zeroRateContext;
+uses fedFractions;
 
 context L1ZeroRate create window FedResyncInfos.std:unique(fedSrcId) as (fedSrcId int, myrinetLastResyncEvt long, myrinetResync long, systime long);
 

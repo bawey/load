@@ -1,3 +1,5 @@
+module levelOneTriggerRate;
+
 /** CREATE SCHEMAS, WINDOWS, VARIABLES **/
 @Description('defines the quasi-period of rate update. represents a number of subrate updates required to update the rate')
 create variable int rateUpdateCoeff = 2;

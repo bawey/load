@@ -1,10 +1,12 @@
-#include "fedMasks.epl"
-#include "rateZeroDetection.epl"
-#include "deadtimeAndBackpressure.epl"
-#include "level1TriggerRate.epl"
-#include "subsystemsStateChanges.epl"
-#include "runStartStop.epl"
-#include "fedFractions.epl"
+module rateZeroTests;
+
+uses fedMasks;
+uses rateZeroDetection;
+uses deadtimeAndBackpressure;
+uses level1TriggerRate;
+uses subsystemsStateChanges;
+uses runStartStop;
+uses fedFractions;
 
 /** STRUCTURE **/
 

@@ -1,4 +1,6 @@
-#include "deadtimeAndBackpressure.epl"
+module resuncRate;
+
+uses deadtimeAndBackpressure;
 
 create variable String desiredContext = "";
 create variable Integer desiredSlotNumber = -1;

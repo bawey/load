@@ -1,3 +1,5 @@
+module fedIdConsistency;
+
 // question: is it OKAY and is it needed at all?
 @Description('detect any pair of frlcontrollerLink events with the same FEDSourceId and differing (link, slot, context) triplet')
 @Verbose(label='error', extraNfo='Duplicate FEDSourceId!')

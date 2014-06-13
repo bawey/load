@@ -1,3 +1,5 @@
+module fedMasks;
+
 create schema FedMaskEvent as ch.cern.cms.load.eventData.FedMask;
 create window FedMask.std:unique(fedId) as select * from FedMaskEvent;
 insert into FedMask select * from FedMaskEvent;

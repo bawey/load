@@ -1,4 +1,6 @@
-#include "runStartStop.epl"
+module partitionDeadTime;
+
+uses runStartStop;
 
 @Description('schema with partition dead times')
 create objectarray schema PartitionDeadTime as (partitionName String, 

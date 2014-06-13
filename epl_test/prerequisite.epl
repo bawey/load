@@ -1,0 +1,3 @@
+module prerequisite;
+
+create schema Anything as (content String, systime long);
