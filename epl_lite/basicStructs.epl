@@ -1,4 +1,0 @@
-module basicStructs;
-
-@Verbose(label='debug')
-select message from DebugMsg;

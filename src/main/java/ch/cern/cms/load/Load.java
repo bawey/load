@@ -12,7 +12,8 @@ import ch.cern.cms.load.taps.flashlist.DataBaseFlashlistEventsTap;
 import ch.cern.cms.load.taps.flashlist.OnlineFlashlistEventsTap;
 
 /**
- * Core components, singletons etc. should be initialized here. However, the setup of initial structure should be well separated from the
+ * Core components, singletons etc. should be initialized here. However, the
+ * setup of initial structure should be well separated from the
  * configuration-specific actions to enable unit-testing and reconfigurations.
  */
 
@@ -140,7 +141,8 @@ public class Load {
 	}
 
 	/**
-	 * Inserts into the list of known taps this should depend on some configuration later on or start-up choice
+	 * Inserts into the list of known taps this should depend on some
+	 * configuration later on or start-up choice
 	 */
 	protected void registerTap(EventsTap tap) {
 		taps.add(tap);
@@ -148,7 +150,9 @@ public class Load {
 
 	protected void setUpSOCKSProxy() {
 		for (String key : new String[] { "socksProxyHost", "proxySet", "socksProxyPort" }) {
-			System.getProperties().put(key, settings.get(key));
+			if (settings.containsKey(key)) {
+				System.getProperties().put(key, settings.get(key));
+			}
 		}
 	}
 

@@ -1,27 +1,101 @@
-Project comprises the following modules:
-\begin{itemize}
-	\item LOAD - the application controller object governing the lifecycle of federated objects; loads some components using the settings in load.properties file and reflection
-	\item EventsProcessor - Esper engine wrapper responsible for ...
-	\item FieldsTypeResolver
-	\item EventsTap - an abstract class providing a scaffolding for events registration and 
-	\begin{itemize}
-		\item DbFlashlistEventsTap
-	\end{itemize}
-	\item EventsSink
-		\begin{itemize}
-			\item{SwingGui}
-			\item{FileSink}
-		\end{itemize}
-	\item Settings 
-	\item LoadLogCollector
-	\item LogSink - an interface...
-	\item MysqlDumper
-	\item MongoDumper
-	\item EplProvider - an interface...
-	\begin{itemize}
-		\item
-	\end{itemize}
+The following section is meant to fill in the big picture drawn above.
 
-\end{itemize}
+\subsection{Settings}
+\texttt{load.properties} file explained:
+
+\subsubsection{Proxy parameters}
+\texttt{socksProxyHost=127.0.0.1}
+\texttt{proxySet=true}
+\texttt{socksProxyPort=1080}
+\subsubsection{Flashlist database settings}
+\texttt{flashlistDbMode=read}
+\texttt{flashlistDbType=mysql}
+\texttt{flashlistDbHost=localhost}
+\texttt{flashlistDbUser=load}
+\texttt{flashlistDbName=flashlists\_rest}
+\texttt{flashlistDbEngine=myisam}
+\texttt{retrievalTimestampName=fetchstamp}
+\texttt{flashlistDbIndexTimestamps=true}
+
+\subsubsection{Online flashllists}
+
+\texttt{onlineFlashlistsRoot[0]=http://srv-c2d04-19.cms:9941/urn:xdaq-application:lid=400/}
+\texttt{onlineFlashlistsRoot[1]=http://srv-c2d04-19.cms:9942/urn:xdaq-application:lid=400/}
+
+\subsubsection{Dumped flashlists}
+\texttt{flashlistForDbDir[0]=/depot/flashlists13.11/}
+\texttt{flashlistForDbDir[1]=/depot/flashlists13.11\_2/}
+\texttt{flashlistForDbDir[2]=/depot/flashlists13.11\_3/}
+\texttt{flashlistForDbDir[0]=/depot/flashlists13.11\_4/}
+\texttt{flashlistForDbDir[0]=/home/bawey/Desktop/flmini/flashlistsExport}
+\texttt{flashlistForDbDir[2]=/home/bawey/Desktop/flashlists/41}
+
+
+\subsubsection{EPL directories}
+\texttt{eplDir[0]=epl}
+
+
+\subsubsection{Output modules}
+\texttt{view[0]=ThroughputMonitor}
+\texttt{view[1]=FileSink}
+\texttt{view[2]=SwingGui}
+
+
+\subsubsection{Events playback range}
+
+\texttt{timerStart=1383763860000}
+\texttt{timerEnd=1383763860800}
+
+dateFormat=yyyy-MM-dd'T'HH:mm:ss.SSS
+
+outputDir=/home/bawey/load/
+
+flashlists=levelZeroFM\_subsys;EVM;frlcontrollerLink;frlcontrollerCard;levelZeroFM\_static;gt\_cell\_lumiseg;FMMInput;jobcontrol;EventProcessorStatus;StorageManagerPerformance;FMMStatus;hostInfo
+
+blacklist\_jobcontrol=jobTable
+blacklist\_frlcontrollerCard=myrinetProcFile,myrinetBadEventNumber,myrinetBadHeaderMark,myrinetBadSegmentNumber,myrinetBadTrailerMark,myrinetBlock,myrinetFEDBadCRC,pendingTriggers,freeBlockCount,instance
+blacklist\_levelZeroFM\_subsys=FEDS
+blacklist\_StorageManagerPerformance=activeEPs;averagingTime;bandwidthPerStream;bandwidthToDisk;closedFiles;connectedEPs;connectedRBs;copyWorkers;dataEvents;discardedDQMEvents;diskPaths;diskWriterBusy;dqmConsumers;dqmEventProcessorBusy;dqmFoldersPerEP;dqmQueueBandwidth;dqmQueueRate;entriesInDQMQueue;entriesInFragmentQueue;entriesInStreamQueue;errorEvents;eventConsumers;eventsPerStream;faultyEvents;fragmentProcessorBusy;fragmentQueueBandwidth;fragmentQueueRate;fragmentStoreMemoryUsed;fragmentStoreSize;ignoredDiscards;injectWorkers;instantBandwidth;instantRate;lid;memoryUsedInDQMQueue;memoryUsedInFragmentQueue;memoryUsedInStreamQueue;numberOfDisks;openFiles;outstandingDataDiscards;outstandingDQMDiscards;poolUsage;processedDQMEvents;receivedFrames;runNumber;sataBeastStatus;stateName;storedEvents;storedVolume;streamQueueBandwidth;streamQueueRate;totalDiskSpace;unwantedEvents;usedDiskSpace;writtenEventsBandwidth;writtenEventsRate
+
+logSinks="ch.cern.cms.load.sinks.SwingGui";
+
+
+Connecting to databas
+
+Dumping data
+The very main method of the program allows switching into dumping mode:
+
+\begin{lstlisting}
+	public static final void main(String[] args) {
+   	 Thread.currentThread().setName("Level 0 Anomaly Detective");
+   	 instance = getInstance();
+   	 if (instance.settings.getProperty(DataBaseFlashlistEventsTap.KEY\_DB\_MODE, "read").equalsIgnoreCase("write")) {
+   		 MysqlDumper.main(args);
+   	 } else {
+   		 instance.defaultSetup();
+   	 }
+    }
+\end{lstlisting}
+
+Which in fact was an ugly way to merge the original dumper into the project. Anyway, it might still work.
+
+HwInfo dumping
+During development it was possible to dump the HwInfo database into file and load it afterwards to speed the program launch up. It however required several modifications to the framework (making all the classes involved in dumping implement Serializable) that have not been introduced into it. Hence the HwInfo class still examines the settings for options specifying the HwInfo dump file to write to / read from, yet without providing these it will simply use the remote DB.
+EPL annotations
+As mentioned above, L0AD introduces two annotations that can be used in EPL statements:
+@Verbose
+@Watched
+The options they take is described in the source code.
+
+EPL statements
+(Please note: for the statements to be effective, the events have to be defined)
+
+Event definitions
+Event definitions are dynamically fed into the program every time it starts up, based on the 
+
+Data types resolving
+The FieldTypeResolver class stores information about the types that particular field should be converted to. This can be specified both globally, for all fields of given name, or locally for particular event type. Unfortunately, these rules are currently hard-coded into the class.
+Implemented checks
+
 
 

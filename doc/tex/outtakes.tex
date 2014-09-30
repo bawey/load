@@ -1,0 +1,43 @@
+\subsection{Nutshell}
+The program examines events, arriving in streams, looking for specified patterns in order to produce an appropriate notification or create new events using transfomed, 
+	derived or filtered information.
+The events, being arrays of Java Objects, are passed through matching instructions - \emph{statements} - as they arrive and, once processed, they get discarded.
+Should the processed events match a given pattern, the information is available right away. 
+This is often referred to as an inversed database paradigm with the queries being retained and the data passing through them.
+
+\subsection{Events}
+In the project setup events are played back from a database. Upon retrieval of a database row it gets converted into an array of \texttt{Object}s that gets passed to the engine. 
+A special \texttt{CurrentTimeSpanEvent} is used to update the engine clock as the events with progressing timestamps are retrieved.
+
+\subsection{Statements}
+Statement is an instruction to the engine indicating the way that certain events should be processed. Within the Esper engine each statement is an \texttt{EPStatement} Object that several types of 
+listeners can be attached to. Most importantly, a listener can be specified to receive updates from the statement - its output triggered by the most recent event. Such listeners are used to route the
+notifications as they are produced by the Esper engine. \\
+While the statement objects can be created entirely by the means of invoking particular Esper API methods, Esper provides an SQL-like Event Processing Language (EPL) to facilitate the process.
+EPL statements can either be deployed one-by-one by passing a corresponding String literal or as whole files - modules.
+
+
+\begin{itemize}
+	\item LOAD - the application controller object governing the lifecycle of federated objects; loads some components using the settings in load.properties file and reflection
+	\item EventsProcessor - Esper engine wrapper responsible for ...
+	\item FieldsTypeResolver
+	\item EventsTap - an abstract class providing a scaffolding for events registration and 
+	\begin{itemize}
+		\item DbFlashlistEventsTap
+	\end{itemize}
+	\item EventsSink
+		\begin{itemize}
+			\item{SwingGui}
+			\item{FileSink}
+		\end{itemize}
+	\item Settings 
+	\item LoadLogCollector
+	\item LogSink - an interface...
+	\item MysqlDumper
+	\item MongoDumper
+	\item EplProvider - an interface...
+	\begin{itemize}
+		\item
+	\end{itemize}
+
+\end{itemize}

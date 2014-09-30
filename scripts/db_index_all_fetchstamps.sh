@@ -1,4 +1,5 @@
 #!/bin/bash
+#THIS SCRIPT WAS USED TO GENERATE, COPY AND PASTE SOME SQL CODE FOR INDEXING TIMESTAMP COLUMNS
 
 tables[1]="BU"
 tables[2]="EVM"                            

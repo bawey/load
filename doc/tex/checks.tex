@@ -1,0 +1,114 @@
+\section{Overview of implemented checks}
+
+
+\begin{tabularx}{1\textwidth}{|*{2}{Y|}}
+\hline
+Purpose of the check    	& Solution notes / related EPL files \\
+\hline
+\multicolumn{2}{|c|}{During an ongoing run.} \\
+%\cline{1-3}
+\hline
+	
+	\multirow{2}{0.5000\textwidth}{Message on Run Start giving: Run NR, SID, Detectors in, Feds in per detector} & 
+	Subsystems in uses a custom aggretaion method that turns out to be running all the time (and not on demand) \\
+	\cline{2-2}
+	& \small{\texttt{runStartStop.epl}} \\
+
+	\hline
+	\multirow{2}{0.5000\textwidth}{Message on Run Stop giving: Run Nr, SID, Detectors in, (*)Feds in per detector, avg L1 rate, avg stream A rate, avg dead time (from trigger LAS), duration} &
+	Same as for run start, but also: get avg L1 rate, avg stream A rate, avg dead time from trigger LAS, the duration \\
+	\cline{2-2}
+ 	& \small{\texttt{runStartStop.epl}} \\
+
+	\hline
+	\multirow{2}{0.5000\textwidth}{Message on L1 trigger rate jump of 10\% or more} &
+	EPL file creates some windows and streams useful for performing other loigic. A javascript method needs to be raplaced with a case statement \\
+	\cline{2-2}
+	& \small{\texttt{level1TriggerRate.epl}} \\
+
+	\hline
+	\multirow{2}{0.5000\textwidth}{Message on subsys going to any of: ERROR, RUNNING\_DEGRADED, RUNNING\_SOFT\_ERROR\_DETECTED, PAUSING, PAUSED, RESUMING} & \\
+	\cline{2-2}
+	& \small{\texttt{subsystemsStateChanges.epl}} \\
+
+	\hline
+	\multirow{2}{0.5000\textwidth}{Message on any state change of DAQ} & \\
+	\cline{2-2}
+	& subsystemsStateChanges.epl \\
+	
+	\hline
+	\multirow{2}{0.5000\textwidth}{Message on jobcontrol flashlist not being updated after 1 minute} & \\
+	\cline{2-2}
+	& jobcontrolNotUpdated.epl \\
+	
+	\hline
+	\multirow{2}{0.5000\textwidth}{FED dead-time $>$ 1\%} & Investigates backpressure on the same FED or its main FED. \\
+	\cline{2-2}
+	& deadtimeAndBackpressure.epl \\
+
+	\hline
+	\multirow{2}{0.5000\textwidth}{Backpressure $>$ 1\%} & \\
+	\cline{2-2}
+	& deadtimeAndBackpressure.epl \\
+
+	\hline
+	\multirow{2}{0.5000\textwidth}{Message on stream A $>$ 500 Hz} &
+	Simplified, does not satisfy: after 10 seconds, repeat message every 10 seconds. Need to sum the last-per-context values \\
+	\cline{2-2}
+	& streamARate.epl \\
+
+	\hline
+	\multirow{2}{0.5000\textwidth}{FEDs fraction other} &
+	A FedFractions stream is constantly filled with derivatives computed for each subsequently arriving pair of FmmInput events with the same fedId. 
+	Fractions (busy+warning	+error+ready+oos) must add up to one, otherwise FED spends some time in an illegal (other) state. This fact should be reported and using integrals is preffered for calculations to avoid floating point numbers comparison. Why does it report negative fractions at the beginning? (As well as negative dTime). Never tested on positives. \\
+	\cline{2-2}
+	& fedFractions.epl \\
+\hline
+	\multicolumn{2}{|c|}{Rate 0 for $>$ 10 seconds} \\
+	
+	
+	\hline
+	\multirow{2}{0.5000\textwidth}{Check Bx alignment and print message if not aligned repeat after 10 seconds} & Fails to repeat the message every 10 seconds if the problem persists\\
+	\cline{2-2}
+	&  rateZeroTests.epl\\
+
+	\hline
+	\multirow{2}{0.5000\textwidth}{Check triggers(events) alignment + print message if not aligned repeat after 10 seconds} & 
+		Fails to repeat the message every 10 seconds if the problem persists \\
+	\cline{2-2}
+	& rateZeroTests.epl \\
+
+	\hline	
+	\multirow{2}{0.5000\textwidth}{FEDs stuck in ERROR/OOS/WARNING/BUSY(anything not READY)} & 
+	Written, running, never seen working yet. Using the FedFractions stream to find events of interest and SuspendedStatements window to suspend/resume the statement upon reception of RateStuckAtZeroEvent or RateFineEvent defined in the same source file as a way to broadcast the message that the expert enters a state where the run is ongoing but the rate has been 0 for long enough or that the rate is fine and experiment is running. 
+ERROR/OOS/WARNING/BUSY have their corresponding fractions on FMMInput. Stuck means fraction = 1. A FED might also be stuck in an other state. Use the integrals from two consecutive events to determine that.
+\\
+	\cline{2-2}
+	& rateZeroTests.epl\\
+
+
+	\hline
+	\multirow{2}{0.5000\textwidth}{List FEDs with backpressure or deadtime} & \\
+	\cline{2-2}
+	& rateZeroTests.epl\\
+
+
+	\hline
+	\multirow{2}{0.5000\textwidth}{Check if number of resyncs and the last resync event number is the same in all FEDs?} & 
+	Check if the number of resyncs is the same and check if the last event (the resync was seen for) is the same. myrinetResync - number of resync events, myrinetLastResyncEvt - last event that the resync was seen for.\\
+	\cline{2-2}
+	& rateZeroTests.epl\\
+
+
+\end{tabularx}
+
+
+
+A 'mock' version (with additional comments) of the table below bac be found under the \texttt{epl/xml} directory.
+
+
+
+
+
+
+

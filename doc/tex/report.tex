@@ -1,42 +1,48 @@
-\documentclass[11pt,twoside,a4paper]{report}
+\documentclass[11pt,oneside,a4paper]{article}
+\usepackage[margin=1in,footskip=0.25in]{geometry}
+\usepackage{listings}
+\usepackage{ltablex}
+\usepackage{multirow}
 
-%\usepackage{...}
+\newcolumntype{Y}{>{\centering\arraybackslash}X}
+\renewcommand{\arraystretch}{2}
+
+\lstset{
+	basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue}\ttfamily,
+    stringstyle=\color{red}\ttfamily,
+    commentstyle=\color{green}\ttfamily,
+    breaklines=true,
+	showstringspaces=false,
+	tabsize=2
+}
+
 
 \title{Prototype of Esper-based DAQ expert system}
 \date{\today}
 \author{Tomasz Bawej}
 
-\begin{document}
 
+\begin{document}
 
 \maketitle
 
-
+\tableofcontents
+\clearpage
 
 \section{Overview}
 \input{workflow.tex}
-\section{Esper}
-\section{Project}
+\section{Details}
 \input{architecture.tex}
-\subsection{Data}
-\subsection{Architecture}
-\section{Functionality}
-\subsection{Implemented checks}
 
-
-
-
-\begin{tabular}{|r|l|}
-  \hline
-  7C0 & hexadecimal \\
-  3700 & octal \\ \cline{2-2}
-  11111000000 & binary \\
-  \hline \hline
-  1984 & decimal \\
-  \hline
-\end{tabular}
+\section{Use cases}
+\input{usecases.tex}
+\section{Configuration requirements}
+\input{requirements.tex}
 
 \subsection{Overview}
 \subsection{Details}
+
+\input{checks.tex}
 
 \end{document}
