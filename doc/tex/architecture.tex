@@ -1,6 +1,28 @@
-The following section is meant to fill in the big picture drawn above.
+\subsection{Main components}
 
-\subsection{Settings}
+Program's entry point is the \texttt{main} method of the class \texttt{Load}. Except for that, the project consists of several core classes and further helpers.
+The core classes include:
+\begin{itemize}
+	\item \texttt{EventProcessor} - a wrapper for the Esper event processing engine. Facilitates some manipulations and performs the setup (including registration of helper methods available from the EPL level).
+	\item \texttt{EventsTap} - an abstract class extended only by \texttt{DataBaseFlashlistEventsTap} and \texttt{OnlineFlashlistEventsTap}. Depending on the database read/write mode, a different one is registered during setup.
+	\item \texttt{EventsSink} - named for the sake of symmetry with the tap, provides an abstract base class for producing the output. Multiple sinks can be registered in the same time to write into files, display something on the screen etc. Comes with, mmost notably, \texttt{SwingGui} and \texttt{FileSink} subclasses.
+	\item \texttt{EplProvider} - only has two implementations: \texttt{BasicStructEplProvider} and \texttt{FileBasedEplProvider} and only the latter is actually useful as of the time of writing this summary. \texttt{EplProvider}s do just what the name suggests: register statements and thus instruct the engine what to do with the events.
+
+\end{itemize}
+
+The helpers include, among the others:
+\begin{itemize}
+	\item \texttt{FieldTypeResolver}
+	\item \texttt{Trx} - a set of convenience methods callable from EPL statements
+	\item \texttt{HwInfo} - as above, yet related to CMS hardware
+	\item \texttt{Settings} - a global singleton for handling the configuration values
+	\item annotations \texttt{@Verbose} and \texttt{@Watched} play a role of the missing link between the engine and \texttt{EventSink}s. They can be added to a statement (along with some extra parameters), so that the statements later on automatically get some listeners assigned. These in turn forward the output to \texttt{EventSink}s
+\end{itemize}
+
+
+
+\subsection{Configuration properties}
+
 \texttt{load.properties} file explained:
 
 \subsubsection{Proxy parameters}
