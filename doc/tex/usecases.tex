@@ -1,3 +1,5 @@
+The project has never progressed beyond the prototype phase and there is no deployment mechanism in place or whatsoever as so far it has only been launched directly from the Eclipse IDE. Also the term \textit{usecase} refers more to how the code could be reused than to the features of a complete piece of software.
+
 \subsection{Offline analysis}
 In order to perform offline analysis, program has to be configured to use the \emph{Events Database}[\ref{subsec:eventsdb}] and a \emph{Hardware Configuration Database} connection [\ref{subsec:hwconfdb}] needs to be set up.
 
@@ -11,50 +13,37 @@ flashlistDbName=flashlists_rest
 
 
 \subsection{Online analysis}
-Online analysis requires a slightly different approach: \emph{Events Database} should be disabled in favor of of providing \texttt{onlineFlashlistsRoot} entries pointing to a network location to retrieve the flashlists from. 
+Online analysis requires a slightly different approach: \emph{Events Database} should be disabled in favour of of providing \texttt{onlineFlashlistsRoot} entries pointing to a network location to retrieve the flashlists from. 
 Connection to the \emph{Hardware Configuration Database}[\ref{subsec:hwconfdb}] remains a requirement, while a SOCKS proxy[\ref{subsec:proxy}] configuration is also needed.
 
-\begin{lstlisting}[caption={Sample options for fetching flashlists over the network}]
+\begin{lstlisting}
 onlineFlashlistsRoot[0]=http://srv-c2d04-19.cms:9941/urn:xdaq-application:lid=400/
 onlineFlashlistsRoot[1]=http://srv-c2d04-19.cms:9942/urn:xdaq-application:lid=400/
 \end{lstlisting}
 
 
-\subsection{Dumping data for offline analyses}
 \subsubsection{Dumping online data}
-Originaly the data was saved to and played back from files only. Thus, no mechanism has been implemented to dump the data directly into a database. Instead, provided that flashlists location is supplied and reachable, their contents are dumped into the folder specified by configuration option \texttt{THAT\_IS\_CURRENTLY\_LOST\_ALONG\_WITH\_THE\_CODE\_THAT\_USES\_IT}. Within that directory a subdirectory is creatred for each flashlist type. Flashlist rows are dumped into the files named 0, 1, 2... and so on - unique rows only, switching to the next file once the current one reaches the size of 256MB. Dumping also involves adding information about the time of fetching the flashlist - the \texttt{fetchstamp} column.
+Originally the data was saved to and played back from files only. Thus, no mechanism has been implemented to dump the data directly into a database. Instead, provided that flashlists location is supplied and reachable, their contents are dumped into the folder specified by a corresponding configuration option of the dumper project. The project can be found under the \texttt{extras/flashdumper} subdirectory and is independent from L0AD.
+Within the output directory a subdirectory is created for each flashlist type. Flashlist rows are dumped into the files named 0, 1, 2... and so on - unique rows only, switching to the next file once the current one reaches the size of 256MB. A sample output directory structure is depicted below:
 
-\begin{lstlisting}[caption={Sample directory structure of dumped flashlists data}]
+\begin{lstlisting}
 .
 +-- urn:xdaq-flashlist:BU
-|   +-- 0
-|   +-- 1
-|   +-- 2
-|   +-- 3
-|   +-- 4
-|   +-- 5
-|   └-- 6
+|   +-- 0
+|   +-- 1
+|   +-- 2
+|   +-- 3
 +-- urn:xdaq-flashlist:diskInfo
-|   +-- 0
-|   +-- 1
-|   +-- 10
-|   +-- 2
-|   +-- 3
-|   +-- 4
-|   +-- 5
-|   +-- 6
-|   +-- 7
-|   +-- 8
-|   └-- 9
-(...)
+|   +-- 0
+|   +-- 1
 +-- urn:xdaq-flashlist:StorageManagerPerformance
     └-- 0
 
 \end{lstlisting}
+Dumping also involves adding information about the time of fetching the flashlist - the \texttt{fetchstamp} column.
 
 \subsubsection{Populating database}
-Switching \texttt{flashlistDbMode} parameter to \texttt{write} makes the \texttt{Load} class \texttt{main} method invoke the \texttt{main} method of the dumper to pass control into what used to be a separate application. 
-Apart from 
+Switching \texttt{flashlistDbMode} parameter to \texttt{write} makes the \texttt{Load} class \texttt{main} method invoke the \texttt{main} method of the dumper to pass control into \texttt{MysqlDumper} class that used to form a separate application at some point. A rudimentary \texttt{MongoDumper} class exists as well and during the early tests was called from \texttt{MysqlDumper} if MongoDB was the database type specified in the configuration. Work on MongoDB has since been abandoned and that awkward class arrangement has never been refactored. The source has however been retained in case it would come handy some day.
 
 \begin{lstlisting}
 flashlistDbMode=write
@@ -71,20 +60,4 @@ flashlistForDbDir[2]=/depot/flashlists13.11_3/
 flashlistForDbDir[0]=/depot/flashlists13.11_4/
 \end{lstlisting}
 
-The configuration above assumes each of \emph{root} flashlist directories contains a set of subdirectories named after the flashlist they hold the values from. Listing below shows an example of such directory structure.
-
-
-
-
-
-	\begin{itemize}
-		\item Event DB connection for writing
-		\item Flashlists dumped on the disk
-	\end{itemize}
-\subsection{Dumping online data}
-As mentioned above, the flashlists were firs dumped into files and only afterwards into a databases.
-	\begin{itemize}
-		\item Online flashlists connection
-	\end{itemize}
-
-
+The configuration above assumes each of \emph{root} flashlist directories contains a set of subdirectories named after the flashlist they hold the dumps of.

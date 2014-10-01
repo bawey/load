@@ -19,11 +19,12 @@ The project introduces an \texttt{EventsSink} abstract class to handle outputtin
 
 \subsection{Helper and convenience classes}
 
-Apart from the core classes listed above, the most notable helpers include:
+Apart from the core classes listed above, the project comprises numerous utility classes with the most notable being:
 
 \begin{itemize}
-	\item \texttt{FieldTypeResolver} - a class storing (hardcoded) information about the datatypes of particular fields and facilitating the conversions.
+	\item \texttt{FieldTypeResolver} - a class storing (hardcoded) information about the data types of particular flashlists' fields and facilitating the conversions.
 	\item \texttt{Trx} - a set of convenience methods callable from EPL statements
-	\item \texttt{HwInfo} - as above, yet related to CMS hardware
+	\item \texttt{HwInfo} - as above, but related to CMS hardware
 	\item \texttt{Settings} - a global singleton for handling the configuration values
+	\item \texttt{LoadLogCollector} - a class collecting Esper logs and dispatching them to registered \texttt{LogSinks}. This is used to display the results and the logs side-by-side in the same GUI.
 \end{itemize}

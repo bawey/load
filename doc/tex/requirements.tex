@@ -1,13 +1,12 @@
 \subsection{RCMS framework} \label{subsec:framework}
-A somewhat old version of the framework is required, in the development environment it was the revision 8055 of \texttt{https://svn.cern.ch/reps/rcms/rcms/trunk/framework}.
-
+The project was developed with revision 8055 of the RCMS framework (\texttt{https://svn.cern.ch/reps/rcms/rcms/trunk/framework}) and does not compile against the newer ones.
 
 \subsection{Hardware Configuration Database}
 \label{subsec:hwconfdb}
 Hardware Configuration DB connection is required for the \texttt{HwInfo} class to work. \texttt{HwInfo} provides helper methods that can be used in EPL statements to retrieve information about the hardware.
-In development environment the connection was setup using a port-forwarding option in \texttt{~/.ssh/config}: \texttt{LocalForward 10121 cmsrac11-v:10121}, a hard-coded DB url: \texttt{jdbc:oracle:thin:@localhost:10121/cms\_omds\_tunnel.cern.ch} and an active ssh connection with \emph{cmsusr}. Building the project within \emph{Eclipse} requires the \emph{framework} project as dependency (trunk version as of 26.06.2014).
+In development environment the connection was set up using a port-forwarding option in \texttt{~/.ssh/config}: \texttt{LocalForward 10121 cmsrac11-v:10121}, a hard-coded DB url: \texttt{jdbc:oracle:thin:@localhost:10121/cms\_omds\_tunnel.cern.ch} and an active ssh connection with \emph{cmsusr}. Building the project within \emph{Eclipse} requires the \emph{framework} project as dependency (trunk version as of 26.06.2014).
 
-\subsection{proxy}
+\subsection{SOCKS proxy}
 \label{subsec:proxy}
 Fetching flashlists as they are published was achieved via configuring ssh (\texttt{DynamicForward 1080} option), specifying the address to fetch the flashlists from and settings for SOCKS Proxy:
 \begin{lstlisting}
@@ -18,9 +17,9 @@ socksProxyPort=1080
 
 \subsection{Events Database}
 \label{subsec:eventsdb}
-The Events Database was setup during development to facilitate events playback, especially any partial playback involving arbitrary start and end timestamp.
-Database structure automatically mimicked the structure of published flashlists, ie. a table was created for each flashlist type and a column for each flashlist field. 
-For convenience, all fields were stored as \texttt{VARCHAR} and one additional numeric column was added to each table: \texttt{fetchstamp} indicating the timestamp of fetching the flashlist. An extra table \texttt{fetchstamps} stores all the unique \texttt{fetchstamp} values for all other tables. Also, tables storing useful events (ie. used for analyses) have been indexed by \texttt{fetchstamp} column. This minimizes "query misses" - attempts to retrieve data for a \texttt{fetchstamp} with no corresponding events.
+The Events Database was set up during development to facilitate events playback, especially any partial playback involving arbitrary start and end timestamp.
+Database structure automatically mimicked the structure of published flashlists, i.e. a table was created for each flashlist type and a column for each flashlist field. 
+For convenience, all fields were stored as \texttt{VARCHAR} and one additional numeric column was added to each table: \texttt{fetchstamp} indicating the timestamp of fetching the flashlist. An extra table \texttt{fetchstamps} stores all the unique \texttt{fetchstamp} values for all other tables. Also, tables storing useful events (i.e. used for analyses) have been indexed by \texttt{fetchstamp} column. This minimizes "query misses" - attempts to retrieve data for a \texttt{fetchstamp} with no corresponding events.
 
 Password can be specified using the \texttt{flashlistDbPass} parameter. \emph{MySQL} is the only fully supported database type with some rudimentary \emph{MongoDB} also exists, but needs to be worked on to be useful.
 

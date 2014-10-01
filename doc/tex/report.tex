@@ -20,7 +20,7 @@
 
 \title{Prototype of Esper-based DAQ expert system}
 \date{\today}
-\author{Tomasz Bawej}
+\author{Tomasz Bawej (tomek.bawej@gmail.com)}
 
 
 \begin{document}
@@ -31,28 +31,32 @@
 \clearpage
 
 \section{Overview}
-\input{workflow.tex}
-\section{Details}
-\input{architecture.tex}
+\input{overview.tex}
 
-\section{Use cases}
-
-The project has never moved beyond the prototype phase and there is no deployment mechanism in place or whatsoever.
-So far it has only been launched directly from the Eclipse IDE.
-
+\section{Use cases}\label{sec:usage}
 \input{usecases.tex}
+
+\section{Configuration}\label{sec:config}
+\input{configuration.tex}
+
 \section{Configuration requirements}
 \input{requirements.tex}
 
-\subsection{Overview}
-\subsection{Details}
 
+\subsection{Implemented checks}
+A summary of implemented checks along with some brief notes can be found in the xml files under the \texttt{epl/xml} directory.
+
+%\input{checks.tex}
+
+\subsection{Inconsistencies remaining}
+
+Given the lack of maturity of the project, this could well be the longest part of this report. The following list includes only the issues that caught my attention while writing this report.
+
+\subsubsection{Resolving EPL dependencies by hand}
 Until the proper, Esper-powered approach was taken, resolving EPL dependencies used to be handled by the means of inserting extra \texttt{\#include} statements and determining the deployment order by hand.
 Some remnants of that are present in the EPL loading code or in the EPL itself and should have been removed.
 
-\subsection{Implemented checks}
-A summary of implemented checks along with some brief notes can be found in an xml file under the \texttt{epl/xml}
-
-%\input{checks.tex}
+\subsubsection{Configuration constants}
+Some of these string literals are centrally defined in the \texttt{Settings} class, while some other are added only by the classes using them. 
 
 \end{document}

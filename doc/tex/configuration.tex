@@ -1,0 +1,77 @@
+This section introduces some overlap with section \ref{sec:usage} in an attempt to list all the configuration options and elaborate on their meaning where they have not been discussed so far and a discussion is required.
+
+\subsubsection{Proxy parameters}
+
+\texttt{socksProxyHost=127.0.0.1} \\
+\texttt{proxySet=true} \\
+\texttt{socksProxyPort=1080} \\
+
+\subsubsection{Flashlist database settings}
+
+\texttt{flashlistDbMode=read} \\
+
+Actually only mySQL is fully supported as database type and only in this case the database engine setting makes sense. \\
+\texttt{flashlistDbType=mysql} \\
+\texttt{flashlistDbEngine=myisam} \\
+
+\texttt{flashlistDbHost=localhost} \\
+\texttt{flashlistDbUser=load} \\
+\texttt{flashlistDbPass=your\_password} \\
+\texttt{flashlistDbName=flashlists\_rest} \\
+
+This option indicates which column, in each table, is the time of fetching particular row. This value is later used for playback. \\
+\texttt{retrievalTimestampName=fetchstamp} \\
+
+This option determines whether the retrieval timestamp column should be indexed when initializing a database based on the dump files \\
+\texttt{flashlistDbIndexTimestamps=true} \\
+
+\subsubsection{Online flashlists setting}
+
+\texttt{onlineFlashlistsRoot[0]=http://srv-c2d04-19.cms:9941/urn:xdaq-application:lid=400/} \\
+\texttt{onlineFlashlistsRoot[1]=http://srv-c2d04-19.cms:9942/urn:xdaq-application:lid=400/} \\
+
+\subsubsection{Dumped flashlists}\label{subsec:dumps}
+The directories listed using the option below are scanned in search of the flashlist dump files that will be used to create and fill database.
+
+\texttt{flashlistForDbDir[0]=/depot/flashlists13.11/} \\
+\texttt{flashlistForDbDir[1]=/depot/flashlists13.11\_2/} \\
+\texttt{flashlistForDbDir[2]=/depot/flashlists13.11\_3/} \\
+\texttt{flashlistForDbDir[0]=/depot/flashlists13.11\_4/} \\
+\texttt{flashlistForDbDir[0]=/home/bawey/Desktop/flmini/flashlistsExport} \\
+\texttt{flashlistForDbDir[2]=/home/bawey/Desktop/flashlists/41} \\
+
+
+\subsubsection{EPL directories}
+\texttt{eplDir[0]=epl} \\
+\texttt{eplDir[1]=epl\_test}\\
+
+
+\subsubsection{Output modules}
+\texttt{view[0]=ThroughputMonitor} \\
+\texttt{view[1]=FileSink} \\
+\texttt{view[2]=SwingGui} \\
+
+\subsection{Flashlists}
+A list of flashlists to use. \\
+\texttt{flashlists=levelZeroFM\_subsys;EVM;frlcontrollerLink;frlcontrollerCard;levelZeroFM\_static;gt\_cell\_lumiseg;FMMInput;jobcontrol;EventProcessorStatus;StorageManagerPerformance;FMMStatus;hostInfo}
+
+Blacklisting specified fields per flashlist.\\
+\texttt{blacklist\_jobcontrol=jobTable}
+blacklist\_frlcontrollerCard=myrinetProcFile,myrinetBadEventNumber
+blacklist\_levelZeroFM\_subsys=FEDS
+
+
+\subsubsection{Others}
+Defines a period to play the data back for. \\
+\texttt{timerStart=1383763860000} \\
+\texttt{timerEnd=1383763860800} \\
+
+Data format is used when converting timestamp strings into numeric values. \\
+\texttt{dateFormat=yyyy-MM-dd'T'HH:mm:ss.SSS} \\
+
+Output directory is the location that \texttt{FileSink} writes into. \\
+\texttt{outputDir=/home/bawey/load/} \\
+
+Classes to be registered as log sinks
+\texttt{logSinks="ch.cern.cms.load.sinks.SwingGui";}
+
