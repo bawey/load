@@ -1,88 +1,83 @@
-\subsection{Main components}
-
-Program's entry point is the \texttt{main} method of the class \texttt{Load}. Except for that, the project consists of several core classes and further helpers.
-The core classes include:
-\begin{itemize}
-	\item \texttt{EventProcessor} - a wrapper for the Esper event processing engine. Facilitates some manipulations and performs the setup (including registration of helper methods available from the EPL level).
-	\item \texttt{EventsTap} - an abstract class extended only by \texttt{DataBaseFlashlistEventsTap} and \texttt{OnlineFlashlistEventsTap}. Depending on the database read/write mode, a different one is registered during setup.
-	\item \texttt{EventsSink} - named for the sake of symmetry with the tap, provides an abstract base class for producing the output. Multiple sinks can be registered in the same time to write into files, display something on the screen etc. Comes with, mmost notably, \texttt{SwingGui} and \texttt{FileSink} subclasses.
-	\item \texttt{EplProvider} - only has two implementations: \texttt{BasicStructEplProvider} and \texttt{FileBasedEplProvider} and only the latter is actually useful as of the time of writing this summary. \texttt{EplProvider}s do just what the name suggests: register statements and thus instruct the engine what to do with the events.
-
-\end{itemize}
-
-The helpers include, among the others:
-\begin{itemize}
-	\item \texttt{FieldTypeResolver}
-	\item \texttt{Trx} - a set of convenience methods callable from EPL statements
-	\item \texttt{HwInfo} - as above, yet related to CMS hardware
-	\item \texttt{Settings} - a global singleton for handling the configuration values
-	\item annotations \texttt{@Verbose} and \texttt{@Watched} play a role of the missing link between the engine and \texttt{EventSink}s. They can be added to a statement (along with some extra parameters), so that the statements later on automatically get some listeners assigned. These in turn forward the output to \texttt{EventSink}s
-\end{itemize}
-
-
 
 \subsection{Configuration properties}
 
-\texttt{load.properties} file explained:
+This section aims at explaining the meaning and usage of configuration constants used in the \texttt{load.properties} file.
+These constants are mostly defined somewhere on the Java side, yet some of them are grouped in the \texttt{Settings} class - mostly the options reused across the whole project - while the others are introduced only by the components relying on them. This is a known inconsistency and one of many things that should be organized.
 
 \subsubsection{Proxy parameters}
-\texttt{socksProxyHost=127.0.0.1}
-\texttt{proxySet=true}
-\texttt{socksProxyPort=1080}
+
+\texttt{socksProxyHost=127.0.0.1} \\
+\texttt{proxySet=true} \\
+\texttt{socksProxyPort=1080} \\
+
 \subsubsection{Flashlist database settings}
-\texttt{flashlistDbMode=read}
-\texttt{flashlistDbType=mysql}
-\texttt{flashlistDbHost=localhost}
-\texttt{flashlistDbUser=load}
-\texttt{flashlistDbName=flashlists\_rest}
-\texttt{flashlistDbEngine=myisam}
-\texttt{retrievalTimestampName=fetchstamp}
-\texttt{flashlistDbIndexTimestamps=true}
+
+Events can either be read from a database, like in the example below, or saved while being read from the dumps (as indicated in section \ref{subsec:dumps}). These behaviors can be toggled by the following option: \\
+\texttt{flashlistDbMode=read} \\
+being set either to \texttt{read} or \texttt{write}. \\
+
+Actually only mySQL is fully supported as database type and only in this case the database engine setting makes sense. \\
+\texttt{flashlistDbType=mysql} \\
+\texttt{flashlistDbEngine=myisam} \\
+
+\texttt{flashlistDbHost=localhost} \\
+\texttt{flashlistDbUser=load} \\
+\texttt{flashlistDbPass=your\_password} \\
+\texttt{flashlistDbName=flashlists\_rest} \\
+
+This option indicates which column, in each table, is the time of fetching particular row. This value is later used for playback. \\
+\texttt{retrievalTimestampName=fetchstamp} \\
+
+This option determines whether the retrieval timestamp column should be indexed when initializing a database based on the dump files \\
+\texttt{flashlistDbIndexTimestamps=true} \\
 
 \subsubsection{Online flashllists}
 
-\texttt{onlineFlashlistsRoot[0]=http://srv-c2d04-19.cms:9941/urn:xdaq-application:lid=400/}
-\texttt{onlineFlashlistsRoot[1]=http://srv-c2d04-19.cms:9942/urn:xdaq-application:lid=400/}
+\texttt{onlineFlashlistsRoot[0]=http://srv-c2d04-19.cms:9941/urn:xdaq-application:lid=400/} \\
+\texttt{onlineFlashlistsRoot[1]=http://srv-c2d04-19.cms:9942/urn:xdaq-application:lid=400/} \\
 
-\subsubsection{Dumped flashlists}
-\texttt{flashlistForDbDir[0]=/depot/flashlists13.11/}
-\texttt{flashlistForDbDir[1]=/depot/flashlists13.11\_2/}
-\texttt{flashlistForDbDir[2]=/depot/flashlists13.11\_3/}
-\texttt{flashlistForDbDir[0]=/depot/flashlists13.11\_4/}
-\texttt{flashlistForDbDir[0]=/home/bawey/Desktop/flmini/flashlistsExport}
-\texttt{flashlistForDbDir[2]=/home/bawey/Desktop/flashlists/41}
+\subsubsection{Dumped flashlists}\label{subsec:dumps}
+The directories listed using the option below are scanned in search of the flashlist dump files that will be used to create and fill database. The structure of the database is automatically inferred from the structure of these dumps, yet using this option requires the dumps to be saved under a directory structure following certain pattern. 
+
+\texttt{flashlistForDbDir[0]=/depot/flashlists13.11/} \\
+\texttt{flashlistForDbDir[1]=/depot/flashlists13.11\_2/} \\
+\texttt{flashlistForDbDir[2]=/depot/flashlists13.11\_3/} \\
+\texttt{flashlistForDbDir[0]=/depot/flashlists13.11\_4/} \\
+\texttt{flashlistForDbDir[0]=/home/bawey/Desktop/flmini/flashlistsExport} \\
+\texttt{flashlistForDbDir[2]=/home/bawey/Desktop/flashlists/41} \\
 
 
 \subsubsection{EPL directories}
-\texttt{eplDir[0]=epl}
+\texttt{eplDir[0]=epl} \\
+\texttt{eplDir[1]=epl\_test}\\
 
 
 \subsubsection{Output modules}
-\texttt{view[0]=ThroughputMonitor}
-\texttt{view[1]=FileSink}
-\texttt{view[2]=SwingGui}
+\texttt{view[0]=ThroughputMonitor} \\
+\texttt{view[1]=FileSink} \\
+\texttt{view[2]=SwingGui} \\
 
 
 \subsubsection{Events playback range}
 
-\texttt{timerStart=1383763860000}
-\texttt{timerEnd=1383763860800}
+\texttt{timerStart=1383763860000} \\
+\texttt{timerEnd=1383763860800} \\
 
-dateFormat=yyyy-MM-dd'T'HH:mm:ss.SSS
+\texttt{dateFormat=yyyy-MM-dd'T'HH:mm:ss.SSS} \\
 
-outputDir=/home/bawey/load/
+\texttt{outputDir=/home/bawey/load/} \\
 
-flashlists=levelZeroFM\_subsys;EVM;frlcontrollerLink;frlcontrollerCard;levelZeroFM\_static;gt\_cell\_lumiseg;FMMInput;jobcontrol;EventProcessorStatus;StorageManagerPerformance;FMMStatus;hostInfo
+\texttt{flashlists=levelZeroFM\_subsys;EVM;frlcontrollerLink;frlcontrollerCard;levelZeroFM\_static;gt\_cell\_lumiseg;FMMInput;jobcontrol;EventProcessorStatus;StorageManagerPerformance;FMMStatus;hostInfo}
 
-blacklist\_jobcontrol=jobTable
+\texttt{blacklist\_jobcontrol=jobTable}
 blacklist\_frlcontrollerCard=myrinetProcFile,myrinetBadEventNumber,myrinetBadHeaderMark,myrinetBadSegmentNumber,myrinetBadTrailerMark,myrinetBlock,myrinetFEDBadCRC,pendingTriggers,freeBlockCount,instance
 blacklist\_levelZeroFM\_subsys=FEDS
 blacklist\_StorageManagerPerformance=activeEPs;averagingTime;bandwidthPerStream;bandwidthToDisk;closedFiles;connectedEPs;connectedRBs;copyWorkers;dataEvents;discardedDQMEvents;diskPaths;diskWriterBusy;dqmConsumers;dqmEventProcessorBusy;dqmFoldersPerEP;dqmQueueBandwidth;dqmQueueRate;entriesInDQMQueue;entriesInFragmentQueue;entriesInStreamQueue;errorEvents;eventConsumers;eventsPerStream;faultyEvents;fragmentProcessorBusy;fragmentQueueBandwidth;fragmentQueueRate;fragmentStoreMemoryUsed;fragmentStoreSize;ignoredDiscards;injectWorkers;instantBandwidth;instantRate;lid;memoryUsedInDQMQueue;memoryUsedInFragmentQueue;memoryUsedInStreamQueue;numberOfDisks;openFiles;outstandingDataDiscards;outstandingDQMDiscards;poolUsage;processedDQMEvents;receivedFrames;runNumber;sataBeastStatus;stateName;storedEvents;storedVolume;streamQueueBandwidth;streamQueueRate;totalDiskSpace;unwantedEvents;usedDiskSpace;writtenEventsBandwidth;writtenEventsRate
 
-logSinks="ch.cern.cms.load.sinks.SwingGui";
+\texttt{logSinks="ch.cern.cms.load.sinks.SwingGui";}
 
 
-Connecting to databas
+\subsection{Connecting to database}
 
 Dumping data
 The very main method of the program allows switching into dumping mode:

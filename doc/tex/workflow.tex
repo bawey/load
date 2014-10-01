@@ -1,5 +1,5 @@
 \subsection {Goal}
-\textbf{L}evel \textbf{0} \textbf{A}nomaly \textbf{D}etective, hereinafter commonly abbreviated as L0AD, has been implemented in an effort to evaluate Esper as a potential backbone of the CMS DAQ expert system. The project consists of a collection of EPL scripts for processing events as well as components responsible for definition and retrieval of events, registration of EPL statements and displaying the outcome of analyses.
+\textbf{L}evel \textbf{0} \textbf{A}nomaly \textbf{D}etective, commonly abbreviated as L0AD, has been implemented in an effort to evaluate Esper as a potential backbone of the CMS DAQ expert system. The project consists of a collection of EPL scripts for processing events as well as components responsible for definition and retrieval of events, registration of EPL statements and displaying the outcome of analyses.
 The project has never reached a mature state, hence parts of it are not well structured.
 
 \subsection{Data sources}
@@ -9,8 +9,21 @@ In L0AD, the definition and continuous population of event streams is handled by
 
 \subsection{Data input and processing}
 
-Once the event streams are defined, the engine can be instructed to detect occurrences of specific circumstances. Statement objects represent instructions for the engine and Esper provides a bidirectional conversion mechanism between a statement object and its textual EPL representation. Thus, all the queries have been saved in epl files under the \texttt{epl} directory. At runtime these files are deployed as modules by a \texttt{FileBasedEplProvider} object that relies on Esper's capabilities in that matter. 
+Once the event streams are defined, the engine can be instructed to detect occurrences of specific circumstances. Statement objects represent instructions for the engine and Esper provides a bidirectional conversion mechanism between a statement object and its textual EPL representation. Thus, all the queries have been saved in epl files under the \texttt{epl} directory. At runtime these files are deployed as modules by a \texttt{FileBasedEplProvider} object that relies on Esper's capabilities in that matter. \texttt{EventProcessor} class plays a role of Epser event processing engine's wrapper that facilitates certain manipulations and handles certain initialization tasks, e.g. registration of helper methods available from the EPL level.
 
 \subsection{Output}
 
-The project introduces an \texttt{EventsSink} abstract class to handle outputting the information from the Esper event processing engine. Provided implementations include \texttt{FileSink}, \texttt{SwingGui} and \texttt{ThroughputMonitor} classes, where \texttt{ThroughputMonitor} only outputs the performance-related information. It is up to the \texttt{EventsSink} implementations to provide instances of \texttt{com.espertech.esper.client.StatementAwareUpdateListener} object for statements annotated with @Verbose and @Watched annotations. The object provided will be registered as a listener to the statement, enabling it to receive relevant updates.
+The project introduces an \texttt{EventsSink} abstract class to handle outputting the information from the Esper event processing engine. Provided implementations include \texttt{FileSink}, \texttt{SwingGui} and \texttt{ThroughputMonitor} classes, where \texttt{ThroughputMonitor} only outputs the performance-related information. It is up to the \texttt{EventsSink} implementations to provide instances of \texttt{com.espertech.esper.client.StatementAwareUpdateListener} object for statements annotated with \texttt{@Verbose} and \texttt{@Watched} annotations. 
+\texttt{EventProcessor}'s constructor makes sure that every registered statement annotated with \texttt{@Verbose} or \texttt{@Watched} gets a listener attached so that the statement-related output can be sent to all registered \texttt{EventSink}s that provide corresponding listeners.
+
+
+\subsection{Helper and convenience classes}
+
+Apart from the core classes listed above, the most notable helpers include:
+
+\begin{itemize}
+	\item \texttt{FieldTypeResolver} - a class storing (hardcoded) information about the datatypes of particular fields and facilitating the conversions.
+	\item \texttt{Trx} - a set of convenience methods callable from EPL statements
+	\item \texttt{HwInfo} - as above, yet related to CMS hardware
+	\item \texttt{Settings} - a global singleton for handling the configuration values
+\end{itemize}
