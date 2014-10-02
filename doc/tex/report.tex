@@ -33,24 +33,28 @@
 \section{Overview}
 \input{overview.tex}
 
+
 \section{Use cases}\label{sec:usage}
 \input{usecases.tex}
 
+
 \section{Configuration}\label{sec:config}
 \input{configuration.tex}
+
 
 \section{Configuration requirements}
 \input{requirements.tex}
 
 
-\subsection{Implemented checks}
-A summary of implemented checks along with some brief notes can be found in the xml files under the \texttt{epl/xml} directory.
+\subsection{Implemented checks and further documentation}
+A summary of implemented checks along with some brief notes can be found in the xml files under the \texttt{epl/xml} directory. \\
+Also, the \texttt{doc} directory of the project contains, apart from this report, some development notes on Esper and a presentation on the project.
 
 %\input{checks.tex}
 
 \subsection{Inconsistencies remaining}
 
-Given the lack of maturity of the project, this could well be the longest part of this report. The following list includes only the issues that caught my attention while writing this report.
+Given the lack of maturity of the project, this could well be the longest part of this report. However, this section includes only the issues that attracted instant attention while writing this report.
 
 \subsubsection{Resolving EPL dependencies by hand}
 Until the proper, Esper-powered approach was taken, resolving EPL dependencies used to be handled by the means of inserting extra \texttt{\#include} statements and determining the deployment order by hand.

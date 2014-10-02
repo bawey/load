@@ -1,7 +1,6 @@
 \subsection {Goal}
 \textbf{L}evel \textbf{0} \textbf{A}nomaly \textbf{D}etective, commonly abbreviated as L0AD, has been implemented in an effort to evaluate Esper as a potential backbone of the CMS DAQ expert system. The project consists of a collection of EPL scripts for processing events as well as components responsible for definition and retrieval of events, registration of EPL statements and displaying the outcome of analyses.
-The project has never reached a mature state, hence parts of it are not well structured.
-
+The project has never reached a mature state, hence its structure is far from perfect.
 \subsection{Data sources}
 The program receives input data in the form of events. While Esper allows several possible event representations, logically a single event is a collection of labelled data, a map. For an event to be fed into the Esper engine it has to be delivered in a predefined stream. Streams define the structure of events they can carry so that all events entering a particular stream would contain fields of the same names and types. \\
 
@@ -13,8 +12,9 @@ Once the event streams are defined, the engine can be instructed to detect occur
 
 \subsection{Output}
 
-The project introduces an \texttt{EventsSink} abstract class to handle outputting the information from the Esper event processing engine. Provided implementations include \texttt{FileSink}, \texttt{SwingGui} and \texttt{ThroughputMonitor} classes, where \texttt{ThroughputMonitor} only outputs the performance-related information. It is up to the \texttt{EventsSink} implementations to provide instances of \texttt{com.espertech.esper.client.StatementAwareUpdateListener} object for statements annotated with \texttt{@Verbose} and \texttt{@Watched} annotations. 
-\texttt{EventProcessor}'s constructor makes sure that every registered statement annotated with \texttt{@Verbose} or \texttt{@Watched} gets a listener attached so that the statement-related output can be sent to all registered \texttt{EventSink}s that provide corresponding listeners.
+The project introduces an \texttt{EventsSink} abstract class to handle outputting the information from the Esper event processing engine. Provided implementations include \texttt{FileSink}, \texttt{SwingGui} and \texttt{ThroughputMonitor} classes, where \texttt{ThroughputMonitor} only outputs the performance-related information. It is up to \texttt{EventsSink} subclasses to implement interface methods returning
+instances of \texttt{com.espertech.esper.client.StatementAwareUpdateListener} for statements annotated with \texttt{@Verbose} and \texttt{@Watched}. 
+\texttt{EventProcessor}'s constructor makes sure that every registered statement annotated with \texttt{@Verbose} or \texttt{@Watched} gets connected to compatible \texttt{EventSink}s, i.e. the ones providing appropriate listeners. This way \texttt{EventSink}s car receive statement-related updates and produce the output.
 
 
 \subsection{Helper and convenience classes}
@@ -22,9 +22,9 @@ The project introduces an \texttt{EventsSink} abstract class to handle outputtin
 Apart from the core classes listed above, the project comprises numerous utility classes with the most notable being:
 
 \begin{itemize}
-	\item \texttt{FieldTypeResolver} - a class storing (hardcoded) information about the data types of particular flashlists' fields and facilitating the conversions.
-	\item \texttt{Trx} - a set of convenience methods callable from EPL statements
-	\item \texttt{HwInfo} - as above, but related to CMS hardware
-	\item \texttt{Settings} - a global singleton for handling the configuration values
-	\item \texttt{LoadLogCollector} - a class collecting Esper logs and dispatching them to registered \texttt{LogSinks}. This is used to display the results and the logs side-by-side in the same GUI.
+	\item \texttt{FieldTypeResolver} - a class storing (hardcoded) information about the data types of particular flashlists' fields. It also facilitates the conversions.
+	\item \texttt{Trx} - a set of convenience methods callable from EPL statements.
+	\item \texttt{HwInfo} - as above, but related to CMS DAQ hardware.
+	\item \texttt{Settings} - a global singleton for handling the configuration values.
+	\item \texttt{LoadLogCollector} - a class collecting Esper logs and dispatching them to registered \texttt{LogSink}s. It is used to display the results and the logs side-by-side in the same GUI.
 \end{itemize}

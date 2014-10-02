@@ -1,10 +1,11 @@
 \subsection{RCMS framework} \label{subsec:framework}
-The project was developed with revision 8055 of the RCMS framework (\texttt{https://svn.cern.ch/reps/rcms/rcms/trunk/framework}) and does not compile against the newer ones.
+The project was confirmed to compile and run with revision 8055 of the \emph{RCMS framework} (\texttt{https://svn.cern.ch/reps/rcms/rcms/trunk/framework}). 
+Some later revisions make it impossible to compile the project against the framework.
 
 \subsection{Hardware Configuration Database}
 \label{subsec:hwconfdb}
-Hardware Configuration DB connection is required for the \texttt{HwInfo} class to work. \texttt{HwInfo} provides helper methods that can be used in EPL statements to retrieve information about the hardware.
-In development environment the connection was set up using a port-forwarding option in \texttt{~/.ssh/config}: \texttt{LocalForward 10121 cmsrac11-v:10121}, a hard-coded DB url: \texttt{jdbc:oracle:thin:@localhost:10121/cms\_omds\_tunnel.cern.ch} and an active ssh connection with \emph{cmsusr}. Building the project within \emph{Eclipse} requires the \emph{framework} project as dependency (trunk version as of 26.06.2014).
+\emph{Hardware Configuration DB connection} is required for the \texttt{HwInfo} class to work. \texttt{HwInfo} provides helper methods that can be used in EPL statements to retrieve information about the hardware.
+In development environment the connection was set up using a port-forwarding option in \texttt{~/.ssh/config}: \texttt{LocalForward 10121 cmsrac11-v:10121}, a hard-coded DB url: \texttt{jdbc:oracle:thin:@localhost:10121/cms\_omds\_tunnel.cern.ch} and an active ssh connection with \emph{cmsusr}.
 
 \subsection{SOCKS proxy}
 \label{subsec:proxy}
@@ -14,12 +15,14 @@ socksProxyHost=127.0.0.1
 proxySet=true
 socksProxyPort=1080
 \end{lstlisting}
+An active ssh connection with \emph{cmsusr} was needed, too.
 
 \subsection{Events Database}
 \label{subsec:eventsdb}
 The Events Database was set up during development to facilitate events playback, especially any partial playback involving arbitrary start and end timestamp.
 Database structure automatically mimicked the structure of published flashlists, i.e. a table was created for each flashlist type and a column for each flashlist field. 
-For convenience, all fields were stored as \texttt{VARCHAR} and one additional numeric column was added to each table: \texttt{fetchstamp} indicating the timestamp of fetching the flashlist. An extra table \texttt{fetchstamps} stores all the unique \texttt{fetchstamp} values for all other tables. Also, tables storing useful events (i.e. used for analyses) have been indexed by \texttt{fetchstamp} column. This minimizes "query misses" - attempts to retrieve data for a \texttt{fetchstamp} with no corresponding events.
+For convenience, all fields were stored as \texttt{VARCHAR} and one additional numeric column was added to each table: \texttt{fetchstamp} indicating the timestamp of fetching the flashlist. An extra table \texttt{fetchstamps} stores all the unique \texttt{fetchstamp} values for all other tables. This minimizes "query misses" - attempts to retrieve data for a \texttt{fetchstamp} with no corresponding events. \\
+Also, tables storing useful events (i.e. used for analyses) have been indexed by \texttt{fetchstamp} column. Otherwise the DB performance made the project unusable. 
 
 Password can be specified using the \texttt{flashlistDbPass} parameter. \emph{MySQL} is the only fully supported database type with some rudimentary \emph{MongoDB} also exists, but needs to be worked on to be useful.
 

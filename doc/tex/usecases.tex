@@ -1,20 +1,21 @@
-The project has never progressed beyond the prototype phase and there is no deployment mechanism in place or whatsoever as so far it has only been launched directly from the Eclipse IDE. Also the term \textit{usecase} refers more to how the code could be reused than to the features of a complete piece of software.
+The project has never progressed beyond the prototype phase and there is no deployment mechanism in place or whatsoever as so far it has only been launched directly from the Eclipse IDE. Also the term \textit{usecase} refers more to how the code could be reused, rather than to the features of a complete piece of software.
 
 \subsection{Offline analysis}
-In order to perform offline analysis, program has to be configured to use the \emph{Events Database}[\ref{subsec:eventsdb}] and a \emph{Hardware Configuration Database} connection [\ref{subsec:hwconfdb}] needs to be set up.
+In order to perform offline analysis, the project has to be configured to use the \emph{Events Database}(see section \ref{subsec:eventsdb} for details) and a \emph{Hardware Configuration Database} connection (see section \ref{subsec:hwconfdb} for details) needs to be set up. An example of corresponding events database configuration is shown below.
 
 \begin{lstlisting}
 flashlistDbMode=read
 flashlistDbType=mysql
 flashlistDbHost=localhost
 flashlistDbUser=load
+# assumes password-free access for user load, preferably read-only
 flashlistDbName=flashlists_rest
 \end{lstlisting}
 
 
 \subsection{Online analysis}
-Online analysis requires a slightly different approach: \emph{Events Database} should be disabled in favour of of providing \texttt{onlineFlashlistsRoot} entries pointing to a network location to retrieve the flashlists from. 
-Connection to the \emph{Hardware Configuration Database}[\ref{subsec:hwconfdb}] remains a requirement, while a SOCKS proxy[\ref{subsec:proxy}] configuration is also needed.
+Online analysis requires a slightly different approach: \emph{Events Database} should be disabled in favour of of providing \texttt{onlineFlashlistsRoot} entries pointing to a network location to retrieve the flashlists from (for example see below). 
+Connection to the \emph{Hardware Configuration Database}(see section \ref{subsec:hwconfdb} for details) remains a requirement, while a SOCKS proxy (see section \ref{subsec:proxy} for details) configuration is also needed.
 
 \begin{lstlisting}
 onlineFlashlistsRoot[0]=http://srv-c2d04-19.cms:9941/urn:xdaq-application:lid=400/
@@ -43,7 +44,8 @@ Within the output directory a subdirectory is created for each flashlist type. F
 Dumping also involves adding information about the time of fetching the flashlist - the \texttt{fetchstamp} column.
 
 \subsubsection{Populating database}
-Switching \texttt{flashlistDbMode} parameter to \texttt{write} makes the \texttt{Load} class \texttt{main} method invoke the \texttt{main} method of the dumper to pass control into \texttt{MysqlDumper} class that used to form a separate application at some point. A rudimentary \texttt{MongoDumper} class exists as well and during the early tests was called from \texttt{MysqlDumper} if MongoDB was the database type specified in the configuration. Work on MongoDB has since been abandoned and that awkward class arrangement has never been refactored. The source has however been retained in case it would come handy some day.
+Switching \texttt{flashlistDbMode} parameter to \texttt{write} makes the \texttt{Load} class \texttt{main} method invoke the \texttt{main} method of \texttt{MysqlDumper} class that used to be a part of a separate application at some point. A rudimentary \texttt{MongoDumper} class exists as well and during the early tests it was called from \texttt{MysqlDumper} (back then called something else) if MongoDB was the database type specified in the configuration. Work on MongoDB has since been abandoned and that awkward class arrangement has never been refactored. The source has however been retained in case the work with Mongo is resumed some day. \\
+Listed below is a sample snippet of the configuration file depicting the database-pumping setup. 
 
 \begin{lstlisting}
 flashlistDbMode=write
@@ -52,7 +54,6 @@ flashlistDbHost=myDbHost
 flashlistDbUser=myDbUser
 flashlistDbName=myDbName
 flashlistDbPass=myDbPass
-
 
 flashlistForDbDir[0]=/depot/flashlists13.11/
 flashlistForDbDir[1]=/depot/flashlists13.11_2/
